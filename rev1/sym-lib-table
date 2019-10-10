@@ -1,0 +1,8 @@
+(sym_lib_table
+  (lib (name Octanis3)(type Legacy)(uri ${KIPRJMOD}/lib_sch/Octanis3.lib)(options "")(descr ""))
+  (lib (name LDO40LPURY)(type Legacy)(uri ${KIPRJMOD}/lib_sch/LDO40LPURY.lib)(options "")(descr ""))
+  (lib (name NINA-B112)(type Legacy)(uri ${KIPRJMOD}/lib_sch/NINA-B112.lib)(options "")(descr ""))
+  (lib (name SAM-M8Q)(type Legacy)(uri ${KIPRJMOD}/lib_sch/SAM-M8Q.lib)(options "")(descr ""))
+  (lib (name SHT31-DIS-B)(type Legacy)(uri ${KIPRJMOD}/lib_sch/SHT31-DIS-B.lib)(options "")(descr ""))
+  (lib (name NINA-B311-00B)(type Legacy)(uri ${KIPRJMOD}/lib_sch/NINA-B311-00B.lib)(options "")(descr ""))
+)
