@@ -5,4 +5,5 @@
   (lib (name SAM-M8Q)(type Legacy)(uri ${KIPRJMOD}/lib_sch/SAM-M8Q.lib)(options "")(descr ""))
   (lib (name SHT31-DIS-B)(type Legacy)(uri ${KIPRJMOD}/lib_sch/SHT31-DIS-B.lib)(options "")(descr ""))
   (lib (name NINA-B311-00B)(type Legacy)(uri ${KIPRJMOD}/lib_sch/NINA-B311-00B.lib)(options "")(descr ""))
+  (lib (name MCP1624)(type Legacy)(uri ${KIPRJMOD}/lib_sch/MCP1624.lib)(options "")(descr ""))
 )
