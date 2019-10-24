@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP BQ297xy
+D Battery Protection ICs SOT-23-6 Rohs for Single-Cell Li-Ion Battery
+K protection Li-Ion Li-Pol
+F https://datasheet.lcsc.com/szlcsc/1810081612_Fortune-Semicon-DW01C-G_C35306.pdf
+$ENDCMP
+#
+#End Doc Library
