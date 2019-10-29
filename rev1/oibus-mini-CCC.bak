@@ -1048,31 +1048,14 @@ F 4 "" H -7300 -750 50  0001 C CNN "MPN"
 	1    4200 3550
 	-1   0    0    1   
 $EndComp
-$Comp
-L Device:C_Small C6
-U 1 1 5D7E8645
-P 4550 3550
-F 0 "C6" V 4600 3450 50  0000 C CNN
-F 1 "100n" V 4450 3550 50  0000 C CNN
-F 2 "Capacitor_SMD:C_0603_1608Metric" H 4550 3550 50  0001 C CNN
-F 3 "~" H 4550 3550 50  0001 C CNN
-F 4 "" H -6950 -750 50  0001 C CNN "MPN"
-	1    4550 3550
-	-1   0    0    1   
-$EndComp
 Wire Wire Line
 	4000 3300 4200 3300
-Wire Wire Line
-	4550 3300 4550 3450
 Wire Wire Line
 	4200 3400 4200 3450
 Wire Wire Line
 	3650 3400 4200 3400
 Wire Wire Line
 	4200 3300 4200 3400
-Connection ~ 4200 3300
-Wire Wire Line
-	4200 3300 4550 3300
 Connection ~ 4200 3400
 $Comp
 L power:GND #PWR010
@@ -1083,17 +1066,6 @@ F 1 "GND" H 4205 3477 50  0000 C CNN
 F 2 "" H 4200 3650 50  0001 C CNN
 F 3 "" H 4200 3650 50  0001 C CNN
 	1    4200 3650
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:GND #PWR012
-U 1 1 5D83C5EB
-P 4550 3650
-F 0 "#PWR012" H 4550 3400 50  0001 C CNN
-F 1 "GND" H 4555 3477 50  0000 C CNN
-F 2 "" H 4550 3650 50  0001 C CNN
-F 3 "" H 4550 3650 50  0001 C CNN
-	1    4550 3650
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -5055,7 +5027,7 @@ U 1 1 5DC14E14
 P 950 4800
 F 0 "J4" H 844 4475 50  0000 C CNN
 F 1 "Conn_01x02_Female" H 844 4566 50  0000 C CNN
-F 2 "Connector_PinHeader_2.00mm:PinHeader_1x02_P2.00mm_Vertical" H 950 4800 50  0001 C CNN
+F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 950 4800 50  0001 C CNN
 F 3 "~" H 950 4800 50  0001 C CNN
 	1    950  4800
 	-1   0    0    1   
@@ -5587,11 +5559,11 @@ Wire Wire Line
 Connection ~ 9800 6750
 Wire Wire Line
 	9800 6750 11250 6750
-Text Label 10800 7000 0    50   ~ 0
+Text Label 10800 7100 0    50   ~ 0
 USB_DP
 Wire Wire Line
 	10800 7000 10700 7000
-Text Label 10800 7100 0    50   ~ 0
+Text Label 10800 7000 0    50   ~ 0
 USB_DM
 Wire Wire Line
 	10800 7100 10700 7100

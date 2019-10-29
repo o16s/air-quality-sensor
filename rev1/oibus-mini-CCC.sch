@@ -4756,22 +4756,7 @@ Wire Wire Line
 	9300 6650 9300 6750
 Wire Wire Line
 	9300 6750 9000 6750
-$Comp
-L Device:C C13
-U 1 1 5E2F9E1B
-P 11250 7000
-F 0 "C13" H 11135 6954 50  0000 R CNN
-F 1 "10u" H 11135 7045 50  0000 R CNN
-F 2 "Capacitor_SMD:C_0805_2012Metric" H 11288 6850 50  0001 C CNN
-F 3 "~" H 11250 7000 50  0001 C CNN
-	1    11250 7000
-	-1   0    0    1   
-$EndComp
-Wire Wire Line
-	11250 6750 11250 6850
 Connection ~ 9300 6750
-Wire Wire Line
-	11250 7150 11250 7450
 Wire Wire Line
 	8700 7450 8700 7350
 Wire Wire Line
@@ -5027,7 +5012,7 @@ U 1 1 5DC14E14
 P 950 4800
 F 0 "J4" H 844 4475 50  0000 C CNN
 F 1 "Conn_01x02_Female" H 844 4566 50  0000 C CNN
-F 2 "Connector_PinHeader_2.00mm:PinHeader_1x02_P2.00mm_Vertical" H 950 4800 50  0001 C CNN
+F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 950 4800 50  0001 C CNN
 F 3 "~" H 950 4800 50  0001 C CNN
 	1    950  4800
 	-1   0    0    1   
@@ -5556,22 +5541,16 @@ Wire Wire Line
 	9800 7100 9800 6750
 Wire Wire Line
 	9300 6750 9800 6750
-Connection ~ 9800 6750
-Wire Wire Line
-	9800 6750 11250 6750
-Text Label 10800 7000 0    50   ~ 0
+Text Label 10800 7100 0    50   ~ 0
 USB_DP
 Wire Wire Line
 	10800 7000 10700 7000
-Text Label 10800 7100 0    50   ~ 0
+Text Label 10800 7000 0    50   ~ 0
 USB_DM
 Wire Wire Line
 	10800 7100 10700 7100
 Wire Wire Line
 	10300 7450 10300 7400
-Connection ~ 10300 7450
-Wire Wire Line
-	10300 7450 11250 7450
 Wire Wire Line
 	9000 7150 9400 7150
 Text Label 9400 7150 0    50   ~ 0
