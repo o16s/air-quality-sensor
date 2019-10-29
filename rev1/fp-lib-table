@@ -1,9 +1,9 @@
 (fp_lib_table
-  (lib (name lib_fp)(type KiCad)(uri ${KIPRJMOD}/lib_fp)(options "")(descr ""))
   (lib (name LDO40LPURY)(type Legacy)(uri ${KIPRJMOD}/lib_fp.pretty/LDO40LPURY.mod)(options "")(descr ""))
   (lib (name NINA-B112)(type Legacy)(uri ${KIPRJMOD}/lib_fp.pretty/NINA-B112.mod)(options "")(descr ""))
   (lib (name S3B-ZR-SM4A-TF)(type Legacy)(uri ${KIPRJMOD}/lib_fp.pretty/S3B-ZR-SM4A-TF.mod)(options "")(descr ""))
   (lib (name SAM-M8Q)(type Legacy)(uri ${KIPRJMOD}/lib_fp.pretty/SAM-M8Q.mod)(options "")(descr ""))
   (lib (name SHT31-DIS-B)(type Legacy)(uri ${KIPRJMOD}/lib_fp.pretty/SHT31-DIS-B.mod)(options "")(descr ""))
   (lib (name NINA-B311-00B)(type Legacy)(uri ${KIPRJMOD}/lib_fp.pretty/NINA-B311-00B.mod)(options "")(descr ""))
+  (lib (name lib_fp)(type KiCad)(uri ${KIPRJMOD}/lib_fp.pretty)(options "")(descr ""))
 )
