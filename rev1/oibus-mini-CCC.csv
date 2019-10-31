@@ -1,0 +1,52 @@
+Reference, Quantity, Value, Footprint, Datasheet, MPN, Field4, Field5, Field6, Field7, Field8, LCSC
+B1 ,1,"OI_Logo","lib_fp_global:octanis_instruments_logo",""
+BT1 ,1,"Battery_Cell","Connector_JST:JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal","~","B2B-PH-SM4-TB(LF)(SN)","","","","","","C160352"
+C14 C9 ,2,"10u","Capacitor_SMD:C_0805_2012Metric","~"
+C16 C17 C25 C26 ,4,"10p","Capacitor_SMD:C_0603_1608Metric","~"
+C2 ,1,"47u 35V","Capacitor_SMD:C_Elec_5x5.4","~","EMZR350ARA470ME61G","","","","","",""
+C10 C11 C15 C18 C19 C20 C21 C5 C6 ,9,"100n","Capacitor_SMD:C_0603_1608Metric","~"
+C1 C22 C24 C3 ,4,"1u","Capacitor_SMD:C_0603_1608Metric","~"
+C12 C23 ,2,"10n","Capacitor_SMD:C_0603_1608Metric","~"
+C4 C7 C8 ,3,"4u7","Capacitor_SMD:C_0805_2012Metric","~"
+D1 ,1,"MBR120","Diode_SMD:D_SOD-123F","~","MBR120ESFT1G","","","","","",""
+D3 ,1,"LED_red","LED_SMD:LED_0603_1608Metric","~","IN-S63ASR","","","","","",""
+D4 ,1,"LED_green","LED_SMD:LED_0603_1608Metric","~","LTST-S270GKT","","","","","",""
+D5 ,1,"LED_blue","LED_SMD:LED_0603_1608Metric","~","IN-S63AS5B","","","","","",""
+D6 ,1,"D_TVS_x2_AAC","Package_TO_SOT_SMD:SOT-323_SC-70","~","PESD2IVN27-UX","","","","","",""
+D7 ,1,"LED_ABRG","LED_SMD:LED_RGB_1210","~","150141M173100","","","","","",""
+FB1 FB2 ,2,"Ferrite_Bead","Inductor_SMD:L_0603_1608Metric","~","BLM15HD102SN1D","","","","","",""
+FID1 FID2 FID3 ,3,"Fiducial","Fiducial:Fiducial_0.5mm_Mask1mm","~"
+H1 ,1,"MountingHole_Pad","MountingHole:MountingHole_3.2mm_M3_DIN965_Pad","~"
+H2 ,1,"OIBUS_12.1_CONN","lib_fp_global:OIBUS12_connector","","PHF254TH2x6","","","","","",""
+J1 ,1,"Conn_01x04_Female","lib_fp:Grove_1x04","~","110990037","NOTE: MPN is for 10 pieces!","","","","","1125R-4p"
+J2 ,1,"USB_B_Micro","Connector_USB:USB_Micro-B_Molex-105017-0001","~","1050170001","","","","","","C10418"
+J3 ,1,"uavcan_5pins","lib_fp_global:Molex_PicoBlade_53048-0510_1x05_P1.25mm_Horizontal","~","0530480510","","","","","",""
+J4 ,1,"Conn_01x02_Female","Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm","~"
+L1 ,1,"4u7","Inductor_SMD:L_Wuerth_MAPI-3010","~","VLS3015ET-4R7M","","","","","",""
+L2 ,1,"10uH","Inductor_SMD:L_0805_2012Metric","~","MLZ2012M100WT000","","","","","",""
+P1 ,1,"TC2030-MCP","lib_fp_global:TC2030-MCP-NL",""
+Q1 ,1,"DMG3415U-7","Package_TO_SOT_SMD:SOT-23","~","DMG3415U-7","","","","","",""
+Q2 Q3 ,2,"NMOS","Package_TO_SOT_SMD:SOT-23","~","ZXMN3F30FHTA","","","","","",""
+R10 R11 R12 R18 ,4,"4.7k","Resistor_SMD:R_0603_1608Metric","~"
+R14 R15 R16 ,3,"1k","Resistor_SMD:R_0603_1608Metric","~"
+R17 ,1,"2k7","Resistor_SMD:R_0603_1608Metric","~"
+R19 R20 ,2,"60R","Resistor_SMD:R_0603_1608Metric","~"
+R2 ,1,"2k","Resistor_SMD:R_0603_1608Metric","~"
+R13 R3 ,2,"430R","Resistor_SMD:R_0603_1608Metric","~"
+R5 ,1,"976k","Resistor_SMD:R_0603_1608Metric","~"
+R1 R6 ,2,"100k","Resistor_SMD:R_0603_1608Metric","~"
+R4 R7 ,2,"309k","Resistor_SMD:R_0603_1608Metric","~"
+R8 R9 ,2,"330R","Resistor_SMD:R_0603_1608Metric","~"
+SW1 ,1,"SW_Push","Button_Switch_SMD:SW_SPST_B3U-1000P","~"
+U1 ,1,"AP2112K-3.3","Package_TO_SOT_SMD:SOT-23-5","https://www.diodes.com/assets/Datasheets/AP2112.pdf","AP2112K-3.3TRG1","","","","","",""
+U10 ,1,"TPD3E001DRLR","Package_TO_SOT_SMD:SOT-553","http://www.ti.com/lit/ds/symlink/tpd3e001.pdf","TPD3E001DRLR","","","","","",""
+U2 ,1,"SAM-M8Q","lib_fp:XCVR_SAM-M8Q","SAM-M8Q","SAM-M8Q-0-10","u-Blox M8 Gnss Antenna Module","Unavailable","None","U-Blox America","SMD-20 U-Blox America",""
+U3 ,1,"NINA-B311-00B","lib_fp:XCVR_NINA-B312-00B","NINA-B312-00B","NINA-B311-00B","BLUETOOTH LOW ENERGY MODULE STAN","Unavailable","None","U-Blox America Inc.","SMD-55 U-Blox America Inc.",""
+U4 ,1,"MCP73831-2-OT","Package_TO_SOT_SMD:SOT-23-5","http://ww1.microchip.com/downloads/en/DeviceDoc/20001984g.pdf","MCP73831T-2ATI/OT","","","","","",""
+U5 ,1,"MCP1624T","Package_TO_SOT_SMD:SOT-23-6","","MCP1624T-I/CHY","","","","","",""
+U6 ,1,"SHT31-DIS-B","lib_fp:SON50P250X250X100-9N","SHT31 Series 5.5 V 800 µA Surface Mount Humidity and Temperature Sensor","SHT31-DIS-B","Sensirion AG","None","Unavailable","TDFN-8 Sensirion","SHT31-DIS-B",""
+U7 ,1,"TCAN330","Package_TO_SOT_SMD:SOT-23-8","http://www.ti.com/lit/ds/symlink/tcan337.pdf","TCAN330DCNT","","","","","",""
+U8 ,1,"STM32F303CCTx","Package_QFP:LQFP-48_7x7mm_P0.5mm","http://www.st.com/st-web-ui/static/active/en/resource/technical/document/datasheet/DM00058181.pdf","STM32F303CCT6","","","","","",""
+U9 ,1,"DW01C-G","Package_SON:WSON-6_1.5x1.5mm_P0.5mm","https://datasheet.lcsc.com/szlcsc/1810081612_Fortune-Semicon-DW01C-G_C35306.pdf","DW01C-G","","","","","",""
+Y1 ,1,"16M","Crystal:Crystal_SMD_SeikoEpson_FA238-4Pin_3.2x2.5mm","~","XXBBBCNANF-16M","","","","","",""
+Y2 ,1,"32kHz","Crystal:Crystal_SMD_SeikoEpson_FA238-4Pin_3.2x2.5mm","~","SC32S-7PF20PPM","","","","","","C97604"
