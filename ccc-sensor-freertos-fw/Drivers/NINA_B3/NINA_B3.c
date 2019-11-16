@@ -8,17 +8,25 @@
 #include "NINA_B3.h"
 
 #define NINA_LINE_DELIMITER 10
-#define NINA_UART_RX_TIMEOUT 1000
-#define NINA_UART_TX_TIMEOUT 1000
+#define NINA_UART_RX_TIMEOUT 5000
+#define NINA_UART_TX_TIMEOUT 5000
 #define NINA_RX_BUFFER_LEN 100
 #define NINA_TX_BUFFER_LEN 100
 
+const unsigned char at_attention[] = "AT\r\n";
 const unsigned char at_echo_off[] = "ATE0\r\n";
+const unsigned char at_set_name[] = "AT+UBTLN=\"CCC-SENSOR-BOARD\"\r\n";
+
 const unsigned char at_get_manufacturer[] = "AT+CGMI\r\n";
-const unsigned char at_define_service[] = "AT+UBTGSER=181A";
+const unsigned char at_define_service[] = "AT+UBTGSER=181A\r\n";
+const unsigned char at_define_temperature[] = "AT+UBTGCHA=2A6E,10,1,1\r\n";
+const unsigned char at_update_temperature[] = "AT+UBTGSN=0,32,42\r\n";
+
 
 unsigned char nina_rx_buffer[NINA_RX_BUFFER_LEN];
 unsigned char nina_tx_buffer[NINA_TX_BUFFER_LEN];
+
+static int nina_b3_connected = 0;
 
 
 int _transmit_AT(const unsigned char * cmd, unsigned char * rx_buffer, int rx_buffer_len, int read_lines){
@@ -58,7 +66,7 @@ int _transmit_AT(const unsigned char * cmd, unsigned char * rx_buffer, int rx_bu
 }
 
 nina_status_t nina_b3_init(){
-    
+    _transmit_AT(at_attention, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);    
     _transmit_AT(at_echo_off, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);    
     _transmit_AT(at_get_manufacturer, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);
 
@@ -70,6 +78,39 @@ nina_status_t nina_b3_init(){
     }
 
 }
+
+
+nina_status_t nina_b3_ccc_setup(){
+    _transmit_AT(at_set_name, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 2);
+
+    _transmit_AT(at_define_service, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);    
+    
+    _transmit_AT(at_define_temperature, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);    
+    return NINA_OK;
+}
+
+nina_status_t nina_b3_update_temperature(){
+    if(nina_b3_connected)
+        _transmit_AT(at_update_temperature, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);   
+
+    return NINA_OK;
+} 
+
+void nina_b3_wait_for_connection(){
+    HAL_UART_Receive_IT(&huart2,nina_rx_buffer,10);
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if(huart->Instance == USART2)
+    {
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+        nina_b3_connected = 1;
+            HAL_UART_Receive_IT(&huart2,nina_rx_buffer,10);
+
+    }
+}
+
 
 // rn2483_status_t rn2483_sendBytes(const unsigned char * payload, size_t length, int fport, int confirm){
 //     char * txBufferPtr = nina_tx_buffer;

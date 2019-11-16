@@ -143,11 +143,15 @@ void StartDefaultTask(void const * argument)
   MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN StartDefaultTask */
+  nina_b3_init();
+  nina_b3_ccc_setup();
+  nina_b3_wait_for_connection();
+
   /* Infinite loop */
   for(;;)
   {
-    HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
-    osDelay(10000);
+    nina_b3_update_temperature();
+    osDelay(5000);
   }
   /* USER CODE END StartDefaultTask */
 }
