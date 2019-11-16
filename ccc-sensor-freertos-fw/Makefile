@@ -91,7 +91,8 @@ Core/Src/system_stm32f3xx.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
-Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
+Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
+Drivers/NINA_B3/NINA_B3.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -155,6 +156,7 @@ C_INCLUDES =  \
 -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F \
 -IDrivers/CMSIS/Device/ST/STM32F3xx/Include \
 -IDrivers/CMSIS/Include \
+-IDrivers/NINA_B3 \
 -ICore/Inc \
 -IUSB_DEVICE/App \
 -IUSB_DEVICE/Target \

@@ -26,7 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
-
+#include "../../Drivers/NINA_B3/NINA_B3.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -133,9 +133,7 @@ void MX_FREERTOS_Init(void) {
   */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
-{
-    
-                 
+{            
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
 
@@ -143,7 +141,8 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+   if(nina_b3_init()==NINA_OK)
+      HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
     osDelay(100);
   }
   /* USER CODE END StartDefaultTask */
