@@ -23,6 +23,8 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
+#include "measurement.h"
+
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
@@ -49,6 +51,7 @@
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
+osThreadId measurementTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -116,11 +119,13 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 256);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 1024);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+
+  osThreadDef(measurementTask, measurement_task, osPriorityNormal, 0, 1024);
+  measurementTaskHandle = osThreadCreate(osThread(measurementTask), NULL);
   /* USER CODE END RTOS_THREADS */
 
 }
@@ -141,16 +146,15 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-   if(nina_b3_init()==NINA_OK)
-      HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
-    osDelay(100);
+    HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+    osDelay(10000);
   }
   /* USER CODE END StartDefaultTask */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-     
+ 
 /* USER CODE END Application */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

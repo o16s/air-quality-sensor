@@ -71,6 +71,7 @@ Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.c \
 Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c \
 Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c \
 Core/Src/main.c \
+Core/Src/measurement.c \
 Core/Src/gpio.c \
 Core/Src/adc.c \
 Core/Src/can.c \
@@ -88,6 +89,9 @@ USB_DEVICE/App/usbd_desc.c \
 USB_DEVICE/App/usbd_cdc_if.c \
 USB_DEVICE/Target/usbd_conf.c \
 Core/Src/system_stm32f3xx.c \
+Drivers/SPS30/sps30-uart/sps30.c \
+Drivers/SPS30/embedded-uart-common/sensirion_shdlc.c \
+Drivers/SPS30/embedded-uart-common/sensirion_uart_implementation.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
@@ -160,6 +164,8 @@ C_INCLUDES =  \
 -ICore/Inc \
 -IUSB_DEVICE/App \
 -IUSB_DEVICE/Target \
+-IDrivers/SPS30/embedded-uart-common \
+-IDrivers/SPS30/sps30-uart \
 -IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc \
 -IMiddlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
 
