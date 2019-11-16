@@ -96,7 +96,11 @@ Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
 Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
 Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
-Drivers/NINA_B3/NINA_B3.c
+Drivers/SAM-M8Q/SAM_M8Q.c \
+Drivers/NINA_B3/NINA_B3.c \
+Drivers/sht3x/hw_i2c/sensirion_i2c.c \
+Drivers/sht3x/sensirion_common.c \
+Drivers/sht3x/sht3x.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -166,6 +170,8 @@ C_INCLUDES =  \
 -IUSB_DEVICE/Target \
 -IDrivers/SPS30/embedded-uart-common \
 -IDrivers/SPS30/sps30-uart \
+-IDrivers/SAM-M8Q \
+-IDrivers/sht3x \
 -IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc \
 -IMiddlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
 

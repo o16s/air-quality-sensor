@@ -108,5 +108,5 @@ int16_t sensirion_uart_rx(uint16_t max_data_len, uint8_t *data) {
  *
  * @param useconds the sleep time in microseconds
  */
-void sensirion_sleep_usec(uint32_t useconds) {
-}
+// void sensirion_sleep_usec(uint32_t useconds) {
+// }

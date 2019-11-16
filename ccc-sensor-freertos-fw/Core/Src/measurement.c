@@ -1,3 +1,4 @@
+#include "measurement.h"
 #include "main.h"
 #include "sps30.h"
 #include "sensirion_uart.h"
@@ -6,6 +7,8 @@
 #include "math.h"
 #include "cmsis_os.h"
 #include "usbd_cdc_if.h"
+#include "SAM_M8Q.h"
+#include "sht3x.h"
 
 void measurement_task(){
 /* init code for USB_DEVICE */
@@ -13,11 +16,31 @@ void measurement_task(){
   int16_t sps30_ret;
   struct sps30_measurement sps30_m;
   char dataline[10];
+  int32_t temperature, humidity;
 
+
+    while (sht3x_probe() != STATUS_OK) {
+        /* printf("SHT sensor probing failed\n"); */
+    }
+
+
+  while(1){
+
+      /* Measure temperature and relative humidity and store into variables
+        * temperature, humidity (each output multiplied by 1000).
+        */
+      int8_t ret = sht3x_measure_blocking_read(&temperature, &humidity);
+      if (ret == STATUS_OK) {
+        
+      }
+
+
+    //sam_m8q_poll();
+  }
   //turn on SPS30
   HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_SET);
   osDelay(1000);
-  
+
   while (sps30_probe() != 0) {
       //SPS sensor probing failed
       osDelay(100);
