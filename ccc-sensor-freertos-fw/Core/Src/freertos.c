@@ -29,7 +29,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
 #include "measurement.h"
-
+#include "NINA_B3.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -139,7 +139,7 @@ void MX_FREERTOS_Init(void) {
   */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
-{
+{            
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
 
