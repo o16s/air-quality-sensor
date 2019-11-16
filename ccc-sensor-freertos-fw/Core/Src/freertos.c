@@ -23,12 +23,11 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
-#include "measurement.h"
-
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
-#include "../../Drivers/NINA_B3/NINA_B3.h"
+#include "NINA_B3.h"
+#include "measurement.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,7 +50,6 @@
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
-osThreadId measurementTaskHandle;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -138,7 +136,9 @@ void MX_FREERTOS_Init(void) {
   */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
-{            
+{
+    
+                 
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
 
