@@ -35,7 +35,7 @@ void measurement_task(){
       }
 
 
-    //sam_m8q_poll();
+      sam_m8q_poll();
   }
   //turn on SPS30
   HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_SET);

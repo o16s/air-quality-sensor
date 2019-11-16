@@ -23,6 +23,7 @@ const unsigned char at_define_temperature[] = "AT+UBTGCHA=2A6E,10,1,1\r\n";
 const unsigned char at_update_temperature[] = "AT+UBTGSN=0,32,42\r\n";
 
 
+unsigned char test_rx_buffer[1];
 unsigned char nina_rx_buffer[NINA_RX_BUFFER_LEN];
 unsigned char nina_tx_buffer[NINA_TX_BUFFER_LEN];
 
@@ -100,15 +101,9 @@ void nina_b3_wait_for_connection(){
     HAL_UART_Receive_IT(&huart2,nina_rx_buffer,10);
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if(huart->Instance == USART2)
-    {
-        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
-        nina_b3_connected = 1;
-            HAL_UART_Receive_IT(&huart2,nina_rx_buffer,10);
-
-    }
+void nina_b3_uart_rx_callback(){
+    nina_b3_connected = 1;
+    HAL_UART_Receive_IT(&huart2,nina_rx_buffer,10);
 }
 
 

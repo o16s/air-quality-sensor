@@ -22,6 +22,8 @@ typedef enum
 } sam_m8q_status;
 
 sam_m8q_status sam_m8q_poll();
+void sam_m8q_uart_rx_callback();
+
 
 #endif
 

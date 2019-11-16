@@ -48,6 +48,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+osThreadId measurementTaskHandle;
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;

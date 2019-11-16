@@ -32,6 +32,7 @@ typedef enum
 nina_status_t nina_b3_init();
 nina_status_t nina_b3_ccc_setup();
 nina_status_t nina_b3_update_temperature();
+void nina_b3_wait_for_connection();
 
 // to be called from within the UART interrupt service routine
 void nina_b3_uart_rx_callback();

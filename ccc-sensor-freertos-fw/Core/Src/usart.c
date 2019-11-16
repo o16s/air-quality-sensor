@@ -21,7 +21,8 @@
 #include "usart.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "NINA_B3.h"
+#include "SAM_M8Q.h"
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;
@@ -244,7 +245,18 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 } 
 
 /* USER CODE BEGIN 1 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if(huart->Instance == USART2)
+    {
+        nina_b3_uart_rx_callback();
+    }
 
+    if(huart->Instance == USART3)
+    {
+        sam_m8q_uart_rx_callback();
+    }
+}
 /* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
