@@ -30,6 +30,12 @@ typedef enum
 
 // extern nina_params_t rn2483;
 nina_status_t nina_b3_init();
+nina_status_t nina_b3_ccc_setup();
+nina_status_t nina_b3_update_temperature();
+
+// to be called from within the UART interrupt service routine
+void nina_b3_uart_rx_callback();
+
 // rn2483_status_t rn2483_sendBytes(const unsigned char * payload, size_t length, int fport, int confirm);
 
 #endif
