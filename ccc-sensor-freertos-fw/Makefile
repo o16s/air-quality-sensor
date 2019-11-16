@@ -21,8 +21,8 @@ TARGET = ccc-sensor
 ######################################
 # debug build?
 DEBUG = 1
-# optimization
-OPT = -Og
+# optimization, g = default
+OPT = -O0
 
 
 #######################################
