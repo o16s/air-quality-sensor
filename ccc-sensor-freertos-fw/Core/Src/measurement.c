@@ -17,7 +17,7 @@ void measurement_task(){
   //turn on SPS30
   HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_SET);
   osDelay(1000);
-
+  
   while (sps30_probe() != 0) {
       //SPS sensor probing failed
       osDelay(100);

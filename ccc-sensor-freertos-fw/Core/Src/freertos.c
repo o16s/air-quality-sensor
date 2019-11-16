@@ -16,6 +16,7 @@
   *
   ******************************************************************************
   */
+
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -23,11 +24,11 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
-#include "measurement.h"
 
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
+#include "measurement.h"
 
 /* USER CODE END Includes */
 
