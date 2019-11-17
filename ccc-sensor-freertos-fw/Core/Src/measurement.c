@@ -29,14 +29,17 @@ void measurement_task(){
       /* Measure temperature and relative humidity and store into variables
         * temperature, humidity (each output multiplied by 1000).
         */
-      int8_t ret = sht3x_measure_blocking_read(&temperature, &humidity);
-      if (ret == STATUS_OK) {
+      // int8_t ret = sht3x_measure_blocking_read(&temperature, &humidity);
+      // if (ret == STATUS_OK) {
         
-      }
+      // }
 
 
       sam_m8q_poll();
+      osDelay(1000);
   }
+
+
   //turn on SPS30
   HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_SET);
   osDelay(1000);
