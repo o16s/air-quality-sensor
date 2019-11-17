@@ -15,12 +15,18 @@
 
 const unsigned char at_attention[] = "AT\r\n";
 const unsigned char at_echo_off[] = "ATE0\r\n";
-const unsigned char at_set_name[] = "AT+UBTLN=\"CCC-SENSOR-BOARD\"\r\n";
+const unsigned char at_set_name[] = "AT+UBTLN=\"CCC-SENSOR-R-BOARD\"\r\n";
 
 const unsigned char at_get_manufacturer[] = "AT+CGMI\r\n";
 const unsigned char at_define_service[] = "AT+UBTGSER=181A\r\n";
 const unsigned char at_define_temperature[] = "AT+UBTGCHA=2A6E,10,1,1\r\n";
 const unsigned char at_update_temperature[] = "AT+UBTGSN=0,32,42\r\n";
+const unsigned char at_update_characteristic[] = "AT+UBTGSN=0,";
+const unsigned char at_command_return[]= "\r\n";
+
+const unsigned char bt_acl_connected[] = "+UUBTACLC";
+const unsigned char bt_acl_disconnected[] = "+UUBTACLD";
+const unsigned char bt_request_to_write[] = "+UUBTGRW";
 
 
 unsigned char test_rx_buffer[1];
@@ -39,7 +45,7 @@ int _transmit_AT(const unsigned char * cmd, unsigned char * rx_buffer, int rx_bu
 
     memset(rx_buffer, '\0', sizeof(char)*rx_buffer_len);
 
-    tx = HAL_UART_Transmit(&huart2, (char *)cmd, strlen((const char *)cmd), NINA_UART_TX_TIMEOUT);
+    tx = HAL_UART_Transmit(&huart2, (unsigned char *)cmd, strlen((const char *)cmd), NINA_UART_TX_TIMEOUT);
 
     if(tx == HAL_OK){
         while(lines_index < read_lines){
@@ -61,6 +67,34 @@ int _transmit_AT(const unsigned char * cmd, unsigned char * rx_buffer, int rx_bu
         }else{
             return -1;
         }
+    }else{
+        return -1;
+    }
+}
+
+int _receive_AT(unsigned char * rx_buffer, int rx_buffer_len, int read_lines, uint32_t timeout){
+    int rx = 0;
+    int rx_index = 0;
+    int lines_index = 0;
+    unsigned char * rx_ptr = rx_buffer;
+
+    memset(rx_buffer, '\0', sizeof(char)*rx_buffer_len);
+    while(lines_index < read_lines){
+        rx = HAL_UART_Receive(&huart2, rx_ptr, 1, timeout);
+    
+        if (rx == HAL_OK){
+            if(*rx_ptr == NINA_LINE_DELIMITER){
+                lines_index++;
+            }
+            rx_index++;
+            rx_ptr++;
+        }else{
+            break;
+        }
+    }
+    
+    if(rx == HAL_OK){
+        return rx_index;
     }else{
         return -1;
     }
@@ -91,19 +125,36 @@ nina_status_t nina_b3_ccc_setup(){
 }
 
 nina_status_t nina_b3_update_temperature(){
+    static int temperature = 1;
+    static int temp_char_handle = 0x32;
+
+    unsigned char at_update[NINA_TX_BUFFER_LEN];
+    memset(at_update, '\0', sizeof(at_update));
+
+    sprintf(at_update,"%s%x,%x\r\n",at_update_characteristic,temp_char_handle, temperature);
+
     if(nina_b3_connected)
-        _transmit_AT(at_update_temperature, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);   
+    {
+        _transmit_AT(at_update, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);   
+    }
+    temperature = temperature+1;
 
     return NINA_OK;
 } 
 
 void nina_b3_wait_for_connection(){
-    HAL_UART_Receive_IT(&huart2,nina_rx_buffer,10);
+    while(1){
+        _receive_AT((unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 1, HAL_MAX_DELAY);
+        if(strncmp(bt_acl_connected, (const char *)&nina_rx_buffer, sizeof(bt_acl_connected)-1) == 0)
+        {
+            nina_b3_connected = 1;
+            break;
+        }
+    }
 }
 
 void nina_b3_uart_rx_callback(){
-    nina_b3_connected = 1;
-    HAL_UART_Receive_IT(&huart2,nina_rx_buffer,10);
+    //HAL_UART_Receive_IT(&huart2,nina_rx_buffer,10);
 }
 
 
