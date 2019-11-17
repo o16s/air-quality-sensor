@@ -17,6 +17,11 @@ int get_temperature()
   return temperature;
 }
 
+int get_humidity()
+{
+  return humidity;
+}
+
 void measurement_task(){
 /* init code for USB_DEVICE */
   uint8_t sps30_auto_clean_days = 4;
