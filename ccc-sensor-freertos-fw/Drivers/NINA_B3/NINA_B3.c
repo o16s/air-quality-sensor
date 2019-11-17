@@ -1,3 +1,16 @@
+/**
+  ******************************************************************************
+  * File Name          : NINA-B3.c
+  * Description        : This file provides the source code for the NINA-B3 Bluetooth module.
+  ******************************************************************************
+  * @attention
+  *
+  * <h2><center>&copy; Copyright (c) 2019 Octanis Instruments OÜ
+  * All rights reserved.</center></h2>
+  *
+  ******************************************************************************
+*/
+
 #include "usart.h" //CubeMX
 #include "stm32f3xx_hal_uart.h" //FreeRTOS
 #include "stm32f3xx_hal_gpio.h" //FreeRTOS
@@ -7,11 +20,13 @@
 
 #include "NINA_B3.h"
 
-#define NINA_LINE_DELIMITER 10
+#define NINA_LINE_DELIMITER 10 // '\n'
 #define NINA_UART_RX_TIMEOUT 5000
 #define NINA_UART_TX_TIMEOUT 5000
 #define NINA_RX_BUFFER_LEN 100
 #define NINA_TX_BUFFER_LEN 100
+
+#define NINA_RX_EXPECT_NO_ANSWER         NULL,NULL
 
 const unsigned char at_attention[] = "AT\r\n";
 const unsigned char at_echo_off[] = "ATE0\r\n";
@@ -24,6 +39,11 @@ const unsigned char at_update_temperature[] = "AT+UBTGSN=0,32,42\r\n";
 const unsigned char at_update_characteristic[] = "AT+UBTGSN=0,";
 const unsigned char at_command_return[]= "\r\n";
 
+const unsigned char at_resp_ok[]= "OK";
+const unsigned char at_resp_error[]= "ERROR";
+
+const unsigned char bt_conf_characteristic[] = "+UBTGCHA:";
+
 const unsigned char bt_acl_connected[] = "+UUBTACLC";
 const unsigned char bt_acl_disconnected[] = "+UUBTACLD";
 const unsigned char bt_request_to_write[] = "+UUBTGRW";
@@ -33,58 +53,40 @@ unsigned char test_rx_buffer[1];
 unsigned char nina_rx_buffer[NINA_RX_BUFFER_LEN];
 unsigned char nina_tx_buffer[NINA_TX_BUFFER_LEN];
 
-static int nina_b3_connected = 0;
+static struct nina_b3_state_
+{
+    int connected;
+    nina_response_t resp;
+    int manufacturer_confirmed;
+} nina_b3_state;
 
-
-int _transmit_AT(const unsigned char * cmd, unsigned char * rx_buffer, int rx_buffer_len, int read_lines){
+nina_response_t _transmit_AT(const unsigned char * cmd, const char* expected_response, void (*resp_callback)()){
     int tx = 0;
-    int rx = 0;
-    int rx_index = 0;
-    int lines_index = 0;
-    unsigned char * rx_ptr = rx_buffer;
-
-    memset(rx_buffer, '\0', sizeof(char)*rx_buffer_len);
 
     tx = HAL_UART_Transmit(&huart2, (unsigned char *)cmd, strlen((const char *)cmd), NINA_UART_TX_TIMEOUT);
 
-    if(tx == HAL_OK){
-        while(lines_index < read_lines){
-            rx = HAL_UART_Receive(&huart2, rx_ptr, 1, NINA_UART_RX_TIMEOUT);
-      
-            if (rx == HAL_OK){
-                if(*rx_ptr == NINA_LINE_DELIMITER){
-                    lines_index++;
-                }
-                rx_index++;
-                rx_ptr++;
-            }else{
-                break;
-            }
+    if(tx == HAL_OK){   
+        nina_b3_state.resp = NINA_RX_WAITING;
+        while(nina_b3_state.resp > NINA_RX_OK){
+            nina_b3_wait_for_response(expected_response, resp_callback, NINA_UART_RX_TIMEOUT);
         }
-        
-        if(rx == HAL_OK){
-            return rx_index;
-        }else{
-            return -1;
-        }
-    }else{
-        return -1;
     }
+    return nina_b3_state.resp;
 }
 
-int _receive_AT(unsigned char * rx_buffer, int rx_buffer_len, int read_lines, uint32_t timeout){
+int _receive_AT(unsigned char * rx_buffer, int rx_buffer_len, uint32_t timeout){
     int rx = 0;
     int rx_index = 0;
-    int lines_index = 0;
     unsigned char * rx_ptr = rx_buffer;
 
-    memset(rx_buffer, '\0', sizeof(char)*rx_buffer_len);
-    while(lines_index < read_lines){
+    //memset(rx_buffer, '\0', sizeof(char)*rx_buffer_len);
+    while(rx_index < NINA_RX_BUFFER_LEN){
         rx = HAL_UART_Receive(&huart2, rx_ptr, 1, timeout);
     
         if (rx == HAL_OK){
             if(*rx_ptr == NINA_LINE_DELIMITER){
-                lines_index++;
+                *rx_ptr = '\0';
+                break;
             }
             rx_index++;
             rx_ptr++;
@@ -100,27 +102,32 @@ int _receive_AT(unsigned char * rx_buffer, int rx_buffer_len, int read_lines, ui
     }
 }
 
-nina_status_t nina_b3_init(){
-    _transmit_AT(at_attention, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);    
-    _transmit_AT(at_echo_off, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);    
-    _transmit_AT(at_get_manufacturer, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);
+void nina_b3_confirm_manufacturer_string()
+{
+    nina_b3_state.manufacturer_confirmed = 1;
+}
 
-    if(strcmp((const char *)&nina_rx_buffer, (const char *)"\r\n\"u-blox\"\r\nOK\r\n") == 0)
+nina_status_t nina_b3_init(){
+    _transmit_AT(at_attention, NINA_RX_EXPECT_NO_ANSWER);    
+    _transmit_AT(at_echo_off, NINA_RX_EXPECT_NO_ANSWER);    
+    _transmit_AT(at_get_manufacturer, (const char *)"\"u-blox\"", &nina_b3_confirm_manufacturer_string);
+
+    if(nina_b3_state.manufacturer_confirmed)
     {
         return NINA_OK;
     }else{
         return NINA_ERROR;
     }
-
 }
 
 
 nina_status_t nina_b3_ccc_setup(){
-    _transmit_AT(at_set_name, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 2);
+    _transmit_AT(at_set_name, NINA_RX_EXPECT_NO_ANSWER);
 
-    _transmit_AT(at_define_service, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);    
+    _transmit_AT(at_define_service, NINA_RX_EXPECT_NO_ANSWER);    
     
-    _transmit_AT(at_define_temperature, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);    
+    _transmit_AT(at_define_temperature, NINA_RX_EXPECT_NO_ANSWER);
+
     return NINA_OK;
 }
 
@@ -133,23 +140,64 @@ nina_status_t nina_b3_update_temperature(){
 
     sprintf(at_update,"%s%x,%x\r\n",at_update_characteristic,temp_char_handle, temperature);
 
-    if(nina_b3_connected)
+    if(nina_b3_state.connected)
     {
-        _transmit_AT(at_update, (unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 3);   
+        _transmit_AT(at_update, NINA_RX_EXPECT_NO_ANSWER);   
     }
     temperature = temperature+1;
 
     return NINA_OK;
 } 
 
-void nina_b3_wait_for_connection(){
-    while(1){
-        _receive_AT((unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, 1, HAL_MAX_DELAY);
-        if(strncmp(bt_acl_connected, (const char *)&nina_rx_buffer, sizeof(bt_acl_connected)-1) == 0)
+void nina_b3_wait_for_connection()
+{
+    nina_b3_wait_for_response(NINA_RX_EXPECT_NO_ANSWER, HAL_MAX_DELAY);
+    // wait for incoming +UUBTACLC:<
+}
+
+void nina_b3_wait_for_response(const char* expected_response, void (*resp_callback)(), uint32_t timeout){
+    nina_b3_state.resp = NINA_RX_WAITING;
+    while(nina_b3_state.resp > NINA_RX_PROCESSED){
+        _receive_AT((unsigned char *)&nina_rx_buffer, NINA_RX_BUFFER_LEN, timeout);
+        nina_b3_rx_process_response(expected_response, resp_callback);
+    }
+}
+
+void nina_b3_rx_process_response(const char* expected_response, void (*resp_callback)()){
+    if(strlen((const char *)&nina_rx_buffer) > 1)
+    {
+        if(expected_response &&
+            strncmp(expected_response, (const char *)&nina_rx_buffer, sizeof(expected_response)-1) == 0)
         {
-            nina_b3_connected = 1;
-            break;
+            resp_callback();
+            nina_b3_state.resp = NINA_RX_EXPECTED;
         }
+        else if(strncmp(at_resp_ok, (const char *)&nina_rx_buffer, sizeof(at_resp_ok)-1) == 0)
+        {
+            nina_b3_state.resp = NINA_RX_OK;
+        }
+        else if(strncmp(at_resp_error, (const char *)&nina_rx_buffer, sizeof(at_resp_error)-1) == 0)
+        {
+            nina_b3_state.resp = NINA_RX_ERROR;
+        }
+        else if(strncmp(bt_acl_connected, (const char *)&nina_rx_buffer, sizeof(bt_acl_connected)-1) == 0)
+        {
+            nina_b3_state.connected = 1;
+            nina_b3_state.resp = NINA_RX_PROCESSED;
+        }
+        else if(strncmp(bt_acl_disconnected, (const char *)&nina_rx_buffer, sizeof(bt_acl_disconnected)-1) == 0)
+        {
+            nina_b3_state.connected = 0;
+            nina_b3_state.resp = NINA_RX_PROCESSED;
+        }
+        else
+        {
+            nina_b3_state.resp = NINA_UNDEFINED;
+        }
+    }
+    else
+    {
+        nina_b3_state.resp = NINA_RX_NEWLINE;
     }
 }
 
