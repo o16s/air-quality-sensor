@@ -22,11 +22,20 @@ typedef struct
 
 typedef enum
 {
-    NINA_ERROR = -2,
-    NINA_TX_ERROR = -1,
+    NINA_ERROR = -1,
     NINA_OK,
-    NINA_TX_OK,
 } nina_status_t;
+
+typedef enum
+{
+    NINA_RX_ERROR = -1,
+    NINA_RX_OK,
+    NINA_RX_EXPECTED,
+    NINA_RX_PROCESSED,
+    NINA_RX_NEWLINE,
+    NINA_UNDEFINED,
+    NINA_RX_WAITING
+} nina_response_t;
 
 // extern nina_params_t rn2483;
 nina_status_t nina_b3_init();

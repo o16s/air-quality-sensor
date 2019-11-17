@@ -27,9 +27,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
-#include "NINA_B3.h"
 #include "measurement.h"
+<<<<<<< HEAD
 #include "gps.h"
+=======
+#include "comm.h"
+>>>>>>> cb40ce313a8a7775a1665a8c95380a0393dcd6f3
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -50,7 +53,11 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 osThreadId measurementTaskHandle;
+<<<<<<< HEAD
 osThreadId gpsTaskHandle;
+=======
+osThreadId commTaskHandle;
+>>>>>>> cb40ce313a8a7775a1665a8c95380a0393dcd6f3
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
@@ -130,6 +137,9 @@ void MX_FREERTOS_Init(void) {
 
   osThreadDef(measurementTask, measurement_task, osPriorityHigh, 0, 1600);
   measurementTaskHandle = osThreadCreate(osThread(measurementTask), NULL);
+
+  osThreadDef(commTask, StartCommTask, osPriorityAboveNormal, 0, 1024);
+  commTaskHandle = osThreadCreate(osThread(commTask), NULL);
   /* USER CODE END RTOS_THREADS */
 
 }
@@ -149,14 +159,11 @@ void StartDefaultTask(void const * argument)
   MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN StartDefaultTask */
-  nina_b3_init();
-  nina_b3_ccc_setup();
-  nina_b3_wait_for_connection();
+ 
 
   /* Infinite loop */
   for(;;)
   {
-    nina_b3_update_temperature();
     osDelay(5000);
   }
   /* USER CODE END StartDefaultTask */
