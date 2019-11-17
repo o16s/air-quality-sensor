@@ -14,34 +14,35 @@
 #define SAM_M8Q_TX_BUFFER_LEN 100
 
 unsigned char sam_m8q_rx_buffer[SAM_M8Q_RX_BUFFER_LEN];
-
+unsigned char rx_byte = '\0';
+int line_valid = 0;
+int rx_index = 0;
 
 void sam_m8q_uart_rx_callback(){
-    HAL_UART_Receive_IT(&huart3,sam_m8q_rx_buffer,1);
-    HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+    //source: https://community.st.com/s/feed/0D50X00009XkVxKSAV
+    if (USART3->ISR & USART_ISR_ORE) // Overrun Error
+        USART3->ICR = USART_ICR_ORECF;
+    if (USART3->ISR & USART_ISR_NE) // Noise Error
+        USART3->ICR = USART_ICR_NCF;
+    if (USART3->ISR & USART_ISR_FE) // Framing Error
+        USART3->ICR = USART_ICR_FECF;
+    
+    if(USART3->ISR & USART_ISR_RXNE){
+        rx_byte = (char)(USART3->RDR & 0xFF);
+        sam_m8q_rx_buffer[rx_index] = rx_byte;
+
+        if(rx_byte == SAM_M8Q_LINE_DELIMITER || rx_index >= 199){
+            rx_index=0;
+            rx_byte = '\0';
+            line_valid = 1;
+        }else{
+            line_valid = 0;
+            rx_index++;
+        }
+    }
 }
 
-
 sam_m8q_status sam_m8q_poll(){
-    int rx = 0;
-    int rx_index = 0;
-    int lines_index = 0;
-    unsigned char * rx_ptr = sam_m8q_rx_buffer;
-
-    memset(sam_m8q_rx_buffer, '\0', sizeof(char)*SAM_M8Q_RX_BUFFER_LEN);
-    HAL_UART_Receive_IT(&huart3, rx_ptr, 1);
-
-    // while(HAL_UART_Receive_IT(&huart3, rx_ptr, 1) == 0){
-    //     if(*rx_ptr == SAM_M8Q_NMEA_START){
-    //         memset(++rx_ptr, '\0', sizeof(char)*SAM_M8Q_RX_BUFFER_LEN);
-    //     } else if(*rx_ptr == SAM_M8Q_LINE_DELIMITER){
-    //         HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_GPIO_Port);
-    //         rx_ptr = sam_m8q_rx_buffer;
-    //         lines_index++;
-    //     } else {
-    //         rx_ptr++;
-    //     }
-    // }
-    
-        return SAM_M8Q_OK;
+   
+    return SAM_M8Q_OK;
 }
