@@ -18,7 +18,7 @@
 #include "cmsis_os.h" //FreeRTOS
 #include <string.h>
 #include "main.h"
-
+#include "measurement.h"
 #include "NINA_B3.h"
 
 #define NINA_LINE_DELIMITER 10 // '\n'
@@ -135,8 +135,11 @@ nina_status_t nina_b3_ccc_setup(){
 }
 
 nina_status_t nina_b3_update_temperature(){
-    static int temperature = 1;
+    static int temperature_mili, temperature = 0;
     static int temp_char_handle = 0x32;
+
+    temperature_mili = get_temperature();
+    temperature = temperature_mili / 1000;
 
     unsigned char at_update[NINA_TX_BUFFER_LEN];
     memset(at_update, '\0', sizeof(at_update));
@@ -147,7 +150,6 @@ nina_status_t nina_b3_update_temperature(){
     {
         _transmit_AT(at_update, NINA_RX_EXPECT_NO_ANSWER);   
     }
-    temperature = temperature+10;
 
     if(nina_b3_state.resp == NINA_RX_ERROR)
     {

@@ -10,13 +10,19 @@
 #include "SAM_M8Q.h"
 #include "sht3x.h"
 
+int32_t temperature, humidity;
+
+int get_temperature()
+{
+  return temperature;
+}
+
 void measurement_task(){
 /* init code for USB_DEVICE */
   uint8_t sps30_auto_clean_days = 4;
   int16_t sps30_ret;
   struct sps30_measurement sps30_m;
   char dataline[10];
-  int32_t temperature, humidity;
 
 
     while (sht3x_probe() != STATUS_OK) {
@@ -29,7 +35,7 @@ void measurement_task(){
       /* Measure temperature and relative humidity and store into variables
         * temperature, humidity (each output multiplied by 1000).
         */
-      // int8_t ret = sht3x_measure_blocking_read(&temperature, &humidity);
+      int8_t ret = sht3x_measure_blocking_read(&temperature, &humidity);
       // if (ret == STATUS_OK) {
         
       // }
