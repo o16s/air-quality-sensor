@@ -22,10 +22,8 @@ typedef struct
 
 typedef enum
 {
-    NINA_ERROR = -2,
-    NINA_TX_ERROR = -1,
+    NINA_ERROR = -1,
     NINA_OK,
-    NINA_TX_OK,
 } nina_status_t;
 
 typedef enum

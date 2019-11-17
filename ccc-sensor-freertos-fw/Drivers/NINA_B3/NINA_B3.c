@@ -17,6 +17,7 @@
 
 #include "cmsis_os.h" //FreeRTOS
 #include <string.h>
+#include "main.h"
 
 #include "NINA_B3.h"
 
@@ -46,7 +47,9 @@ const unsigned char bt_conf_characteristic[] = "+UBTGCHA:";
 
 const unsigned char bt_acl_connected[] = "+UUBTACLC";
 const unsigned char bt_acl_disconnected[] = "+UUBTACLD";
-const unsigned char bt_request_to_write[] = "+UUBTGRW";
+const unsigned char bt_request_to_write[] = "+UUBTGRW"; /* happens when one clicks "Start listening"
++UUBTGRW:<conn_handle>,<char_ This event occurs when a remote client writes to an attribute over the air. handle>,<value>,<options>
+*/
 
 
 unsigned char test_rx_buffer[1];
@@ -138,13 +141,34 @@ nina_status_t nina_b3_update_temperature(){
     unsigned char at_update[NINA_TX_BUFFER_LEN];
     memset(at_update, '\0', sizeof(at_update));
 
-    sprintf(at_update,"%s%x,%x\r\n",at_update_characteristic,temp_char_handle, temperature);
+    sprintf(at_update,"%s%02x,%02x\r\n",at_update_characteristic,temp_char_handle, temperature);
 
     if(nina_b3_state.connected)
     {
         _transmit_AT(at_update, NINA_RX_EXPECT_NO_ANSWER);   
     }
-    temperature = temperature+1;
+    temperature = temperature+10;
+
+    if(nina_b3_state.resp == NINA_RX_ERROR)
+    {
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+        osDelay(50);
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+        osDelay(50);
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+        osDelay(50);
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+        osDelay(50);
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+        osDelay(50);
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+    }
+    else if(nina_b3_state.resp == NINA_RX_OK)
+    {
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+        osDelay(500);
+        HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+    }
 
     return NINA_OK;
 } 
