@@ -28,11 +28,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
 #include "measurement.h"
-<<<<<<< HEAD
 #include "gps.h"
-=======
 #include "comm.h"
->>>>>>> cb40ce313a8a7775a1665a8c95380a0393dcd6f3
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,11 +50,8 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 osThreadId measurementTaskHandle;
-<<<<<<< HEAD
 osThreadId gpsTaskHandle;
-=======
 osThreadId commTaskHandle;
->>>>>>> cb40ce313a8a7775a1665a8c95380a0393dcd6f3
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
