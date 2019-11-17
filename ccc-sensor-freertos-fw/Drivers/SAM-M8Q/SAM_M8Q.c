@@ -4,45 +4,92 @@
 #include "cmsis_os.h" //FreeRTOS
 #include <string.h>
 
+#include "minmea.h"
 #include "SAM_M8Q.h"
 
 #define SAM_M8Q_LINE_DELIMITER 10
 #define SAM_M8Q_NMEA_START 36
-#define SAM_M8Q_UART_RX_TIMEOUT 10000
-#define SAM_M8Q_UART_TX_TIMEOUT 1000
+#define SAM_M8Q_UART_RX_TIMEOUT 500
 #define SAM_M8Q_RX_BUFFER_LEN 200
-#define SAM_M8Q_TX_BUFFER_LEN 100
 
 unsigned char sam_m8q_rx_buffer[SAM_M8Q_RX_BUFFER_LEN];
-unsigned char rx_byte = '\0';
-int line_valid = 0;
-int rx_index = 0;
+sam_m8q_state_t sam_m8q_state;
 
-void sam_m8q_uart_rx_callback(){
-    //source: https://community.st.com/s/feed/0D50X00009XkVxKSAV
-    if (USART3->ISR & USART_ISR_ORE) // Overrun Error
-        USART3->ICR = USART_ICR_ORECF;
-    if (USART3->ISR & USART_ISR_NE) // Noise Error
-        USART3->ICR = USART_ICR_NCF;
-    if (USART3->ISR & USART_ISR_FE) // Framing Error
-        USART3->ICR = USART_ICR_FECF;
-    
-    if(USART3->ISR & USART_ISR_RXNE){
-        rx_byte = (char)(USART3->RDR & 0xFF);
-        sam_m8q_rx_buffer[rx_index] = rx_byte;
+sam_m8q_status_t sam_m8q_wait_for_fix(){
+    //block until GPS fix is valid
+    int fix_quality = 0;
 
-        if(rx_byte == SAM_M8Q_LINE_DELIMITER || rx_index >= 199){
-            rx_index=0;
-            rx_byte = '\0';
-            line_valid = 1;
-        }else{
-            line_valid = 0;
-            rx_index++;
+    while(fix_quality == 0 || fix_quality > 5){
+        if(sam_m8q_poll() < 0){
+            return SAM_M8Q_ERROR;
         }
+
+        fix_quality = sam_m8q_state.minmea_gga.fix_quality;
+        osDelay(500);
     }
+    return SAM_M8Q_OK;
 }
 
-sam_m8q_status sam_m8q_poll(){
-   
-    return SAM_M8Q_OK;
+sam_m8q_status_t sam_m8q_poll(){
+    HAL_StatusTypeDef rx = 0;
+    int sentence_id = 0;
+    unsigned char nmea_sentence[MINMEA_MAX_LENGTH];
+    int j = 0;
+    int parsing = 0;
+    int rmc_timestamp = sam_m8q_state.rmc_timestamp;
+    int gga_timestamp = sam_m8q_state.gga_timestamp;
+    
+    //block until RMC and GGA sentences have been received and updated
+    while(rmc_timestamp == sam_m8q_state.rmc_timestamp || gga_timestamp == sam_m8q_state.gga_timestamp){
+
+        __HAL_UART_CLEAR_OREFLAG(&huart3); //this clears the OVERRUN flag and enables subsequent receives
+        rx = HAL_UART_Receive(&huart3, &sam_m8q_rx_buffer,SAM_M8Q_RX_BUFFER_LEN,SAM_M8Q_UART_RX_TIMEOUT);
+
+        if(rx == HAL_OK || rx == HAL_TIMEOUT){
+            for (size_t i = 0; i < 199; i++)
+            {
+
+                if(!parsing && sam_m8q_rx_buffer[i] == SAM_M8Q_NMEA_START){
+                    parsing = 1;
+                }
+                
+                if(parsing){
+                    if(j<MINMEA_MAX_LENGTH){
+                        nmea_sentence[j++] = sam_m8q_rx_buffer[i];
+                    }
+                }
+
+                if(sam_m8q_rx_buffer[i] == SAM_M8Q_LINE_DELIMITER){
+                    parsing = 0;
+                    j = 0;
+                    sentence_id = minmea_sentence_id(nmea_sentence, false);
+
+                    if(sentence_id == MINMEA_SENTENCE_RMC){
+                        
+                        if (minmea_parse_rmc(&sam_m8q_state.minmea_rmc, nmea_sentence)) {
+                            sam_m8q_state.rmc_timestamp = HAL_GetTick();
+                        }
+                    }
+                    if(sentence_id == MINMEA_SENTENCE_GGA){
+                        if (minmea_parse_gga(&sam_m8q_state.minmea_gga, nmea_sentence)) {
+                            sam_m8q_state.gga_timestamp = HAL_GetTick();
+                        }
+                    }
+                }
+
+            
+            }
+
+            memset(sam_m8q_rx_buffer, '\0', sizeof(char)*SAM_M8Q_RX_BUFFER_LEN);
+            memset(nmea_sentence, '\0', sizeof(char)*MINMEA_MAX_LENGTH);
+
+        }else{
+            return SAM_M8Q_ERROR;  
+        }
+    
+    }
+
+    return SAM_M8Q_OK;  
+
+
 }

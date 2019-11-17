@@ -29,6 +29,7 @@
 /* USER CODE BEGIN Includes */     
 #include "NINA_B3.h"
 #include "measurement.h"
+#include "gps.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,6 +50,7 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 osThreadId measurementTaskHandle;
+osThreadId gpsTaskHandle;
 
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
@@ -119,12 +121,14 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 1024);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 512);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
+  osThreadDef(gpsTask, gps_task, osPriorityNormal, 0, 512);
+  gpsTaskHandle = osThreadCreate(osThread(gpsTask), NULL);
 
-  osThreadDef(measurementTask, measurement_task, osPriorityNormal, 0, 1024);
+  osThreadDef(measurementTask, measurement_task, osPriorityHigh, 0, 1600);
   measurementTaskHandle = osThreadCreate(osThread(measurementTask), NULL);
   /* USER CODE END RTOS_THREADS */
 

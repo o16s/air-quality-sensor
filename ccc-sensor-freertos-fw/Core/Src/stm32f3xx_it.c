@@ -91,7 +91,36 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
+  
+  volatile unsigned long _CFSR ;
+  volatile unsigned long _HFSR ;
+  volatile unsigned long _DFSR ;
+  volatile unsigned long _AFSR ;
+  volatile unsigned long _BFAR ;
+  volatile unsigned long _MMAR ;
 
+  // Configurable Fault Status Register
+  // described here: http://www.keil.com/appnotes/files/apnt209.pdf
+  // Consists of MMSR, BFSR and UFSR
+  _CFSR = (*((volatile unsigned long *)(0xE000ED28))) ;
+
+  // Hard Fault Status Register
+  _HFSR = (*((volatile unsigned long *)(0xE000ED2C))) ;
+
+  // Debug Fault Status Register
+  _DFSR = (*((volatile unsigned long *)(0xE000ED30))) ;
+
+  // Auxiliary Fault Status Register
+  _AFSR = (*((volatile unsigned long *)(0xE000ED3C))) ;
+
+  // Read the Fault Address Registers. These may not contain valid values.
+  // Check BFARVALID/MMARVALID to see if they are valid values
+  // MemManage Fault Address Register
+  _MMAR = (*((volatile unsigned long *)(0xE000ED34))) ;
+  // Bus Fault Address Register
+  _BFAR = (*((volatile unsigned long *)(0xE000ED38))) ;
+
+  __asm("BKPT #0\n") ; // Break into the debugger
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -199,8 +228,8 @@ void USART2_IRQHandler(void)
 void USART3_IRQHandler(void)
 {
   /* USER CODE BEGIN USART3_IRQn 0 */
-  sam_m8q_uart_rx_callback(&huart3);
-  return;
+  //sam_m8q_uart_rx_callback(&huart3);
+  //return;
   /* USER CODE END USART3_IRQn 0 */
   HAL_UART_IRQHandler(&huart3);
   /* USER CODE BEGIN USART3_IRQn 1 */

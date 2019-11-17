@@ -13,16 +13,27 @@
 #ifndef __SAM_M8Q_H
 #define __SAM_M8Q_H
 
+#include "minmea.h"
+
 typedef enum
 {
-    SAM_M8Q_ERROR = -2,
-    SAM_M8Q_TX_ERROR = -1,
-    SAM_M8Q_OK,
-    SAM_M8Q_TX_OK,
-} sam_m8q_status;
+    SAM_M8Q_ERROR = -1,
+    SAM_M8Q_OK
+} sam_m8q_status_t;
 
-sam_m8q_status sam_m8q_poll();
-void sam_m8q_uart_rx_callback();
+typedef struct
+{
+  struct minmea_sentence_rmc minmea_rmc;
+  struct minmea_sentence_gga minmea_gga;
+  int rmc_timestamp;
+  int gga_timestamp;
+} sam_m8q_state_t;
+
+extern sam_m8q_state_t sam_m8q_state; //never write to this !
+
+sam_m8q_status_t sam_m8q_poll();
+sam_m8q_status_t sam_m8q_wait_for_fix();
+
 
 
 #endif
