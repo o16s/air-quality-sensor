@@ -28,6 +28,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */     
 #include "measurement.h"
+#include "gps.h"
 #include "comm.h"
 /* USER CODE END Includes */
 
@@ -49,6 +50,7 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 osThreadId measurementTaskHandle;
+osThreadId gpsTaskHandle;
 osThreadId commTaskHandle;
 
 /* USER CODE END Variables */
@@ -100,6 +102,8 @@ __weak void PostSleepProcessing(uint32_t *ulExpectedIdleTime)
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
        
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -120,11 +124,14 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 1024);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityLow, 0, 512);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  osThreadDef(measurementTask, measurement_task, osPriorityNormal, 0, 1024);
+  osThreadDef(gpsTask, gps_task, osPriorityHigh, 0, 700);
+  gpsTaskHandle = osThreadCreate(osThread(gpsTask), NULL);
+
+  osThreadDef(measurementTask, measurement_task, osPriorityRealtime, 0, 1600);
   measurementTaskHandle = osThreadCreate(osThread(measurementTask), NULL);
 
   osThreadDef(commTask, StartCommTask, osPriorityAboveNormal, 0, 1024);
@@ -142,14 +149,7 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
-    
-                 
-  /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
-
   /* USER CODE BEGIN StartDefaultTask */
- 
-
   /* Infinite loop */
   for(;;)
   {

@@ -69,10 +69,7 @@ int16_t sensirion_uart_open() {
  * Return:      0 on success, an error code otherwise
  */
 int16_t sensirion_uart_close() {
-    if (HAL_UART_DeInit(&huart1) != HAL_OK)
-    {
-        return HAL_ERROR;
-    }
+    //this is done by CubeMX    
     return 0;
 }
 
@@ -84,8 +81,12 @@ int16_t sensirion_uart_close() {
  * Return:      Number of bytes sent or a negative error code
  */
 int16_t sensirion_uart_tx(uint16_t data_len, const uint8_t *data) {
-    HAL_UART_Transmit(&huart1, data, data_len, 1000);
-    return data_len;
+    HAL_StatusTypeDef tx = HAL_UART_Transmit(&huart1, data, data_len, 50);
+    if(tx == HAL_OK){
+        return data_len;
+    }else{
+        return -1;
+    }
 }
 
 /**
@@ -96,8 +97,20 @@ int16_t sensirion_uart_tx(uint16_t data_len, const uint8_t *data) {
  * Return:      Number of bytes received or a negative error code
  */
 int16_t sensirion_uart_rx(uint16_t max_data_len, uint8_t *data) {
-    HAL_UART_Receive(&huart1, data, max_data_len, 1000);
-    return max_data_len;
+    
+    //IMPORTANT, SS: clearing the overrun flag and reading the data register 
+    // clears any flags that prevent HAL_UART_Receive from working
+    
+    __HAL_UART_CLEAR_OREFLAG(&huart1);
+    char x = huart1.Instance->RDR; 
+
+    HAL_StatusTypeDef rx = HAL_UART_Receive(&huart1, data, max_data_len, 100);
+
+    if(rx == HAL_OK || rx == HAL_TIMEOUT){
+        return max_data_len;
+    }else{
+        return -1;
+    }
 }
 
 /**

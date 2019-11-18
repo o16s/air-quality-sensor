@@ -32,6 +32,7 @@
 #include "sensirion_shdlc.h"
 #include "sensirion_arch_config.h"
 #include "sensirion_uart.h"
+#include "cmsis_os.h"
 
 #define SHDLC_START 0x7e
 #define SHDLC_STOP 0x7e
@@ -110,8 +111,14 @@ int16_t sensirion_shdlc_xcv(uint8_t addr, uint8_t cmd, uint8_t tx_data_len,
     if (ret != 0)
         return ret;
 
-    sensirion_sleep_usec(RX_DELAY_US);
-    return sensirion_shdlc_rx(max_rx_data_len, rx_header, rx_data);
+    //by default, sensirion recommends to sleep for 20000us here.
+    //we ommit this delay as we miss the start byte otherwise.
+    //osDelay(5); => too long
+    //for (size_t i = 0; i < 100; i++){} => works
+    //no delay => works
+    
+    ret = sensirion_shdlc_rx(max_rx_data_len, rx_header, rx_data);
+    return ret;
 }
 
 int16_t sensirion_shdlc_tx(uint8_t addr, uint8_t cmd, uint8_t data_len,
@@ -149,6 +156,8 @@ int16_t sensirion_shdlc_rx(uint8_t max_data_len,
     uint8_t j;
     uint8_t crc;
     uint8_t unstuff_next;
+
+    memset(rx_frame, '\0', sizeof(char)*SHDLC_FRAME_MAX_RX_FRAME_SIZE);
 
     len = sensirion_uart_rx(2 + (5 + (uint16_t)max_data_len) * 2, rx_frame);
     if (len < 1 || rx_frame[0] != SHDLC_START)

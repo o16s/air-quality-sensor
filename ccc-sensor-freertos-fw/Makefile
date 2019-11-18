@@ -70,8 +70,10 @@ Middlewares/Third_Party/FreeRTOS/Source/timers.c \
 Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/cmsis_os.c \
 Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c \
 Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c \
+Middlewares/Third_Party/minmea/minmea.c \
 Core/Src/main.c \
 Core/Src/measurement.c \
+Core/Src/gps.c \
 Core/Src/gpio.c \
 Core/Src/adc.c \
 Core/Src/can.c \
@@ -174,6 +176,7 @@ C_INCLUDES =  \
 -IDrivers/SAM-M8Q \
 -IDrivers/sht3x \
 -IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc \
+-IMiddlewares/Third_Party/minmea \
 -IMiddlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
 
 # compile gcc flags
