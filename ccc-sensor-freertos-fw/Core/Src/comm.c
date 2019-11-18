@@ -4,6 +4,7 @@
 #include "cmsis_os.h"
 #include "NINA_B3.h"
 #include "measurement.h"
+#include "gps.h"
 
 int comm_get_temperature()
 {
@@ -21,8 +22,7 @@ int comm_get_humidity()
 
 int comm_get_pm25()
 {
-  static int pm25 = 0;
-  return pm25++;
+  return get_pm25();
 }
 
 int comm_get_pm10()
@@ -33,8 +33,7 @@ int comm_get_pm10()
 
 int comm_get_gps_fix()
 {
-  static int pm10 = 0;
-  return pm10++;
+  return get_gps_fix();
 }
 
 #define SERVICE_ENVIRONMENTAL         0x181A
@@ -48,7 +47,7 @@ void comm_ccc_define_characteristics()
   nina_b3_add_characteristic("P25", SERVICE_ENVIRONMENTAL, 0x2A59, 1, &comm_get_pm25); //Analog Output
   //nina_b3_add_characteristic("P10", 0x181A, 0x2A59, 1, &comm_get_pm10); //Analog Output
 
-  nina_b3_add_characteristic("FIX", SERVICE_LOCATION_NAVIGATION, 0x2A67, 1, &comm_get_gps_fix); //gps fix quality
+  nina_b3_add_characteristic("FIX", SERVICE_LOCATION_NAVIGATION, 0x2A3E, 1, &comm_get_gps_fix); //gps fix quality --> networa availability
 
 }
 

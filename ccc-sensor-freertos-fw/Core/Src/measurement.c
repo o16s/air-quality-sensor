@@ -12,6 +12,7 @@
 
 
 int32_t temperature, humidity;
+struct sps30_measurement sps30_m;
 
 int get_temperature()
 {
@@ -23,33 +24,36 @@ int get_humidity()
   return humidity;
 }
 
+int get_pm25()
+{
+  return sps30_m.mc_2p5;
+}
+
 void measurement_task(){
 /* init code for USB_DEVICE */
   uint8_t sps30_auto_clean_days = 4;
   int16_t sps30_ret;
-  struct sps30_measurement sps30_m;
   char dataline[10];
 
+  //turn on SPS30 and take a measurement
+  HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_SET);
+  osDelay(2000);
+  if (sps30_probe() == 0) {
+    osDelay(100);
+    //SPS sensor probing succeeded
+    sps30_ret = sps30_set_fan_auto_cleaning_interval_days(sps30_auto_clean_days);
+    osDelay(100);      
+    sps30_ret = sps30_start_measurement();
+    osDelay(3000);
+  }
   /* USER CODE BEGIN StartDefaultTask */
   /* Infinite loop */
   for(;;)
   {
-    //turn on SPS30 and take a measurement
-    HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_SET);
-    osDelay(2000);
-
     if (sps30_probe() == 0) {
-      osDelay(100);
-      //SPS sensor probing succeeded
-      sps30_ret = sps30_set_fan_auto_cleaning_interval_days(sps30_auto_clean_days);
-      osDelay(100);      
-      sps30_ret = sps30_start_measurement();
-      osDelay(3000);
       sps30_ret = sps30_read_measurement(&sps30_m);
       osDelay(100);
-      sps30_ret = sps30_stop_measurement();
     }
-    HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_RESET);
 
 
     //probe SHT31 and take a measurement

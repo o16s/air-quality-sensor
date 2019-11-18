@@ -4,6 +4,7 @@
 
 int get_temperature();
 int get_humidity();
+int get_pm25();
 
 void measurement_task();
 

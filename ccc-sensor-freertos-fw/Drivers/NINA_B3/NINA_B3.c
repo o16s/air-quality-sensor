@@ -32,7 +32,7 @@
 
 const unsigned char at_attention[] = "AT\r\n";
 const unsigned char at_echo_off[] = "ATE0\r\n";
-const unsigned char at_set_name[] = "AT+UBTLN=\"CCC-SENSOR-R-BOARD\"\r\n";
+const unsigned char at_set_name[] = "AT+UBTLN=\"CCC-SENSOR-BOARD\"\r\n";
 
 const unsigned char at_get_manufacturer[] = "AT+CGMI\r\n";
 //const unsigned char at_define_env_service[] = "AT+UBTGSER=181A\r\n";
