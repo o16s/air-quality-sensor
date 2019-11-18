@@ -32,7 +32,7 @@
 
 const unsigned char at_attention[] = "AT\r\n";
 const unsigned char at_echo_off[] = "ATE0\r\n";
-const unsigned char at_set_name[] = "AT+UBTLN=\"CCC-SENSOR-BOARD\"\r\n";
+const unsigned char at_set_name[] = "AT+UBTLN=\"CCC-DEMO-BOARD\"\r\n";
 
 const unsigned char at_get_manufacturer[] = "AT+CGMI\r\n";
 //const unsigned char at_define_env_service[] = "AT+UBTGSER=181A\r\n";
@@ -211,21 +211,27 @@ nina_status_t nina_b3_ccc_setup(){
 void nina_b3_update_all_characteristics(){
     unsigned int i;
 
-
-    for(i=0; i<NINA_N_CHARACT; i++)
+    if(nina_b3_state.connected)
     {
-        //if no number is assigned, leave the loop
-        if(bt_characteristics[i].uuid == 0)
-            break;
+        for(i=0; i<NINA_N_CHARACT; i++)
+        {
+            //if no number is assigned, leave the loop
+            if(bt_characteristics[i].uuid == 0)
+                break;
 
-        if(nina_b3_update_characteristic(bt_characteristics[i].charact_handle, (bt_characteristics[i].get_value_callback)()) == NINA_OK)
-        {
-            bt_characteristics[i].notification_state = LISTENING;
+            if(nina_b3_update_characteristic(bt_characteristics[i].charact_handle, (bt_characteristics[i].get_value_callback)()) == NINA_OK)
+            {
+                bt_characteristics[i].notification_state = LISTENING;
+            }
+            else
+            {
+                bt_characteristics[i].notification_state = IDLE;
+            }
         }
-        else
-        {
-            bt_characteristics[i].notification_state = IDLE;
-        }
+    }
+    else
+    {
+        nina_b3_wait_for_connection();
     }
 }
 

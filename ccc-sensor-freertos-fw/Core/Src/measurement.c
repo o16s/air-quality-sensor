@@ -72,7 +72,7 @@ void measurement_task(){
             (int)ceil(sam_m8q_state.rmc_timestamp),
             (int)ceil(sam_m8q_state.gga_timestamp));
     CDC_Transmit_FS(dataline, strlen(dataline));
-    HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+    //HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
     osDelay(1000);
   }
 }
