@@ -40,7 +40,8 @@ typedef enum
 typedef struct
 {
   unsigned char name[3];
-  unsigned int assigned_number; // from https://www.bluetooth.com/specifications/gatt/characteristics/
+  unsigned int service_uuid; // from https://www.bluetooth.com/specifications/gatt/services/
+  unsigned int uuid; // from https://www.bluetooth.com/specifications/gatt/characteristics/
   unsigned int charact_handle;
   unsigned int descript_handle;
   size_t value_length; // number of bytes to be written
@@ -51,7 +52,7 @@ typedef struct
   } notification_state;
 } bluetooth_characteristic_t;
 
-nina_b3_add_characteristic(unsigned char* name, unsigned int assigned_number, size_t value_length, void (*get_value_callback));
+nina_b3_add_characteristic(unsigned char* name, unsigned int service_uuid, unsigned int uuid, size_t value_length, void (*get_value_callback));
 
 nina_status_t nina_b3_init();
 nina_status_t nina_b3_ccc_setup();

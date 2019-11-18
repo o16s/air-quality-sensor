@@ -25,14 +25,31 @@ int comm_get_pm25()
   return pm25++;
 }
 
+int comm_get_pm10()
+{
+  static int pm10 = 0;
+  return pm10++;
+}
 
+int comm_get_gps_fix()
+{
+  static int pm10 = 0;
+  return pm10++;
+}
+
+#define SERVICE_ENVIRONMENTAL         0x181A
+#define SERVICE_LOCATION_NAVIGATION   0x1819
 void comm_ccc_define_characteristics()
 {
-  nina_b3_add_characteristic("TEM", 0x2A6E, 1, &comm_get_temperature);
+  nina_b3_add_characteristic("TEM", SERVICE_ENVIRONMENTAL, 0x2A6E, 1, &comm_get_temperature);
 
-  nina_b3_add_characteristic("HUM", 0x2A6F, 1, &comm_get_humidity);
+  nina_b3_add_characteristic("HUM", SERVICE_ENVIRONMENTAL, 0x2A6F, 1, &comm_get_humidity);
 
-  nina_b3_add_characteristic("PM2", 0x2A7A, 1, &comm_get_pm25);
+  nina_b3_add_characteristic("P25", SERVICE_ENVIRONMENTAL, 0x2A59, 1, &comm_get_pm25); //Analog Output
+  //nina_b3_add_characteristic("P10", 0x181A, 0x2A59, 1, &comm_get_pm10); //Analog Output
+
+  nina_b3_add_characteristic("FIX", SERVICE_LOCATION_NAVIGATION, 0x2A67, 1, &comm_get_gps_fix); //gps fix quality
+
 }
 
 void StartCommTask(){

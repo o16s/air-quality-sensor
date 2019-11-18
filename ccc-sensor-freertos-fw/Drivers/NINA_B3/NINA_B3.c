@@ -35,12 +35,13 @@ const unsigned char at_echo_off[] = "ATE0\r\n";
 const unsigned char at_set_name[] = "AT+UBTLN=\"CCC-SENSOR-R-BOARD\"\r\n";
 
 const unsigned char at_get_manufacturer[] = "AT+CGMI\r\n";
-const unsigned char at_define_service[] = "AT+UBTGSER=181A\r\n";
+//const unsigned char at_define_env_service[] = "AT+UBTGSER=181A\r\n";
+const unsigned char at_define_service[] = "AT+UBTGSER=";
 const unsigned char at_define_characteristic[] = "AT+UBTGCHA=";
-const unsigned char at_define_humidity[] = "AT+UBTGCHA=2A6F,10,1,1\r\n";
-const unsigned char at_define_heat[] = "AT+UBTGCHA=2A7A,10,1,1\r\n";
+const unsigned char at_define_descriptor[] = "AT+UBTGDES=";
+//const unsigned char at_define_humidity[] = "AT+UBTGCHA=2A6F,10,1,1\r\n";
 
-const unsigned char at_update_temperature[] = "AT+UBTGSN=0,32,42\r\n";
+//const unsigned char at_update_temperature[] = "AT+UBTGSN=0,32,42\r\n";
 const unsigned char at_update_characteristic[] = "AT+UBTGSN=0,";
 const unsigned char at_command_return[]= "\r\n";
 
@@ -48,6 +49,7 @@ const unsigned char at_resp_ok[]= "OK";
 const unsigned char at_resp_error[]= "ERROR";
 
 const unsigned char bt_confirm_characteristic[] = "+UBTGCHA:";
+const unsigned char bt_confirm_descriptor[] = "+UBTGDES:";
 
 const unsigned char bt_acl_connected[] = "+UUBTACLC";
 const unsigned char bt_acl_disconnected[] = "+UUBTACLD";
@@ -69,7 +71,7 @@ static struct nina_b3_state_
 bluetooth_characteristic_t bt_characteristics[NINA_N_CHARACT];
 static size_t bt_charact_index = 0;
 
-nina_b3_add_characteristic(unsigned char* name, unsigned int assigned_number, size_t value_length, void (*get_value_callback))
+nina_b3_add_characteristic(unsigned char* name, unsigned int service_uuid, unsigned int uuid, size_t value_length, void (*get_value_callback))
 {
     if(bt_charact_index < NINA_N_CHARACT)
     {
@@ -77,7 +79,8 @@ nina_b3_add_characteristic(unsigned char* name, unsigned int assigned_number, si
         bt_characteristics[bt_charact_index].name[1] = name[1];
         bt_characteristics[bt_charact_index].name[2] = name[2];
 
-        bt_characteristics[bt_charact_index].assigned_number = assigned_number;
+        bt_characteristics[bt_charact_index].service_uuid = service_uuid;
+        bt_characteristics[bt_charact_index].uuid = uuid;
 
         bt_characteristics[bt_charact_index].value_length = value_length;
         bt_characteristics[bt_charact_index].get_value_callback = get_value_callback;
@@ -86,7 +89,7 @@ nina_b3_add_characteristic(unsigned char* name, unsigned int assigned_number, si
     }
     if(bt_charact_index < NINA_N_CHARACT)
     {
-        bt_characteristics[bt_charact_index].assigned_number = 0; // this value gets checked in functions like update_all_charact in order to exit the loop.
+        bt_characteristics[bt_charact_index].uuid = 0; // this value gets checked in functions like update_all_charact in order to exit the loop.
     }
 }
 
@@ -151,17 +154,20 @@ nina_status_t nina_b3_init(){
     }
 }
 
-unsigned int tmp_handle;
+static unsigned int tmp_char_handle, tmp_desc_handle;
 
 void nina_b3_set_characteristic_handle()
 {
-    tmp_handle = strtoul(&nina_rx_buffer[sizeof(bt_confirm_characteristic)-1],NULL, 16);
+    unsigned char* endptr;
+    tmp_char_handle = strtoul(&nina_rx_buffer[sizeof(bt_confirm_characteristic)-1],&endptr, 16);
+    endptr++;
+    tmp_desc_handle = strtoul(endptr,NULL, 16);
 }
 
 nina_status_t nina_b3_ccc_setup(){
     _transmit_AT(at_set_name, NINA_RX_EXPECT_NO_ANSWER);
 
-    _transmit_AT(at_define_service, NINA_RX_EXPECT_NO_ANSWER);
+    unsigned int last_service_uuid = 0;
 
     unsigned int i, properties, security_read, security_write;
     // defalut properties: permits notification of a characteristic value without acknowledgement
@@ -173,18 +179,31 @@ nina_status_t nina_b3_ccc_setup(){
     for(i=0; i<NINA_N_CHARACT; i++)
     {
         //if no number is assigned, leave the loop
-        if(bt_characteristics[i].assigned_number == 0)
+        if(bt_characteristics[i].uuid == 0)
             break;
 
+        //check if the characteristic should be written into a new service:
+        if(last_service_uuid !=  bt_characteristics[i].service_uuid)
+        {
+            sprintf(nina_tx_buffer,"%s%04x\r\n",
+            at_define_service, 
+            bt_characteristics[i].service_uuid); 
+            _transmit_AT(nina_tx_buffer, NINA_RX_EXPECT_NO_ANSWER);
+            // TODO: if(nina_b3_state.resp >= NINA_RX_OK) etc..
+            last_service_uuid = bt_characteristics[i].service_uuid; 
+        }
+
+        // add the characteristic to the previously defined service
         sprintf(nina_tx_buffer,"%s%04x,%02x,%d,%d\r\n",
             at_define_characteristic, 
-            bt_characteristics[i].assigned_number, 
+            bt_characteristics[i].uuid, 
             properties,
             security_read,
             security_write); 
         _transmit_AT(nina_tx_buffer, bt_confirm_characteristic, &nina_b3_set_characteristic_handle);
 
-        bt_characteristics[i].charact_handle = tmp_handle;
+        bt_characteristics[i].charact_handle = tmp_char_handle;
+        bt_characteristics[i].descript_handle = tmp_desc_handle;
     }
     return NINA_OK;
 }
@@ -196,7 +215,7 @@ void nina_b3_update_all_characteristics(){
     for(i=0; i<NINA_N_CHARACT; i++)
     {
         //if no number is assigned, leave the loop
-        if(bt_characteristics[i].assigned_number == 0)
+        if(bt_characteristics[i].uuid == 0)
             break;
 
         if(nina_b3_update_characteristic(bt_characteristics[i].charact_handle, (bt_characteristics[i].get_value_callback)()) == NINA_OK)
