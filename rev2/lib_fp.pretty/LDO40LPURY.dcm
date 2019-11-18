@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP LDO40LPURY
+D STMICROELECTRONICS - LDO40LPURY - LDO, ADJ, 3.5V-38V, 0.4A, DFN-6
+K
+F https://www.st.com/resource/en/datasheet/ldo40l.pdf
+$ENDCMP
+#
+#End Doc Library
