@@ -37,10 +37,29 @@ typedef enum
     NINA_RX_WAITING
 } nina_response_t;
 
-// extern nina_params_t rn2483;
+typedef struct
+{
+  unsigned char name[3];
+  unsigned int service_uuid; // from https://www.bluetooth.com/specifications/gatt/services/
+  unsigned int uuid; // from https://www.bluetooth.com/specifications/gatt/characteristics/
+  unsigned int charact_handle;
+  unsigned int descript_handle;
+  size_t value_length; // number of bytes to be written
+  int (*get_value_callback)();
+  enum{
+    IDLE,
+    LISTENING
+  } notification_state;
+} bluetooth_characteristic_t;
+
+nina_b3_add_characteristic(unsigned char* name, unsigned int service_uuid, unsigned int uuid, size_t value_length, void (*get_value_callback));
+
 nina_status_t nina_b3_init();
 nina_status_t nina_b3_ccc_setup();
-nina_status_t nina_b3_update_temperature();
+void nina_ccc_update();
+
+
+nina_status_t nina_b3_update_characteristic(unsigned int char_handle, unsigned char value);
 void nina_b3_wait_for_connection();
 
 // to be called from within the UART interrupt service routine
