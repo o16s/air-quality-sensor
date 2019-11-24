@@ -103,7 +103,8 @@ Drivers/NINA_B3/NINA_B3.c \
 Core/Src/comm.c \
 Drivers/sht3x/hw_i2c/sensirion_i2c.c \
 Drivers/sht3x/sensirion_common.c \
-Drivers/sht3x/sht3x.c
+Drivers/sht3x/sht3x.c \
+Drivers/flashLogger/flashLogger.c
 
 # ASM sources
 ASM_SOURCES =  \
@@ -177,7 +178,8 @@ C_INCLUDES =  \
 -IDrivers/sht3x \
 -IMiddlewares/ST/STM32_USB_Device_Library/Core/Inc \
 -IMiddlewares/Third_Party/minmea \
--IMiddlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
+-IMiddlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc \
+-IDrivers/flashLogger
 
 # compile gcc flags
 ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
