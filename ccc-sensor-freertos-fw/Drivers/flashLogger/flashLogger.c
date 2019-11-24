@@ -18,6 +18,9 @@ uint_fast16_t FL_writeMessage(uint32_t addr, uint8_t* data, size_t length, uint8
     while(_addr > FL_END_ADDRESS)
         _addr = _addr - FL_END_ADDRESS + FL_START_ADDRESS;
 
+    if(*(__IO uint16_t*)_addr != 0xFFFF)
+        return 0;
+
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, _addr, 0xEEDD); //Assume big endian (writing 0xDD 0xEE)
 
     for(i = 0; i < length; i++)
@@ -33,6 +36,8 @@ uint_fast16_t FL_writeMessage(uint32_t addr, uint8_t* data, size_t length, uint8
     _addr += 2;
     _addr = _addr > FL_END_ADDRESS ? _addr - FL_END_ADDRESS + FL_START_ADDRESS : _addr;
 
+    if(*(__IO uint16_t*)_addr != 0xFFFF)
+        return 0;
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, _addr, ((length + numDD) << 8) + type);
 
     // Padding as can only write halfword (16 bit)
@@ -47,6 +52,8 @@ uint_fast16_t FL_writeMessage(uint32_t addr, uint8_t* data, size_t length, uint8
         _addr += 2;
         _addr = _addr > FL_END_ADDRESS ? _addr - FL_END_ADDRESS + FL_START_ADDRESS : _addr;
         tempWord = localBuffer[i] + (localBuffer[i + 1] << 8);
+        if(*(__IO uint16_t*)_addr != 0xFFFF)
+            return 0;
         HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, _addr, tempWord);
     }
 

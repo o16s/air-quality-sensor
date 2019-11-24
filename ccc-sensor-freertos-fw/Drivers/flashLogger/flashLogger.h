@@ -6,6 +6,7 @@
 
 #include "main.h"
 
+//Also change in memory secion of linker script (DATA block)
 #define FL_START_ADDRESS ((uint32_t)0x08030000) /* Log start address: after 192KByte of Flash memory */
 #define FL_END_ADDRESS ((uint32_t)0x0803ffff)   /* Log end address: after 256KByte of Flash memory */
 
