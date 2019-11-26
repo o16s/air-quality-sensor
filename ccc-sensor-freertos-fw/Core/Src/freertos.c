@@ -106,6 +106,7 @@ void MX_FREERTOS_Init(void) {
        
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
+
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -126,8 +127,8 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityLow, 0, 512);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  //osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 256);
+  //defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   osThreadDef(gpsTask, gps_task, osPriorityHigh, 0, 700);
@@ -151,6 +152,9 @@ void MX_FREERTOS_Init(void) {
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
+    
+                 
+  /* init code for USB_DEVICE */
   /* USER CODE BEGIN StartDefaultTask */
 
 /*

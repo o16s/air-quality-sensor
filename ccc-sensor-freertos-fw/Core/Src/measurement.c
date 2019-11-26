@@ -6,7 +6,6 @@
 #include "stdio.h"
 #include "math.h"
 #include "cmsis_os.h"
-#include "usbd_cdc_if.h"
 #include "sht3x.h"
 #include "SAM_M8Q.h"
 
@@ -71,7 +70,7 @@ void measurement_task(){
             (int)ceil(sps30_m.mc_10p0*1000),
             (int)ceil(sam_m8q_state.rmc_timestamp),
             (int)ceil(sam_m8q_state.gga_timestamp));
-    CDC_Transmit_FS(dataline, strlen(dataline));
+    //CDC_Transmit_FS(dataline, strlen(dataline));
     //HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
     osDelay(15*60000);
   }
