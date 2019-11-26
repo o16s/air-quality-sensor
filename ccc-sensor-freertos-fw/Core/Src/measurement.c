@@ -33,7 +33,6 @@ void measurement_task(){
 /* init code for USB_DEVICE */
   uint8_t sps30_auto_clean_days = 4;
   int16_t sps30_ret;
-  char dataline[10];
 
   //turn on SPS30 and take a measurement
   HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_SET);
@@ -63,8 +62,9 @@ void measurement_task(){
     }
 
     //debug print to usb serial port
-    char dataline[30];
-    sprintf(dataline, "%d,%d,%d,%d,%d,%d\r\n", 
+    #define DATALINE_MAXLEN 100 
+    char dataline[DATALINE_MAXLEN];
+    snprintf(dataline, DATALINE_MAXLEN, "%d,%d,%d,%d,%d,%d\r\n", 
             (int)ceil(temperature), 
             (int)ceil(humidity),
             (int)ceil(sps30_m.mc_2p5*1000),
@@ -73,6 +73,6 @@ void measurement_task(){
             (int)ceil(sam_m8q_state.gga_timestamp));
     CDC_Transmit_FS(dataline, strlen(dataline));
     //HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
-    osDelay(1000);
+    osDelay(15*60000);
   }
 }
