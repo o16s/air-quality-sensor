@@ -30,6 +30,8 @@
 #include "measurement.h"
 #include "gps.h"
 #include "comm.h"
+
+#include "flashLogger.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -150,6 +152,37 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
+
+/*
+//Code used to test flashLogger. Remains as example
+  uint32_t start_addr, end_addr, read_addr;
+  int16_t step;
+  uint8_t data[32];
+  uint8_t type;
+  size_t length;
+  int i;
+
+  for(i = 0; i < 16; i++)
+  {
+    data[i] = 'A' + i;
+  }
+
+  end_addr = FL_init();
+  start_addr = FL_searchStart();
+
+  end_addr += FL_writeMessage(end_addr, data, 15, 0x22);
+
+  read_addr = start_addr;
+  step = 1;
+  while(step > 0)
+  {
+    step = FL_readMessage(read_addr, &data[16], &type, &length);
+    read_addr += step;
+  }
+
+//  end_addr = FL_erase(start_addr, end_addr);
+  start_addr = FL_searchStart();
+*/
   /* Infinite loop */
   for(;;)
   {

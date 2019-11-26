@@ -63,7 +63,8 @@ MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 40K
 CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 8K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 256K
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 256K - 64K
+DATA (rwx)      : ORIGIN = 0x8030000, LENGTH = 64K
 }
 
 /* Define output sections */
@@ -192,6 +193,14 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
+
+
+  .user_data :
+  {
+  . = ALIGN(4);
+     *(.flash_logger)
+  . = ALIGN(4);
+  } >DATA
 
   
 
