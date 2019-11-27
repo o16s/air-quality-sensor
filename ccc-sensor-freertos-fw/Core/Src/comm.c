@@ -36,18 +36,39 @@ int comm_get_gps_fix()
   return get_gps_fix();
 }
 
+int comm_get_bat_level()
+{
+  int retval = (get_vbat()-3300)/4120;
+  if(retval<0)
+    retval = 0;
+  else if(retval>100)
+    retval = 100;
+  return retval;
+}
+
 #define SERVICE_ENVIRONMENTAL         0x181A
 #define SERVICE_LOCATION_NAVIGATION   0x1819
+#define SERVICE_BATTERY               0x180F
+
+// https://www.bluetooth.com/specifications/gatt/characteristics/
+#define CHAR_TEMPERATURE              0x2A6E
+#define CHAR_HUMIDITY                 0x2A6F
+#define CHAR_ANALOG_OUT               0x2A59
+#define CHAR_NETWORK_AVAILABILITY     0x2A3E
+#define CHAR_BATTERY_LEVEL            0x2A19
+
 void comm_ccc_define_characteristics()
 {
-  nina_b3_add_characteristic("TEM", SERVICE_ENVIRONMENTAL, 0x2A6E, 1, &comm_get_temperature);
+  nina_b3_add_characteristic("TEM", SERVICE_ENVIRONMENTAL, CHAR_TEMPERATURE, 1, &comm_get_temperature);
 
-  nina_b3_add_characteristic("HUM", SERVICE_ENVIRONMENTAL, 0x2A6F, 1, &comm_get_humidity);
+  nina_b3_add_characteristic("HUM", SERVICE_ENVIRONMENTAL, CHAR_HUMIDITY, 1, &comm_get_humidity);
 
-  nina_b3_add_characteristic("P25", SERVICE_ENVIRONMENTAL, 0x2A59, 1, &comm_get_pm25); //Analog Output
+  nina_b3_add_characteristic("P25", SERVICE_ENVIRONMENTAL, CHAR_ANALOG_OUT, 1, &comm_get_pm25); //Analog Output
   //nina_b3_add_characteristic("P10", 0x181A, 0x2A59, 1, &comm_get_pm10); //Analog Output
 
-  nina_b3_add_characteristic("FIX", SERVICE_LOCATION_NAVIGATION, 0x2A3E, 1, &comm_get_gps_fix); //gps fix quality --> networa availability
+  nina_b3_add_characteristic("FIX", SERVICE_LOCATION_NAVIGATION, CHAR_NETWORK_AVAILABILITY, 1, &comm_get_gps_fix); //gps fix quality --> networa availability
+
+  nina_b3_add_characteristic("BAT", SERVICE_BATTERY, CHAR_BATTERY_LEVEL, 1, &comm_get_bat_level);
 
 }
 

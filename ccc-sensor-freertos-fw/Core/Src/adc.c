@@ -117,6 +117,31 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 
 /* USER CODE BEGIN 1 */
 
+int adc_get_battery_voltage(int* vbat)
+{
+    HAL_ADC_Start(&hadc2);
+    uint32_t tmpval = 0;
+    if (HAL_ADC_PollForConversion(&hadc2, 100) == HAL_OK)
+    {
+      tmpval = HAL_ADC_GetValue(&hadc2);
+
+      tmpval = 4300*tmpval;
+      vbat = tmpval/4096;
+
+      //battery voltage resistive divider: 330k + 100k 
+      //ADC resolution: 12bits
+      //VDDA = VREF+ = 3300 mV
+
+      HAL_ADC_Stop(&hadc2);
+
+      return 0;
+    }
+
+    HAL_ADC_Stop(&hadc2);
+
+    return -1;
+}
+
 /* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

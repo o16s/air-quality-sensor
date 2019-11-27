@@ -40,6 +40,8 @@ void MX_ADC2_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
+// reads out battery voltage in mV (written into vbat)
+int adc_get_battery_voltage(int* vbat);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

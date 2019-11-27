@@ -8,10 +8,12 @@
 #include "cmsis_os.h"
 #include "sht3x.h"
 #include "SAM_M8Q.h"
+#include "adc.h"
 
 
 int32_t temperature, humidity;
 struct sps30_measurement sps30_m;
+int32_t vbat = 0;
 
 int get_temperature()
 {
@@ -26,6 +28,11 @@ int get_humidity()
 int get_pm25()
 {
   return sps30_m.mc_2p5;
+}
+
+int get_vbat()
+{
+  return vbat;
 }
 
 void measurement_task(){
@@ -48,6 +55,9 @@ void measurement_task(){
   /* Infinite loop */
   for(;;)
   {
+    /* BATTERY measurement test */
+    adc_get_battery_voltage(&vbat);
+
     if (sps30_probe() == 0) {
       sps30_ret = sps30_read_measurement(&sps30_m);
       osDelay(100);
@@ -72,6 +82,6 @@ void measurement_task(){
             (int)ceil(sam_m8q_state.gga_timestamp));
     //CDC_Transmit_FS(dataline, strlen(dataline));
     //HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
-    osDelay(15*60000);
+    osDelay(6000);
   }
 }

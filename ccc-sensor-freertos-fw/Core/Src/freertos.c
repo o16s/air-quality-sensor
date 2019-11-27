@@ -188,6 +188,8 @@ void StartDefaultTask(void const * argument)
   start_addr = FL_searchStart();
 */
   /* Infinite loop */
+
+  int vbat = 0;
   for(;;)
   {
     osDelay(5000);
