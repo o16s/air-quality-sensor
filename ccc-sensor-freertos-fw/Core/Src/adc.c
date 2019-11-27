@@ -125,7 +125,7 @@ int adc_get_battery_voltage(int* vbat)
     {
       tmpval = HAL_ADC_GetValue(&hadc2);
 
-      tmpval = 4300*tmpval;
+      tmpval = 4950*tmpval; //3/2*3300
       *vbat = tmpval/4096;
 
       //battery voltage resistive divider: 330k + 100k 
