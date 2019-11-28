@@ -10,7 +10,7 @@
 #include "SAM_M8Q.h"
 #include "log.h"
 
-#define MEASUREMENT_INTERVAL_SECONDS 1
+#define MEASUREMENT_INTERVAL_SECONDS 300
 
 int32_t temperature, humidity, timestamp;
 struct sps30_measurement sps30_m;
