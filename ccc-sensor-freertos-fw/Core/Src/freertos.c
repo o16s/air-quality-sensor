@@ -137,7 +137,7 @@ void MX_FREERTOS_Init(void) {
   osThreadDef(measurementTask, measurement_task, osPriorityRealtime, 0, 1600);
   measurementTaskHandle = osThreadCreate(osThread(measurementTask), NULL);
 
-  osThreadDef(commTask, StartCommTask, osPriorityAboveNormal, 0, 1024);
+  osThreadDef(commTask, StartCommTask, osPriorityAboveNormal, 0, 512);
   commTaskHandle = osThreadCreate(osThread(commTask), NULL);
   /* USER CODE END RTOS_THREADS */
 
