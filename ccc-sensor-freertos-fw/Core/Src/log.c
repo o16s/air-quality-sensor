@@ -12,7 +12,7 @@
 #include "string.h"
 
 #define LOG_ITEM_TYPE 0
-#define LOG_MAX_RECORDS 60
+#define LOG_MAX_RECORDS 2500
 #define LOG_ITEM_SIZE 24 //sizeof(log_item_t)
 
 uint32_t _endAddr;
@@ -55,7 +55,7 @@ log_status_t log_newRecord(log_item_t * log_item){
 uint16_t log_countRecords(){
   uint32_t read_addr = FL_searchStart();
 
-  uint8_t i=0;
+  uint16_t i=0;
 
   memset(_buffer,'\0',LOG_ITEM_SIZE-1);
   _length=0;
@@ -86,13 +86,13 @@ log_status_t log_readNextRecord(log_item_t * log_item){
 
 log_status_t log_readRecord(log_item_t * log_item, int lineNumber){
   uint32_t read_addr = FL_searchStart();
-  uint8_t i=0;
+  uint16_t i=0;
   
   memset(_buffer,'\0',LOG_ITEM_SIZE-1);
   _length=0;
   _type=0;
 
-  uint8_t step = 1;
+  uint16_t step = 1;
   while (step > 0){
     step = FL_readMessage(read_addr, &_buffer, &_type, &_length);
     read_addr += step;

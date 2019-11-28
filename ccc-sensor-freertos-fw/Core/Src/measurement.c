@@ -10,7 +10,7 @@
 #include "SAM_M8Q.h"
 #include "log.h"
 
-#define MEASUREMENT_INTERVAL_SECONDS 30
+#define MEASUREMENT_INTERVAL_SECONDS 1
 
 int32_t temperature, humidity, timestamp;
 struct sps30_measurement sps30_m;
@@ -55,13 +55,15 @@ void measurement_task(){
   /* Infinite loop */
   for(;;)
   {
-    if (sps30_probe() == 0) {
+   
+   /* if (sps30_probe() == 0) {
       sps30_ret = sps30_start_measurement();
       osDelay(15000);
       sps30_ret = sps30_read_measurement(&sps30_m);
       osDelay(100);
       sps30_ret = sps30_stop_measurement();
     }
+    */
 
 
     //probe SHT31 and take a measurement
