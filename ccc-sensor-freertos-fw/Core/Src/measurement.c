@@ -56,14 +56,14 @@ void measurement_task(){
   for(;;)
   {
    
-   /* if (sps30_probe() == 0) {
+    if (sps30_probe() == 0) {
       sps30_ret = sps30_start_measurement();
       osDelay(15000);
       sps30_ret = sps30_read_measurement(&sps30_m);
       osDelay(100);
       sps30_ret = sps30_stop_measurement();
     }
-    */
+    
 
 
     //probe SHT31 and take a measurement
