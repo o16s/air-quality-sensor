@@ -14,8 +14,8 @@ typedef struct
     uint16_t humidity;
     uint16_t pm2p5;
     uint16_t pm10p0;
-    int16_t lat;
-    int16_t lon;
+    int32_t lat;
+    int32_t lon;
     uint8_t fix;
     uint8_t battery;    
     uint32_t epoch;

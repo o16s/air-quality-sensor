@@ -10,8 +10,9 @@
 #include "SAM_M8Q.h"
 #include "log.h"
 
+#define MEASUREMENT_INTERVAL_SECONDS 30
 
-int32_t temperature, humidity;
+int32_t temperature, humidity, timestamp;
 struct sps30_measurement sps30_m;
 
 int get_temperature()
@@ -39,7 +40,6 @@ void measurement_task(){
     return;
   }
 
-  log_erase();
 
   //turn on SPS30 and take a measurement
   HAL_GPIO_WritePin(LDO_5V_EN_GPIO_Port, LDO_5V_EN_Pin, GPIO_PIN_SET);
@@ -49,8 +49,6 @@ void measurement_task(){
     //SPS sensor probing succeeded
     sps30_ret = sps30_set_fan_auto_cleaning_interval_days(sps30_auto_clean_days);
     osDelay(100);      
-    sps30_ret = sps30_start_measurement();
-    osDelay(3000);
   }
 
   /* USER CODE BEGIN StartDefaultTask */
@@ -58,8 +56,11 @@ void measurement_task(){
   for(;;)
   {
     if (sps30_probe() == 0) {
+      sps30_ret = sps30_start_measurement();
+      osDelay(15000);
       sps30_ret = sps30_read_measurement(&sps30_m);
       osDelay(100);
+      sps30_ret = sps30_stop_measurement();
     }
 
 
@@ -69,18 +70,11 @@ void measurement_task(){
       sht3x_measure_blocking_read(&temperature, &humidity);
     }
 
-    //debug print to usb serial port
-    // #define DATALINE_MAXLEN 100 
-    // char dataline[DATALINE_MAXLEN];
-    // snprintf(dataline, DATALINE_MAXLEN, "%d,%d,%d,%d,%d,%d\r\n", 
-    //         (int)ceil(temperature), 
-    //         (int)ceil(humidity),
-    //         (int)ceil(sps30_m.mc_2p5*1000),
-    //         (int)ceil(sps30_m.mc_10p0*1000),
-    //         (int)ceil(sam_m8q_state.rmc_timestamp),
-    //         (int)ceil(sam_m8q_state.gga_timestamp));
-    //CDC_Transmit_FS(dataline, strlen(dataline));
-    //HAL_GPIO_TogglePin(CAN_LED_GPIO_Port, CAN_LED_Pin);
+    //get GPS time if possible
+    timestamp = sam_m8q_get_epoch();
+    if(timestamp <= 0){
+      timestamp = HAL_GetTick()/1000;
+    }
 
     //write a line to the log
     log_item_t measurement = {
@@ -88,19 +82,18 @@ void measurement_task(){
       .humidity = (uint16_t)ceil(humidity/1000),
       .pm2p5 = (uint16_t)ceil(sps30_m.mc_2p5*10),
       .pm10p0 = (uint16_t)ceil(sps30_m.mc_10p0*10),
-      .epoch = HAL_GetTick()/1000,
-      .lat = (int16_t)ceil(sam_m8q_state.minmea_rmc.latitude.value/100000),
-      .lon = (int16_t)ceil(sam_m8q_state.minmea_rmc.longitude.value/10000),
+      .epoch = timestamp,
+      .lat = sam_m8q_get_lat(3),
+      .lon = sam_m8q_get_lon(3),
       .fix = (uint8_t)sam_m8q_state.minmea_gga.fix_quality,
       .battery = (uint8_t)128,
     };
 
-    
     if(!log_newRecord(&measurement)){
       return;
     }
 
 
-    osDelay(5000);
+    osDelay(MEASUREMENT_INTERVAL_SECONDS * 1000);
   }
 }

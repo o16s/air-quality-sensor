@@ -116,6 +116,11 @@ const int8_t STORAGE_Inquirydata_FS[] = {/* 36 */
 /* USER CODE END INQUIRY_DATA_FS */
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
+
+//pointer to the log.csv file entry inside fs_img
+#define LOG_CSV_BLK 3
+#define LOG_CSV_FILENAME_ADDR 32
+
 //FAT12 explanation: http://www.disc.ua.es/~gil/FAT12Description.pdf
 unsigned char fs_img[] = {
   0xeb, 0x3c, 0x90, 0x4d, 0x54, 0x4f, 0x4f, 0x34, 0x30, 0x32, 0x33, 0x00,
@@ -372,9 +377,10 @@ unsigned char fs_img[] = {
 
 unsigned int emptyLine[] = {  0x2d, 0x30, 0x30, 0x30, 0x2c, 0x30, 0x30, 0x30, 0x2c, 0x30, 0x30, 0x30, 0x30, 0x2c, 0x30, 0x30, 0x30, 0x30, 0x2c, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x2c, 0x2d, 0x30, 0x30, 0x30, 0x30, 0x2c, 0x2d, 0x30, 0x30, 0x30, 0x30, 0x30, 0x2c, 0x30, 0x0d, 0x0a };
 
-unsigned int fs_header_len = 2080;
-unsigned int fs_img_len = 5120;
-unsigned int emptyLine_len = 46;
+const unsigned int fs_header_len = 2080;
+const unsigned int fs_img_len = 5120;
+const unsigned int emptyLine_len = 46;
+
 
 /* USER CODE END PRIVATE_VARIABLES */
 
@@ -492,8 +498,8 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 {
   /* USER CODE BEGIN 6 */
    uint32_t i,b,c;
-   static uint8_t line = 0;
-   uint8_t data[47];
+   uint8_t data[emptyLine_len];
+
    log_item_t logitem;
 
     switch(lun)
@@ -508,18 +514,18 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
                   buf[i] = fs_img[b];
                 }else{
 
-                  c = (b - fs_header_len) % 46;
+                  c = (b - fs_header_len) % emptyLine_len;
 
                   if(c == 0){
                    
                     log_readNextRecord(&logitem);
-                    snprintf(data, 47, "%+04d,%02u,%04u,%04u,%010lu,%+05d,%+06d,%1d\r\n", 
-                            0, logitem.humidity,
+                    snprintf(data, emptyLine_len+1, "%+03d,%02u,%04u,%04u,%010lu,%+06ld,%+07ld,%1d\r\n", 
+                            logitem.temperature, logitem.humidity,
                             logitem.pm2p5, logitem.pm10p0, logitem.epoch,
                             logitem.lat, logitem.lon, logitem.fix);
                    
-                   
-                     for (size_t j = 0; j < 46; j++)
+
+                     for (size_t j = 0; j < emptyLine_len; j++)
                     {
                       emptyLine[j] = data[j];
                     }
@@ -550,6 +556,24 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 7 */
+  //uint8_t blk[512];
+
+  //memcpy(blk, buf, 512);
+    switch(lun)
+    {
+        case 0:
+            //whenever LOG.CSV is deleted on the computer, the log is erased
+            if(blk_addr == LOG_CSV_BLK && buf[LOG_CSV_FILENAME_ADDR] == 0xE5){
+              log_erase();
+            }
+            
+            break;
+        case 1:
+            break;
+        default:
+            return (USBD_FAIL);
+    }
+
   return (USBD_OK);
   /* USER CODE END 7 */
 }

@@ -3,9 +3,12 @@
 #include "stm32f3xx_hal_gpio.h" //FreeRTOS
 #include "cmsis_os.h" //FreeRTOS
 #include <string.h>
+#include <math.h>
 
 #include "minmea.h"
 #include "SAM_M8Q.h"
+
+
 
 #define SAM_M8Q_LINE_DELIMITER 10
 #define SAM_M8Q_NMEA_START 36
@@ -14,6 +17,28 @@
 
 unsigned char sam_m8q_rx_buffer[SAM_M8Q_RX_BUFFER_LEN];
 sam_m8q_state_t sam_m8q_state;
+
+int sam_m8q_get_lat(int decimals){
+    struct minmea_float lat = sam_m8q_state.minmea_rmc.latitude;
+    return ceil(minmea_tocoord(&lat) * pow(10, decimals));
+}
+
+int sam_m8q_get_lon(int decimals){
+    struct minmea_float lon = sam_m8q_state.minmea_rmc.longitude;
+    return ceil(minmea_tocoord(&lon) * pow(10, decimals));
+}
+
+uint32_t sam_m8q_get_epoch(){
+    struct timespec ts;
+    struct minmea_time time = sam_m8q_state.minmea_gga.time;
+    struct minmea_date date = sam_m8q_state.minmea_rmc.date;
+    
+    if(minmea_gettime(&ts, &date, &time) >= 0){
+        return ts.tv_sec;
+    }else{
+        return -1;
+    }
+}
 
 sam_m8q_status_t sam_m8q_wait_for_fix(){
     //block until GPS fix is valid

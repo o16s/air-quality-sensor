@@ -22,6 +22,8 @@ extern "C" {
 #ifdef MINMEA_INCLUDE_COMPAT
 #include <minmea_compat.h>
 #endif
+#define timegm  mktime
+
 
 #define MINMEA_MAX_LENGTH 80
 
