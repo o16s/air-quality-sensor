@@ -38,14 +38,7 @@ int comm_get_gps_fix()
 
 int comm_get_bat_level()
 {
-  int retval = 0;
-  adc_get_battery_voltage(&retval);
-  retval = (retval-3300)*100/(4120-3300);
-  if(retval<0)
-    retval = 0;
-  else if(retval>100)
-    retval = 100;
-  return retval;
+  return adc_get_battery_level();
 }
 
 #define SERVICE_ENVIRONMENTAL         0x181A

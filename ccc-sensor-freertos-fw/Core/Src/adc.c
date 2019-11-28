@@ -142,6 +142,17 @@ int adc_get_battery_voltage(int* vbat)
     return -1;
 }
 
+int adc_get_battery_level()
+{
+  int retval = 0;
+  adc_get_battery_voltage(&retval);
+  retval = (retval-3300)*100/(4150-3300);
+  if(retval<0)
+    retval = 0;
+  else if(retval>100)
+    retval = 100;
+  return retval;
+}
 /* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

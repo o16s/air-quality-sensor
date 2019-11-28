@@ -12,10 +12,13 @@
 #include "string.h"
 
 #define LOG_ITEM_TYPE 0
-#define LOG_MAX_RECORDS 60
-#define LOG_ITEM_SIZE sizeof(log_item_t)
+#define LOG_MAX_RECORDS 2500
+#define LOG_ITEM_SIZE 24 //sizeof(log_item_t)
 
 uint32_t _endAddr;
+uint8_t _buffer[LOG_ITEM_SIZE];
+uint8_t _type;
+uint8_t _length;
 
 log_status_t log_erase(){
   _endAddr = FL_format();
@@ -51,16 +54,18 @@ log_status_t log_newRecord(log_item_t * log_item){
 
 uint16_t log_countRecords(){
   uint32_t read_addr = FL_searchStart();
-  uint8_t data[LOG_ITEM_SIZE];
-  uint8_t type;
-  uint8_t length;
-  uint8_t i=0;
+
+  uint16_t i=0;
+
+  memset(_buffer,'\0',LOG_ITEM_SIZE-1);
+  _length=0;
+  _type=0;
 
   uint8_t step = 1;
   while (step > 0){
-    step = FL_readMessage(read_addr, &data, &type, &length);
+    step = FL_readMessage(read_addr, &_buffer, &_type, &_length);
     read_addr += step;
-    if(length == LOG_ITEM_SIZE && type == LOG_ITEM_TYPE){
+    if(_length == LOG_ITEM_SIZE && _type == LOG_ITEM_TYPE){
       i++;
     }
   }
@@ -73,25 +78,25 @@ log_status_t log_readNextRecord(log_item_t * log_item){
   static int line = 0;
 
   int status = log_readRecord(log_item, line);
-  
+
   line = (line + 1) % LOG_MAX_RECORDS;
 
   return status;
 }
 
 log_status_t log_readRecord(log_item_t * log_item, int lineNumber){
-  
   uint32_t read_addr = FL_searchStart();
-  uint8_t data[LOG_ITEM_SIZE];
-  uint8_t type;
-  uint8_t length;
-  uint8_t i=0;
+  uint16_t i=0;
   
-  uint8_t step = 1;
+  memset(_buffer,'\0',LOG_ITEM_SIZE-1);
+  _length=0;
+  _type=0;
+
+  uint16_t step = 1;
   while (step > 0){
-    step = FL_readMessage(read_addr, &data, &type, &length);
+    step = FL_readMessage(read_addr, &_buffer, &_type, &_length);
     read_addr += step;
-    if(length == LOG_ITEM_SIZE && type == LOG_ITEM_TYPE){
+    if(_length == LOG_ITEM_SIZE && _type == LOG_ITEM_TYPE){
       if(i == lineNumber){
         break;
       }else{
@@ -100,9 +105,10 @@ log_status_t log_readRecord(log_item_t * log_item, int lineNumber){
     }
   }
 
-  memcpy(log_item, &data, LOG_ITEM_SIZE);
+  //memset(&data, '\0', LOG_ITEM_SIZE);
+  memcpy(log_item, &_buffer, LOG_ITEM_SIZE);
 
-  if(length == LOG_ITEM_SIZE && type == LOG_ITEM_TYPE){
+  if(_length == LOG_ITEM_SIZE && _type == LOG_ITEM_TYPE){
     return LOG_OK;
   }else{
     return LOG_ERROR;

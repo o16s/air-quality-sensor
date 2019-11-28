@@ -33,9 +33,10 @@ extern sam_m8q_state_t sam_m8q_state; //never write to this !
 
 sam_m8q_status_t sam_m8q_poll();
 sam_m8q_status_t sam_m8q_wait_for_fix();
-
-
-
+uint32_t sam_m8q_get_epoch();
+int sam_m8q_get_lat(int decimals);
+int sam_m8q_get_lon(int decimals);
+  
 #endif
 
 /************************ (C) COPYRIGHT Octanis Instruments OÜ *****END OF FILE****/
