@@ -8,12 +8,14 @@
 #include "cmsis_os.h"
 #include "sht3x.h"
 #include "SAM_M8Q.h"
+#include "adc.h"
 #include "log.h"
 
 #define MEASUREMENT_INTERVAL_SECONDS 300
 
 int32_t temperature, humidity, timestamp;
 struct sps30_measurement sps30_m;
+int32_t vbat = 0;
 
 int get_temperature()
 {
@@ -28,6 +30,11 @@ int get_humidity()
 int get_pm25()
 {
   return sps30_m.mc_2p5;
+}
+
+int get_vbat()
+{
+  return vbat;
 }
 
 void measurement_task(){
@@ -88,7 +95,7 @@ void measurement_task(){
       .lat = sam_m8q_get_lat(3),
       .lon = sam_m8q_get_lon(3),
       .fix = (uint8_t)sam_m8q_state.minmea_gga.fix_quality,
-      .battery = (uint8_t)128,
+      .battery = (uint8_t)adc_get_battery_level(),
     };
 
     if(!log_newRecord(&measurement)){

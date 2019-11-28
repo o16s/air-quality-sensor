@@ -60,6 +60,8 @@ void nina_ccc_update();
 
 
 nina_status_t nina_b3_update_characteristic(unsigned int char_handle, unsigned char value);
+void nina_b3_update_all_characteristics();
+
 void nina_b3_wait_for_connection();
 
 // to be called from within the UART interrupt service routine
