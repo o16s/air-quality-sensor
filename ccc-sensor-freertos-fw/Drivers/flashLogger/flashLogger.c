@@ -133,13 +133,22 @@ uint32_t FL_format()
 {
     FLASH_EraseInitTypeDef eraseType;
     uint32_t error;
+    uint32_t halError;
 
     eraseType.TypeErase = FLASH_TYPEERASE_PAGES;
     eraseType.PageAddress = FL_START_ADDRESS;
-    eraseType.NbPages = 1 + ((FL_START_ADDRESS - FL_END_ADDRESS) >> 11);
-    HAL_FLASHEx_Erase(&eraseType, &error);
+    eraseType.NbPages = 1 + (uint32_t)((FL_END_ADDRESS - FL_START_ADDRESS) >> 11);
 
-    return FL_START_ADDRESS + FL_writeMessage(FL_START_ADDRESS, NULL, 0, 0);
+    HAL_StatusTypeDef ret = HAL_FLASHEx_Erase(&eraseType, &error) ;
+
+    //to test
+    if(ret == HAL_OK && error == 0xFFFFFFFF){
+        return FL_START_ADDRESS + FL_writeMessage(FL_START_ADDRESS, NULL, 0, 0);
+    }else{
+        halError = HAL_FLASH_GetError();
+        return 0;
+    }
+
 }
 
 uint32_t FL_erase(uint32_t start_addr, uint32_t end_addr)

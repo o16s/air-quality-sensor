@@ -74,6 +74,7 @@ Middlewares/Third_Party/minmea/minmea.c \
 Core/Src/main.c \
 Core/Src/measurement.c \
 Core/Src/gps.c \
+Core/Src/log.c \
 Core/Src/gpio.c \
 Core/Src/adc.c \
 Core/Src/can.c \

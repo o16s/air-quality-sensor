@@ -6,3 +6,6 @@
 4. mcopy -i fs.img log.csv ::/
 5. verify with mdir -i fs.img
 6. xxd -i fs.img
+
+
+Ref: http://www.disc.ua.es/~gil/FAT12Description.pdf
