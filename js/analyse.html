@@ -30,25 +30,64 @@
         function pm2p5_to_color(pm2p5){
             //source: https://www.epa.gov/sites/production/files/2014-05/documents/zell-aqi.pdf
             var color = '#BDBDBD';
+            var severity = 0;
+
+            if(pm2p5 > 0 && pm2p5 <= 15.4){
+                color = '#40FF00';
+            }else if(pm2p5 > 15.5 && pm2p5 <= 40.4){
+                color = '#FFFF00';
+                severity = 1;
+            }else if(pm2p5 > 40.5 && pm2p5 <= 65.4){
+                color = '#FF8000';
+                severity = 2;
+            }else if(pm2p5 > 65.5 && pm2p5 <= 150.4){
+                color = '#FF0000';
+                severity = 3;
+            }else if(pm2p5 > 150.5 && pm2p5 <= 250.4){
+                color = '#B404AE';
+                severity = 4;
+            }else if(pm2p5 > 250.5 && pm2p5 <= 500.4){
+                color = '#8A0808';
+                severity = 5;
+            }else if(pm2p5 > 500.5 && pm2p5 <= 999.9){
+                color = '#190707';
+                severity = 6;
+            }
+
+            return [severity, color];
+        }
+
+        function pm10_to_color(pm2p5){
+            //source: https://www.epa.gov/sites/production/files/2014-05/documents/zell-aqi.pdf
+            var color = '#BDBDBD';
+            var severity = 0;
 
             if(pm2p5 > 0 && pm2p5 <= 54){
                 color = '#40FF00';
             }else if(pm2p5 > 55 && pm2p5 <= 154){
                 color = '#FFFF00';
+                severity = 1;
             }else if(pm2p5 > 155 && pm2p5 <= 254){
                 color = '#FF8000';
+                severity = 2;
             }else if(pm2p5 > 255 && pm2p5 <= 354){
                 color = '#FF0000';
+                severity = 3;
             }else if(pm2p5 > 355 && pm2p5 <= 424){
                 color = '#B404AE';
+                severity = 4;
             }else if(pm2p5 > 425 && pm2p5 <= 604){
                 color = '#8A0808';
+                severity = 5;
             }else if(pm2p5 > 605 && pm2p5 <= 999.9){
                 color = '#190707';
+                severity = 6;
+
             }
 
-            return color;
+            return [severity, color];
         }
+
         function getLocalTimeStr(utc){
             var d = new Date(utc*1000);
             return d.getDate()  + "-" + (d.getMonth()+1) 
@@ -59,8 +98,8 @@
         function getPopupHTML(time, pm2p5, pm10, t, h, b, f){
             return  "<h1>"+time+"</h1>"
                     + "<ul>"
-                    + "<li>PM2.5: "+pm2p5+"</li>"
-                    + "<li>PM10: "+pm10+"</li>"
+                    + "<li>PM2.5: "+pm2p5+" (Severity "+pm2p5_to_color(pm2p5)[0]+")</li>"
+                    + "<li>PM10: "+pm10+" (Severity "+pm10_to_color(pm10)[0]+")</li>"
                     + "<li>GPS Fix: "+f+"</li>"
                     + "<li>"+t+" ° C</li>"
                     + "<li>"+h+" % RH</li>"
@@ -72,13 +111,17 @@
             Object.keys(log).sort().forEach(function(k, i) {
                 if(log[k].f >= 1){
                     if(!isViewSet){
-                    map.setView([log[k].lat, log[k].lon], 15);
-                    isViewSet = 1;
+                        map.setView([log[k].lat, log[k].lon], 15);
+                        isViewSet = 1;
                     }
 
+                    var pm2p5_color = pm2p5_to_color(log[k].pm2p5);
+                    var pm10_color = pm10_to_color(log[k].pm10);
+                    var marker_color = (pm2p5_color[0] < pm10_color[0])? pm10_color[1] : pm2p5_color[1];
+                    
                     L.circle([log[k].lat, log[k].lon], {
-                        color: pm2p5_to_color(log[k].pm2p5),
-                        fillColor: pm2p5_to_color(log[k].pm2p5),
+                        color: marker_color,
+                        fillColor: marker_color,
                         fillOpacity: 0.3,
                         radius: 100
                     })
@@ -192,11 +235,11 @@
             
             document.getElementById("pm2p5").innerHTML = pm2p5_avg + ' µg/m³';
             document.getElementById("pm2p5").style.textDecoration = 'underline';
-            document.getElementById("pm2p5").style.textDecorationColor = pm2p5_to_color(pm2p5_avg);
+            document.getElementById("pm2p5").style.textDecorationColor = pm2p5_to_color(pm2p5_avg)[1];
 
             document.getElementById("pm10").innerHTML = pm10_avg + ' µg/m³';
             document.getElementById("pm10").style.textDecoration = 'underline';
-            document.getElementById("pm10").style.textDecorationColor = pm2p5_to_color(pm10_avg);
+            document.getElementById("pm10").style.textDecorationColor = pm10_to_color(pm10_avg)[1];
 
 
             document.getElementById("duration").innerHTML = Math.round((n * 5)/60 * 10)/10 + ' h';
