@@ -6,6 +6,7 @@
   (lib (name SHT31-DIS-B)(type Legacy)(uri ${KIPRJMOD}/lib_sch/SHT31-DIS-B.lib)(options "")(descr ""))
   (lib (name NINA-B311-00B)(type Legacy)(uri ${KIPRJMOD}/lib_sch/NINA-B311-00B.lib)(options "")(descr ""))
   (lib (name MCP1624)(type Legacy)(uri ${KIPRJMOD}/lib_sch/MCP1624.lib)(options "")(descr ""))
-  (lib (name DW01)(type Legacy)(uri /Users/raffael/Desktop/Octanis/clients/ETH/ccc-sensor/rev1/lib_sch/DW01.lib)(options "")(descr ""))
+  (lib (name DW01)(type Legacy)(uri ${KIPRJMOD}/lib_sch/DW01.lib)(options "")(descr ""))
   (lib (name led_rgba)(type Legacy)(uri ${KIPRJMOD}/lib_sch/led_rgba.lib)(options "")(descr ""))
+  (lib (name oibus-mini-CCC-rescue)(type Legacy)(uri ${KIPRJMOD}/oibus-mini-CCC-rescue.lib)(options "")(descr ""))
 )
