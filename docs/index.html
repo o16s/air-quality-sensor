@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCC Sensor WebUSB Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Browser Compatibility Warning -->
+    <div id="browser-warning" class="hidden bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-yellow-700">
+                    WebUSB is not supported in your browser. Please use <strong>Chrome</strong> or <strong>Edge</strong>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-3xl font-bold text-gray-800">CCC Sensor WebUSB Interface</h1>
+                <button id="connect-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
+                    Connect Device
+                </button>
+            </div>
+
+            <!-- Device Info -->
+            <div id="device-info" class="hidden border-t pt-4 mt-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-600">Device:</span>
+                        <span id="device-name" class="ml-2 font-medium">-</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Serial:</span>
+                        <span id="device-serial" class="ml-2 font-mono">-</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-600">Firmware:</span>
+                        <span id="device-firmware" class="ml-2 font-medium">-</span>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center">
+                    <span class="text-gray-600 text-sm">Status:</span>
+                    <span id="connection-status" class="ml-2 flex items-center">
+                        <span class="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+                        <span class="text-sm">Disconnected</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content" class="hidden">
+            <!-- Live Data Dashboard -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- Sensor Readings -->
+                <div class="lg:col-span-2 bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center justify-between">
+                        Live Sensor Data
+                        <button id="refresh-btn" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition duration-200">
+                            Refresh
+                        </button>
+                    </h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="sensor-card">
+                            <div class="text-gray-600 text-sm mb-1">Temperature</div>
+                            <div id="temp-value" class="text-2xl font-bold text-gray-800">--</div>
+                        </div>
+                        <div class="sensor-card">
+                            <div class="text-gray-600 text-sm mb-1">Humidity</div>
+                            <div id="humidity-value" class="text-2xl font-bold text-gray-800">--</div>
+                        </div>
+                        <div class="sensor-card">
+                            <div class="text-gray-600 text-sm mb-1">PM2.5</div>
+                            <div id="pm25-value" class="text-2xl font-bold">--</div>
+                        </div>
+                        <div class="sensor-card">
+                            <div class="text-gray-600 text-sm mb-1">PM10</div>
+                            <div id="pm10-value" class="text-2xl font-bold">--</div>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-xs text-gray-500">
+                        Last updated: <span id="last-update">Never</span>
+                    </div>
+                </div>
+
+                <!-- Side Panel -->
+                <div class="space-y-6">
+                    <!-- Battery Status -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Battery</h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-600">Level:</span>
+                            <span id="battery-level" class="text-lg font-bold">--%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mb-3">
+                            <div id="battery-bar" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Charging:</span>
+                            <span id="battery-charging" class="font-medium">No</span>
+                        </div>
+                    </div>
+
+                    <!-- GPS Status -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">GPS</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Fix:</span>
+                                <span id="gps-fix" class="font-medium">No Fix</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Latitude:</span>
+                                <span id="gps-lat" class="font-mono text-xs">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Longitude:</span>
+                                <span id="gps-lon" class="font-mono text-xs">-</span>
+                            </div>
+                            <a id="gps-map-link" href="#" target="_blank" class="hidden text-blue-600 hover:text-blue-800 text-xs">
+                                View on Map →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs Section -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Data Logs</h2>
+
+                <!-- Log Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-sm text-gray-600">Device Logs</div>
+                        <div id="device-log-count" class="text-2xl font-bold text-gray-800">-</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-sm text-gray-600">Browser Storage</div>
+                        <div id="browser-log-count" class="text-2xl font-bold text-gray-800">0</div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="text-sm text-gray-600">Download Progress</div>
+                        <div id="download-progress" class="text-2xl font-bold text-gray-800">-</div>
+                    </div>
+                </div>
+
+                <!-- Log Actions -->
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <button id="download-logs-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                        Download All Logs
+                    </button>
+                    <button id="export-csv-btn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                        Export CSV
+                    </button>
+                    <button id="export-json-btn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                        Export JSON
+                    </button>
+                    <button id="clear-logs-btn" class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                        Clear Browser Logs
+                    </button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div id="download-progress-bar" class="hidden mb-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progress-bar-fill" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div class="text-sm text-gray-600 mt-1" id="progress-text">Downloading...</div>
+                </div>
+
+                <!-- Log Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+                            </tr>
+                        </thead>
+                        <tbody id="log-table-body" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions (shown when not connected) -->
+        <div id="instructions" class="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
+            <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
+            <ol class="list-decimal list-inside space-y-2 text-blue-800">
+                <li>Connect your CCC Sensor via USB</li>
+                <li>Click the "Connect Device" button above</li>
+                <li>Select your device from the browser dialog</li>
+                <li>View live sensor data and download historical logs</li>
+            </ol>
+            <p class="mt-4 text-sm text-blue-700">
+                <strong>Note:</strong> This interface requires Chrome or Edge browser with WebUSB support.
+            </p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/storage.js"></script>
+    <script type="module" src="js/protocol.js"></script>
+    <script type="module" src="js/webusb.js"></script>
+    <script type="module" src="js/ui.js"></script>
+    <script type="module" src="js/export.js"></script>
+
+    <script type="module">
+        import { checkWebUSBSupport } from './js/webusb.js';
+        import { initUI } from './js/ui.js';
+
+        // Check browser compatibility
+        if (!checkWebUSBSupport()) {
+            document.getElementById('browser-warning').classList.remove('hidden');
+        }
+
+        // Initialize UI
+        initUI();
+    </script>
+</body>
+</html>
