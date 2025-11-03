@@ -3,10 +3,12 @@
  * Handles device connection, disconnection, and communication
  */
 
+import { USB, ERRORS } from './constants.js';
+
 // Device filter configuration
 const DEVICE_FILTERS = [{
-    vendorId: 0x0483,  // STMicroelectronics
-    productId: 0x5740  // CDC Virtual COM Port
+    vendorId: USB.VENDOR_ID,
+    productId: USB.PRODUCT_ID
 }];
 
 // Connection state
@@ -55,7 +57,7 @@ export function onDisconnect(callback) {
  */
 export async function connectDevice() {
     if (!checkWebUSBSupport()) {
-        throw new Error('WebUSB is not supported in this browser');
+        throw new Error(ERRORS.WEBUSB_NOT_SUPPORTED);
     }
 
     try {
@@ -69,7 +71,7 @@ export async function connectDevice() {
         return device;
     } catch (error) {
         if (error.name === 'NotFoundError') {
-            throw new Error('No device selected');
+            throw new Error(ERRORS.NO_DEVICE_SELECTED);
         }
         throw error;
     }
@@ -96,7 +98,7 @@ async function openDevice() {
 
         // Claim the interface
         // For CDC devices, this is typically interface 0
-        const interfaceNumber = 0;
+        const interfaceNumber = USB.INTERFACE_NUMBER;
 
         if (!device.configuration.interfaces[interfaceNumber].claimed) {
             await device.claimInterface(interfaceNumber);
@@ -119,11 +121,11 @@ async function openDevice() {
         isConnected = false;
 
         if (error.name === 'NotFoundError') {
-            throw new Error('Device disconnected during initialization');
+            throw new Error(ERRORS.DEVICE_DISCONNECTED);
         } else if (error.name === 'SecurityError') {
-            throw new Error('WebUSB requires HTTPS. Please use localhost or a secure origin.');
+            throw new Error(ERRORS.HTTPS_REQUIRED);
         } else if (error.name === 'NetworkError') {
-            throw new Error('Device is busy or already in use by another application');
+            throw new Error(ERRORS.DEVICE_BUSY);
         }
 
         throw error;
@@ -141,7 +143,7 @@ export async function disconnectDevice() {
     try {
         if (device.opened) {
             // Release interface
-            const interfaceNumber = 0;
+            const interfaceNumber = USB.INTERFACE_NUMBER;
             if (device.configuration?.interfaces[interfaceNumber]?.claimed) {
                 await device.releaseInterface(interfaceNumber);
             }
@@ -278,9 +280,9 @@ export function handleUSBError(error) {
     if (error.name === 'NotFoundError') {
         return 'Device disconnected. Please reconnect your sensor.';
     } else if (error.name === 'SecurityError') {
-        return 'Security error. WebUSB requires HTTPS or localhost.';
+        return ERRORS.HTTPS_REQUIRED;
     } else if (error.name === 'NetworkError') {
-        return 'Device is busy or in use by another application.';
+        return ERRORS.DEVICE_BUSY;
     } else if (error.name === 'InvalidStateError') {
         return 'Invalid device state. Try disconnecting and reconnecting.';
     } else if (error.name === 'NotSupportedError') {

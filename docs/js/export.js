@@ -3,12 +3,15 @@
  * Handles CSV and JSON export of sensor logs
  */
 
+import { EXPORT_FILENAMES, MIME_TYPES, ERRORS } from './constants.js';
+import { downloadFile, formatGPSFix } from './utils.js';
+
 /**
  * Export logs to CSV format
  */
 export function exportToCSV(logs) {
     if (!logs || logs.length === 0) {
-        throw new Error('No logs to export');
+        throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
 
     // CSV headers
@@ -66,7 +69,7 @@ export function exportToCSV(logs) {
     const csvContent = rows.join('\n');
 
     // Create download
-    downloadFile(csvContent, 'ccc-sensor-logs.csv', 'text/csv');
+    downloadFile(csvContent, EXPORT_FILENAMES.CSV, MIME_TYPES.CSV);
 }
 
 /**
@@ -74,7 +77,7 @@ export function exportToCSV(logs) {
  */
 export function exportToJSON(logs) {
     if (!logs || logs.length === 0) {
-        throw new Error('No logs to export');
+        throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
 
     // Create structured JSON with metadata
@@ -125,7 +128,7 @@ export function exportToJSON(logs) {
     const jsonContent = JSON.stringify(exportData, null, 2);
 
     // Create download
-    downloadFile(jsonContent, 'ccc-sensor-logs.json', 'application/json');
+    downloadFile(jsonContent, EXPORT_FILENAMES.JSON, MIME_TYPES.JSON);
 }
 
 /**
@@ -133,14 +136,14 @@ export function exportToJSON(logs) {
  */
 export function exportToGeoJSON(logs) {
     if (!logs || logs.length === 0) {
-        throw new Error('No logs to export');
+        throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
 
     // Filter logs with valid GPS coordinates
     const logsWithGPS = logs.filter(log => log.fix > 0 && log.lat && log.lon);
 
     if (logsWithGPS.length === 0) {
-        throw new Error('No logs with GPS coordinates');
+        throw new Error(ERRORS.NO_GPS_LOGS);
     }
 
     // Create GeoJSON FeatureCollection
@@ -168,42 +171,10 @@ export function exportToGeoJSON(logs) {
     const geoJSONContent = JSON.stringify(geoJSON, null, 2);
 
     // Create download
-    downloadFile(geoJSONContent, 'ccc-sensor-logs.geojson', 'application/geo+json');
+    downloadFile(geoJSONContent, EXPORT_FILENAMES.GEOJSON, MIME_TYPES.GEOJSON);
 }
 
-/**
- * Trigger file download in browser
- */
-function downloadFile(content, filename, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-
-    document.body.appendChild(a);
-    a.click();
-
-    // Cleanup
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-}
-
-/**
- * Format GPS fix quality as string
- */
-function formatGPSFix(fix) {
-    switch (fix) {
-        case 0: return 'No Fix';
-        case 1: return 'GPS';
-        case 2: return 'DGPS';
-        default: return 'Unknown';
-    }
-}
+// Note: downloadFile and formatGPSFix are now imported from utils.js
 
 /**
  * Generate summary statistics for logs
@@ -258,7 +229,7 @@ export function exportStatistics(logs) {
     const stats = generateStatistics(logs);
 
     if (!stats) {
-        throw new Error('No data to generate statistics');
+        throw new Error(ERRORS.NO_DATA_FOR_STATS);
     }
 
     const startDate = new Date(stats.timeRange.start * 1000);
@@ -305,5 +276,5 @@ Battery (%):
 Generated: ${new Date().toLocaleString()}
 `.trim();
 
-    downloadFile(content, 'ccc-sensor-statistics.txt', 'text/plain');
+    downloadFile(content, EXPORT_FILENAMES.STATISTICS, MIME_TYPES.TEXT);
 }

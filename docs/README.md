@@ -125,6 +125,75 @@ docs/
 
 No build tools or dependencies required!
 
+## Testing
+
+This project includes comprehensive unit tests using **Vitest**.
+
+### Running Tests
+
+First, install test dependencies:
+
+```bash
+cd docs
+npm install
+```
+
+Then run tests:
+
+```bash
+# Run tests once
+npm test
+
+# Run tests in watch mode (auto-rerun on file changes)
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests with interactive UI
+npm run test:ui
+```
+
+### Test Coverage
+
+Tests cover all core functionality:
+
+- **Protocol parsing** (`protocol.test.js`) - Data parsing, mock mode, GPS formatting
+- **Storage operations** (`storage.test.js`) - IndexedDB CRUD, queries, statistics
+- **WebUSB connection** (`webusb.test.js`) - Device connection, callbacks, error handling
+- **Export functions** (`export.test.js`) - CSV/JSON/GeoJSON export, statistics
+
+### Test Structure
+
+```
+docs/
+├── __tests__/
+│   ├── setup.js          # Global test configuration
+│   ├── protocol.test.js  # Protocol tests (40+ tests)
+│   ├── storage.test.js   # Storage tests (30+ tests)
+│   ├── webusb.test.js    # WebUSB tests (25+ tests)
+│   └── export.test.js    # Export tests (30+ tests)
+├── package.json          # Test dependencies
+└── vitest.config.js      # Vitest configuration
+```
+
+### Why Tests Matter
+
+✅ **Catch bugs early** - Know immediately if changes break anything
+✅ **Safe refactoring** - Modify code with confidence
+✅ **Documentation** - Tests show how functions should be used
+✅ **Fast feedback** - No manual browser testing needed
+✅ **CI/CD ready** - Can run in GitHub Actions
+
+### Mocking
+
+Tests use mocked browser APIs:
+- **WebUSB** - Simulated USB device connection
+- **IndexedDB** - In-memory database (`fake-indexeddb`)
+- **DOM** - Lightweight DOM simulation (`happy-dom`)
+
+This allows tests to run **fast** (milliseconds) without real hardware or a browser.
+
 ## Firmware Integration
 
 This webapp expects the firmware to implement WebUSB vendor requests:

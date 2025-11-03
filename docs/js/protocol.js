@@ -3,21 +3,32 @@
  * Handles vendor requests and data parsing for CCC Sensor
  */
 
-// WebUSB Vendor Request Configuration
-const WEBUSB_VENDOR_CODE = 0x22;
+import {
+    USB,
+    COMMANDS,
+    BUFFER_SIZES,
+    STATUS_LAYOUT,
+    LOG_LAYOUT,
+    MOCK_DATA,
+    DELAYS,
+    ERRORS
+} from './constants.js';
 
-// Command codes
-const COMMANDS = {
-    GET_STATUS: 0x00,      // Get current sensor readings
-    GET_LOG_COUNT: 0x01,   // Get number of log records
-    READ_LOG: 0x02,        // Read log record by index
-    ERASE_LOGS: 0x03,      // Erase all logs (requires wValue=0xDEAD)
-    GET_VERSION: 0x04      // Get firmware version string
-};
+import {
+    validateDevice,
+    delay,
+    executeWithMockFallback,
+    setBufferValue,
+    getBufferValue,
+    parseBuffer,
+    getCurrentTimestamp,
+    boolToNumber,
+    formatGPSFix,
+    createMapsURL
+} from './utils.js';
 
 // Mock mode for testing without hardware
 let useMockData = false;
-let mockLogCount = 50;  // Number of mock logs to generate
 
 /**
  * Enable/disable mock data mode for testing
@@ -32,14 +43,14 @@ export function setMockMode(enabled) {
  */
 async function sendControlTransfer(device, command, param, length) {
     if (!device || !device.opened) {
-        throw new Error('Device not connected');
+        throw new Error(ERRORS.DEVICE_NOT_CONNECTED);
     }
 
     try {
         const result = await device.controlTransferIn({
             requestType: 'vendor',
             recipient: 'device',
-            request: WEBUSB_VENDOR_CODE,
+            request: USB.VENDOR_CODE,
             value: param,
             index: command
         }, length);
@@ -51,7 +62,7 @@ async function sendControlTransfer(device, command, param, length) {
         return result.data;
 
     } catch (error) {
-        throw new Error(`Control transfer failed: ${error.message}`);
+        throw new Error(`${ERRORS.CONTROL_TRANSFER_FAILED}: ${error.message}`);
     }
 }
 
@@ -59,27 +70,18 @@ async function sendControlTransfer(device, command, param, length) {
  * Generate mock status data for testing
  */
 function generateMockStatus() {
-    const buffer = new ArrayBuffer(16);
+    const buffer = new ArrayBuffer(BUFFER_SIZES.STATUS);
     const view = new DataView(buffer);
 
-    // Temperature: 23.5°C
-    view.setInt16(0, 23500, true);
-    // Humidity: 45.6%
-    view.setUint16(2, 45600, true);
-    // PM2.5: 12.5 μg/m³
-    view.setUint16(4, 125, true);
-    // PM10: 18.3 μg/m³
-    view.setUint16(6, 183, true);
-    // Battery: 85%
-    view.setUint8(8, 85);
-    // Charging: Yes
-    view.setUint8(9, 1);
-    // GPS fix: GPS fix
-    view.setUint8(10, 1);
-    // Reserved
-    view.setUint8(11, 0);
-    // Timestamp: current time
-    view.setUint32(12, Math.floor(Date.now() / 1000), true);
+    setBufferValue(view, STATUS_LAYOUT.TEMPERATURE, MOCK_DATA.TEMPERATURE_C);
+    setBufferValue(view, STATUS_LAYOUT.HUMIDITY, MOCK_DATA.HUMIDITY_PERCENT);
+    setBufferValue(view, STATUS_LAYOUT.PM25, MOCK_DATA.PM25_UG_M3);
+    setBufferValue(view, STATUS_LAYOUT.PM10, MOCK_DATA.PM10_UG_M3);
+    setBufferValue(view, STATUS_LAYOUT.BATTERY, MOCK_DATA.BATTERY_PERCENT);
+    setBufferValue(view, STATUS_LAYOUT.CHARGING, boolToNumber(MOCK_DATA.IS_CHARGING));
+    setBufferValue(view, STATUS_LAYOUT.GPS_FIX, MOCK_DATA.GPS_FIX_QUALITY);
+    setBufferValue(view, STATUS_LAYOUT.RESERVED, 0);
+    setBufferValue(view, STATUS_LAYOUT.TIMESTAMP, getCurrentTimestamp());
 
     return new Uint8Array(buffer);
 }
@@ -88,21 +90,27 @@ function generateMockStatus() {
  * Generate mock log item for testing
  */
 function generateMockLogItem(index) {
-    const buffer = new ArrayBuffer(20);
+    const buffer = new ArrayBuffer(BUFFER_SIZES.LOG_RECORD);
     const view = new DataView(buffer);
 
     // Generate realistic-looking data with some variation
-    const baseTime = Math.floor(Date.now() / 1000) - (mockLogCount - index) * 300; // 5 min intervals
+    const baseTime = getCurrentTimestamp() - (MOCK_DATA.LOG_COUNT - index) * MOCK_DATA.LOG_INTERVAL_SECONDS;
 
-    view.setInt16(0, 20000 + Math.random() * 8000, true);  // 20-28°C
-    view.setUint16(2, 30000 + Math.random() * 40000, true); // 30-70% humidity
-    view.setUint16(4, 50 + Math.random() * 150, true);      // 5-20 μg/m³ PM2.5
-    view.setUint16(6, 100 + Math.random() * 200, true);     // 10-30 μg/m³ PM10
-    view.setInt32(8, 471234567, true);                       // Lat: 47.1234567°
-    view.setInt32(12, 85678901, true);                       // Lon: 8.5678901°
-    view.setUint8(16, 1);                                    // GPS fix
-    view.setUint8(17, 60 + Math.random() * 40);             // 60-100% battery
-    view.setUint32(18, baseTime, true);                      // Timestamp
+    const temperature = MOCK_DATA.TEMP_MIN_C + Math.random() * (MOCK_DATA.TEMP_MAX_C - MOCK_DATA.TEMP_MIN_C);
+    const humidity = MOCK_DATA.HUMIDITY_MIN_PERCENT + Math.random() * (MOCK_DATA.HUMIDITY_MAX_PERCENT - MOCK_DATA.HUMIDITY_MIN_PERCENT);
+    const pm25 = MOCK_DATA.PM25_MIN_UG_M3 + Math.random() * (MOCK_DATA.PM25_MAX_UG_M3 - MOCK_DATA.PM25_MIN_UG_M3);
+    const pm10 = MOCK_DATA.PM10_MIN_UG_M3 + Math.random() * (MOCK_DATA.PM10_MAX_UG_M3 - MOCK_DATA.PM10_MIN_UG_M3);
+    const battery = MOCK_DATA.BATTERY_MIN_PERCENT + Math.random() * (MOCK_DATA.BATTERY_MAX_PERCENT - MOCK_DATA.BATTERY_MIN_PERCENT);
+
+    setBufferValue(view, LOG_LAYOUT.TEMPERATURE, temperature);
+    setBufferValue(view, LOG_LAYOUT.HUMIDITY, humidity);
+    setBufferValue(view, LOG_LAYOUT.PM25, pm25);
+    setBufferValue(view, LOG_LAYOUT.PM10, pm10);
+    setBufferValue(view, LOG_LAYOUT.LATITUDE, MOCK_DATA.GPS_LAT);
+    setBufferValue(view, LOG_LAYOUT.LONGITUDE, MOCK_DATA.GPS_LON);
+    setBufferValue(view, LOG_LAYOUT.GPS_FIX, MOCK_DATA.GPS_FIX_QUALITY);
+    setBufferValue(view, LOG_LAYOUT.BATTERY, battery);
+    setBufferValue(view, LOG_LAYOUT.TIMESTAMP, baseTime);
 
     return new Uint8Array(buffer);
 }
@@ -112,22 +120,21 @@ function generateMockLogItem(index) {
  * Returns: { temperature, humidity, pm25, pm10, battery, charging, gpsFix, timestamp }
  */
 export async function getDeviceStatus(device) {
-    let data;
+    // Always validate device first
+    validateDevice(device);
 
-    if (useMockData) {
-        // Return mock data for testing
-        await new Promise(resolve => setTimeout(resolve, 100)); // Simulate delay
-        data = generateMockStatus();
-    } else {
-        try {
-            data = await sendControlTransfer(device, COMMANDS.GET_STATUS, 0, 16);
-        } catch (error) {
-            console.warn('Failed to get device status, using mock data:', error.message);
-            // Fall back to mock data if vendor request not implemented
-            useMockData = true;
-            data = generateMockStatus();
-        }
-    }
+    const data = await executeWithMockFallback(
+        device,
+        async (d) => {
+            return await sendControlTransfer(d, COMMANDS.GET_STATUS, 0, BUFFER_SIZES.STATUS);
+        },
+        async () => {
+            await delay(DELAYS.STATUS_READ);
+            return generateMockStatus();
+        },
+        useMockData,
+        setMockMode
+    );
 
     return parseStatusData(data);
 }
@@ -139,14 +146,14 @@ function parseStatusData(data) {
     const view = new DataView(data.buffer);
 
     return {
-        temperature: view.getInt16(0, true) / 1000,      // °C
-        humidity: view.getUint16(2, true) / 1000,         // %
-        pm25: view.getUint16(4, true) / 10,               // μg/m³
-        pm10: view.getUint16(6, true) / 10,               // μg/m³
-        battery: view.getUint8(8),                        // %
-        charging: view.getUint8(9) === 1,                 // boolean
-        gpsFix: view.getUint8(10),                        // 0=no fix, 1=GPS, 2=DGPS
-        timestamp: view.getUint32(12, true)               // seconds since boot
+        temperature: getBufferValue(view, STATUS_LAYOUT.TEMPERATURE),
+        humidity: getBufferValue(view, STATUS_LAYOUT.HUMIDITY),
+        pm25: getBufferValue(view, STATUS_LAYOUT.PM25),
+        pm10: getBufferValue(view, STATUS_LAYOUT.PM10),
+        battery: getBufferValue(view, STATUS_LAYOUT.BATTERY),
+        charging: getBufferValue(view, STATUS_LAYOUT.CHARGING) === 1,
+        gpsFix: getBufferValue(view, STATUS_LAYOUT.GPS_FIX),
+        timestamp: getBufferValue(view, STATUS_LAYOUT.TIMESTAMP)
     };
 }
 
@@ -155,24 +162,20 @@ function parseStatusData(data) {
  * Returns: number of records
  */
 export async function getLogCount(device) {
-    let data;
-
-    if (useMockData) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const buffer = new ArrayBuffer(2);
-        new DataView(buffer).setUint16(0, mockLogCount, true);
-        data = new Uint8Array(buffer);
-    } else {
-        try {
-            data = await sendControlTransfer(device, COMMANDS.GET_LOG_COUNT, 0, 2);
-        } catch (error) {
-            console.warn('Failed to get log count, using mock data:', error.message);
-            useMockData = true;
-            const buffer = new ArrayBuffer(2);
-            new DataView(buffer).setUint16(0, mockLogCount, true);
-            data = new Uint8Array(buffer);
-        }
-    }
+    const data = await executeWithMockFallback(
+        device,
+        async (d) => {
+            return await sendControlTransfer(d, COMMANDS.GET_LOG_COUNT, 0, BUFFER_SIZES.LOG_COUNT);
+        },
+        async () => {
+            await delay(DELAYS.LOG_COUNT_READ);
+            const buffer = new ArrayBuffer(BUFFER_SIZES.LOG_COUNT);
+            new DataView(buffer).setUint16(0, MOCK_DATA.LOG_COUNT, true);
+            return new Uint8Array(buffer);
+        },
+        useMockData,
+        setMockMode
+    );
 
     const view = new DataView(data.buffer);
     return view.getUint16(0, true);
@@ -183,20 +186,18 @@ export async function getLogCount(device) {
  * Returns: { temperature, humidity, pm25, pm10, lat, lon, fix, battery, timestamp }
  */
 export async function readLogRecord(device, index) {
-    let data;
-
-    if (useMockData) {
-        await new Promise(resolve => setTimeout(resolve, 10)); // Simulate delay
-        data = generateMockLogItem(index);
-    } else {
-        try {
-            data = await sendControlTransfer(device, COMMANDS.READ_LOG, index, 20);
-        } catch (error) {
-            console.warn(`Failed to read log ${index}, using mock data:`, error.message);
-            useMockData = true;
-            data = generateMockLogItem(index);
-        }
-    }
+    const data = await executeWithMockFallback(
+        device,
+        async (d) => {
+            return await sendControlTransfer(d, COMMANDS.READ_LOG, index, BUFFER_SIZES.LOG_RECORD);
+        },
+        async () => {
+            await delay(DELAYS.LOG_RECORD_READ);
+            return generateMockLogItem(index);
+        },
+        useMockData,
+        setMockMode
+    );
 
     return parseLogItem(data);
 }
@@ -208,15 +209,15 @@ function parseLogItem(data) {
     const view = new DataView(data.buffer);
 
     return {
-        temperature: view.getInt16(0, true) / 1000,       // °C
-        humidity: view.getUint16(2, true) / 1000,         // %
-        pm25: view.getUint16(4, true) / 10,               // μg/m³
-        pm10: view.getUint16(6, true) / 10,               // μg/m³
-        lat: view.getInt32(8, true) / 1e7,                // degrees
-        lon: view.getInt32(12, true) / 1e7,               // degrees
-        fix: view.getUint8(16),                           // GPS fix quality
-        battery: view.getUint8(17),                       // %
-        timestamp: view.getUint32(18, true)               // Unix epoch
+        temperature: getBufferValue(view, LOG_LAYOUT.TEMPERATURE),
+        humidity: getBufferValue(view, LOG_LAYOUT.HUMIDITY),
+        pm25: getBufferValue(view, LOG_LAYOUT.PM25),
+        pm10: getBufferValue(view, LOG_LAYOUT.PM10),
+        lat: getBufferValue(view, LOG_LAYOUT.LATITUDE),
+        lon: getBufferValue(view, LOG_LAYOUT.LONGITUDE),
+        fix: getBufferValue(view, LOG_LAYOUT.GPS_FIX),
+        battery: getBufferValue(view, LOG_LAYOUT.BATTERY),
+        timestamp: getBufferValue(view, LOG_LAYOUT.TIMESTAMP)
     };
 }
 
@@ -260,21 +261,26 @@ export async function downloadAllLogs(device, progressCallback) {
  * Returns: version string (e.g., "v1.0.0-webusb")
  */
 export async function getFirmwareVersion(device) {
-    if (useMockData) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        return "v1.0.0-mock";
-    }
+    const data = await executeWithMockFallback(
+        device,
+        async (d) => {
+            return await sendControlTransfer(d, COMMANDS.GET_VERSION, 0, BUFFER_SIZES.VERSION);
+        },
+        async () => {
+            await delay(DELAYS.STATUS_READ);
+            const encoder = new TextEncoder();
+            const versionBytes = encoder.encode("v1.0.0-mock");
+            const buffer = new Uint8Array(BUFFER_SIZES.VERSION);
+            buffer.set(versionBytes);
+            return buffer;
+        },
+        useMockData,
+        setMockMode
+    );
 
-    try {
-        const data = await sendControlTransfer(device, COMMANDS.GET_VERSION, 0, 32);
-        const decoder = new TextDecoder('utf-8');
-        const version = decoder.decode(data).replace(/\0/g, '').trim();
-        return version || "Unknown";
-
-    } catch (error) {
-        console.warn('Failed to get firmware version:', error.message);
-        return "Unknown";
-    }
+    const decoder = new TextDecoder('utf-8');
+    const version = decoder.decode(data).replace(/\0/g, '').trim();
+    return version || "Unknown";
 }
 
 /**
@@ -283,8 +289,7 @@ export async function getFirmwareVersion(device) {
  */
 export async function eraseLogs(device) {
     if (useMockData) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        mockLogCount = 0;
+        await delay(DELAYS.STATUS_READ);
         return true;
     }
 
@@ -305,24 +310,8 @@ export async function eraseLogs(device) {
     }
 }
 
-/**
- * Format GPS fix quality as string
- */
-export function formatGPSFix(fix) {
-    switch (fix) {
-        case 0: return 'No Fix';
-        case 1: return 'GPS';
-        case 2: return 'DGPS';
-        default: return 'Unknown';
-    }
-}
-
-/**
- * Create Google Maps URL from coordinates
- */
-export function createMapsURL(lat, lon) {
-    return `https://www.google.com/maps?q=${lat},${lon}`;
-}
+// Export utility functions that are used by UI
+export { formatGPSFix, createMapsURL };
 
 // Auto-enable mock mode for testing
 // This will be overridden when real hardware is detected

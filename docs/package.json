@@ -1,0 +1,27 @@
+{
+  "name": "ccc-sensor-webusb",
+  "version": "1.0.0",
+  "description": "WebUSB interface for CCC environmental sensor",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
+  },
+  "keywords": [
+    "webusb",
+    "sensor",
+    "air-quality",
+    "stm32"
+  ],
+  "author": "o16s",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.0.4",
+    "@vitest/ui": "^1.0.4",
+    "fake-indexeddb": "^5.0.2",
+    "happy-dom": "^12.10.3",
+    "vitest": "^1.0.4"
+  }
+}
