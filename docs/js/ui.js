@@ -145,13 +145,8 @@ async function handleDeviceConnected(device) {
     try {
         const version = await getFirmwareVersion(device);
         document.getElementById('device-firmware').textContent = version;
-
-        // Disable mock mode if we got a real response
-        if (version !== "Unknown" && version !== "v1.0.0-mock") {
-            setMockMode(false);
-        }
     } catch (error) {
-        document.getElementById('device-firmware').textContent = 'Unknown';
+        document.getElementById('device-firmware').textContent = 'N/A';
     }
 
     // Get device log count
@@ -244,6 +239,18 @@ async function updateLiveData() {
     } catch (error) {
         console.error('Failed to update live data:', error);
         showError('Failed to read sensor data: ' + error.message);
+
+        // Set all sensor values to N/A when data is unavailable
+        document.getElementById('temp-value').textContent = 'N/A';
+        document.getElementById('humidity-value').textContent = 'N/A';
+        document.getElementById('pm25-value').textContent = 'N/A';
+        document.getElementById('pm10-value').textContent = 'N/A';
+        document.getElementById('battery-level').textContent = 'N/A';
+        document.getElementById('battery-charging').textContent = 'N/A';
+        document.getElementById('gps-fix').textContent = 'N/A';
+        document.getElementById('gps-lat').textContent = 'N/A';
+        document.getElementById('gps-lon').textContent = 'N/A';
+        document.getElementById('last-update').textContent = 'Never';
     }
 }
 
@@ -360,7 +367,7 @@ async function updateDeviceLogCount() {
         document.getElementById('device-log-count').textContent = count.toLocaleString();
     } catch (error) {
         console.error('Failed to get log count:', error);
-        document.getElementById('device-log-count').textContent = 'Error';
+        document.getElementById('device-log-count').textContent = 'N/A';
     }
 }
 

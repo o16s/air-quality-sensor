@@ -41,13 +41,9 @@ export async function executeWithMockFallback(device, realFn, mockFn, useMockDat
         return await mockFn();
     }
 
-    try {
-        return await realFn(device);
-    } catch (error) {
-        console.warn('Operation failed, falling back to mock data:', error.message);
-        setMockMode(true);
-        return await mockFn();
-    }
+    // No automatic fallback - let errors propagate
+    // User must explicitly enable mock mode via #mock URL hash
+    return await realFn(device);
 }
 
 /**

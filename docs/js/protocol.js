@@ -31,6 +31,14 @@ import {
 let useMockData = false;
 
 /**
+ * Check if mock mode should be enabled based on URL hash
+ * Mock mode is ONLY active when URL contains #mock
+ */
+function shouldUseMockMode() {
+    return window.location.hash === '#mock';
+}
+
+/**
  * Enable/disable mock data mode for testing
  */
 export function setMockMode(enabled) {
@@ -313,6 +321,11 @@ export async function eraseLogs(device) {
 // Export utility functions that are used by UI
 export { formatGPSFix, createMapsURL };
 
-// Auto-enable mock mode for testing
-// This will be overridden when real hardware is detected
-setMockMode(true);
+// Initialize mock mode based on URL hash
+// Mock mode is ONLY active when URL contains #mock
+setMockMode(shouldUseMockMode());
+
+// Listen for hash changes to dynamically toggle mock mode
+window.addEventListener('hashchange', () => {
+    setMockMode(shouldUseMockMode());
+});

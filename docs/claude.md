@@ -139,17 +139,14 @@ throw new Error(ERRORS.WEBUSB_NOT_SUPPORTED);
 
 **Rule**: Use `executeWithMockFallback()` for mock/real data switching
 
+**Important**: Mock mode is controlled by URL hash (`#mock`), not by automatic fallback. If firmware fails without `#mock`, errors propagate to the UI (showing "N/A").
+
 ```javascript
 // ❌ BAD: Repeated mock pattern
 if (useMockData) {
     data = generateMock();
 } else {
-    try {
-        data = await realFn();
-    } catch (error) {
-        useMockData = true;
-        data = generateMock();
-    }
+    data = await realFn();  // Throws if firmware fails
 }
 
 // ✅ GOOD: Use utility
@@ -162,6 +159,8 @@ const data = await executeWithMockFallback(
     setMockMode
 );
 ```
+
+**Note**: `executeWithMockFallback()` no longer automatically switches to mock mode on error. It either returns mock data (if `useMockData` is true) or attempts the real operation (which may throw).
 
 ### 6. File Downloads
 
@@ -283,6 +282,65 @@ Defined in `constants.js`:
 - `LOG_LAYOUT` - 22-byte log record
 
 Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
+
+## Mock Mode (Testing Without Hardware)
+
+### How Mock Mode Works
+
+Mock mode allows testing the dashboard without real hardware connected. It is **strictly user-controlled** via URL hash.
+
+### Activation
+
+Mock mode is **ONLY active** when the URL contains `#mock`:
+
+```
+✅ Mock Mode ON:  index.html#mock
+❌ Mock Mode OFF: index.html
+```
+
+### Behavior
+
+| URL | Device Connected | Firmware Working | Result |
+|-----|------------------|------------------|--------|
+| `index.html` | ✅ Yes | ✅ Yes | Shows **real sensor data** |
+| `index.html` | ✅ Yes | ❌ No | Shows **N/A** (errors displayed) |
+| `index.html` | ❌ No | N/A | Connection fails (expected) |
+| `index.html#mock` | Any | Any | Shows **mock data** (85% battery, 23.5°C, etc.) |
+
+### Key Points
+
+- **No automatic fallback**: If firmware fails without `#mock`, you'll see "N/A" instead of mock data
+- **User has full control**: Toggle mock mode by adding/removing `#mock` from URL
+- **Dynamic switching**: Change hash while page is loaded to toggle mock mode instantly
+- **Console logging**: Check browser console (F12) for "Mock mode enabled/disabled" messages
+
+### Testing Workflow
+
+```bash
+# Test with mock data (no hardware needed)
+open index.html#mock
+
+# Test with real hardware
+open index.html  # Connect device → see real data
+
+# Debug firmware issues
+open index.html  # If you see N/A, firmware isn't responding
+```
+
+### Mock Data Values
+
+Defined in `constants.js` → `MOCK_DATA`:
+- Temperature: 23.5°C
+- Humidity: 45.6%
+- PM2.5: 12.5 μg/m³
+- PM10: 18.3 μg/m³
+- Battery: 85% (charging)
+- GPS: Zurich coordinates (47.123°, 8.568°)
+- Logs: 50 records with 5-minute intervals
+
+### For Tests
+
+Tests explicitly enable mock mode with `setMockMode(true)`, so they work regardless of URL hash.
 
 ## What Was Done (Refactoring)
 
@@ -425,6 +483,38 @@ npx http-server
 2. Check scale factors in constants
 3. Ensure little-endian byte order
 4. Test with mock data first
+
+### Seeing "N/A" or No Data
+
+If UI shows "N/A" for sensor values:
+
+1. **Check URL**: Are you using `index.html#mock`? If not, you need real hardware
+2. **Check device connection**: Click "Connect Device" and select your sensor
+3. **Check firmware implementation**: Does your firmware implement the WebUSB commands?
+   - GET_STATUS (0x00) - Required for live sensor data
+   - GET_LOG_COUNT (0x01) - Required for log count
+   - GET_VERSION (0x04) - Required for firmware version
+4. **Check browser console** (F12):
+   - Look for "Mock mode enabled/disabled" messages
+   - Look for error messages about control transfers
+   - Check for "Failed to read sensor data" errors
+5. **Test with mock mode**: Add `#mock` to URL to verify UI works
+6. **Check firmware response**: Use browser console to see raw USB responses
+
+### How to Tell if Mock Mode is Active
+
+**Console Method** (recommended):
+1. Open browser DevTools (F12)
+2. Go to Console tab
+3. Look for: `Mock mode enabled` or `Mock mode disabled`
+
+**URL Method**:
+- If URL shows `#mock` → Mock mode is ON
+- If URL has no hash → Mock mode is OFF
+
+**Data Method**:
+- Mock data always shows: 85% battery, 23.5°C, 45.6% humidity
+- Real data varies based on actual sensor readings
 
 ## Best Practices Summary
 
