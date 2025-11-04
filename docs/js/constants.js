@@ -110,7 +110,7 @@ export const GPS_FIX_LABELS = {
 
 // IndexedDB Configuration
 export const DB = {
-    NAME: 'ccc-sensor-logs',
+    NAME: 'octanis-sensor-logs',
     VERSION: 1,
     STORE_NAME: 'logs',
     INDEXES: {
@@ -122,10 +122,10 @@ export const DB = {
 
 // Export Filenames
 export const EXPORT_FILENAMES = {
-    CSV: 'ccc-sensor-logs.csv',
-    JSON: 'ccc-sensor-logs.json',
-    GEOJSON: 'ccc-sensor-logs.geojson',
-    STATISTICS: 'ccc-sensor-statistics.txt'
+    CSV: 'octanis-sensor-logs.csv',
+    JSON: 'octanis-sensor-logs.json',
+    GEOJSON: 'octanis-sensor-logs.geojson',
+    STATISTICS: 'octanis-sensor-statistics.txt'
 };
 
 // MIME Types

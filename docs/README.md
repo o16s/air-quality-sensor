@@ -1,6 +1,6 @@
-# CCC Sensor WebUSB Interface
+# Octanis Sensor Dashboard
 
-A browser-based interface for the CCC environmental sensor device using the WebUSB API.
+A browser-based interface for Octanis environmental sensor devices using the WebUSB API.
 
 ## Features
 
@@ -57,7 +57,7 @@ Then visit: `http://localhost:8000`
 
 ### Connecting Your Device
 
-1. Connect your CCC Sensor via USB
+1. Connect your Octanis Sensor via USB
 2. Open the webapp in Chrome or Edge
 3. Click **"Connect Device"**
 4. Select your device from the browser dialog (look for "STM32 Virtual ComPort")

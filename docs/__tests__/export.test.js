@@ -370,7 +370,7 @@ describe('Export - Statistics Export', () => {
 
     exportStatistics(logs);
 
-    expect(txtContent).toContain('CCC Sensor Data Statistics');
+    expect(txtContent).toContain('Octanis Sensor Data Statistics');
     expect(txtContent).toContain('Total Records: 3');
     expect(txtContent).toContain('Temperature');
     expect(txtContent).toContain('Humidity');
@@ -409,7 +409,7 @@ describe('Export - File Download', () => {
 
     exportToCSV(logs);
 
-    expect(mockLink.download).toBe('ccc-sensor-logs.csv');
+    expect(mockLink.download).toBe('octanis-sensor-logs.csv');
     expect(mockLink.click).toHaveBeenCalled();
   });
 
@@ -418,7 +418,7 @@ describe('Export - File Download', () => {
 
     exportToJSON(logs);
 
-    expect(mockLink.download).toBe('ccc-sensor-logs.json');
+    expect(mockLink.download).toBe('octanis-sensor-logs.json');
     expect(mockLink.click).toHaveBeenCalled();
   });
 

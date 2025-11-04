@@ -1,7 +1,7 @@
 {
-  "name": "ccc-sensor-webusb",
+  "name": "octanis-sensor-dashboard",
   "version": "1.0.0",
-  "description": "WebUSB interface for CCC environmental sensor",
+  "description": "WebUSB interface for Octanis environmental sensors",
   "type": "module",
   "scripts": {
     "test": "vitest run",

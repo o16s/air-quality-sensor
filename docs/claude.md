@@ -1,8 +1,8 @@
-# CCC Sensor WebUSB Interface - Developer Documentation
+# Octanis Sensor Dashboard - Developer Documentation
 
 ## Project Overview
 
-This is a browser-based WebUSB interface for the CCC environmental sensor (STM32F303CCTx-based hardware). It enables direct USB communication with the sensor device without drivers, allowing users to view live sensor data and download historical logs stored in flash memory.
+This is a browser-based WebUSB interface for Octanis environmental sensors (STM32F303CCTx-based hardware). It enables direct USB communication with the sensor device without drivers, allowing users to view live sensor data and download historical logs stored in flash memory.
 
 ### Technology Stack
 

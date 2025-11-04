@@ -1,6 +1,6 @@
 /**
  * Firmware Protocol Implementation
- * Handles vendor requests and data parsing for CCC Sensor
+ * Handles vendor requests and data parsing for Octanis Sensors
  */
 
 import {

@@ -236,7 +236,7 @@ export function exportStatistics(logs) {
     const endDate = new Date(stats.timeRange.end * 1000);
 
     const content = `
-CCC Sensor Data Statistics
+Octanis Sensor Data Statistics
 ===========================
 
 Time Range: ${startDate.toLocaleString()} to ${endDate.toLocaleString()}
