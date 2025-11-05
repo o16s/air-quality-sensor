@@ -88,7 +88,7 @@ function generateMockStatus() {
     setBufferValue(view, STATUS_LAYOUT.BATTERY, MOCK_DATA.BATTERY_PERCENT);
     setBufferValue(view, STATUS_LAYOUT.CHARGING, boolToNumber(MOCK_DATA.IS_CHARGING));
     setBufferValue(view, STATUS_LAYOUT.GPS_FIX, MOCK_DATA.GPS_FIX_QUALITY);
-    setBufferValue(view, STATUS_LAYOUT.RESERVED, 0);
+    setBufferValue(view, STATUS_LAYOUT.DEVICE_FLAGS, 0x01);  // Bit 0: GPS enabled
     setBufferValue(view, STATUS_LAYOUT.TIMESTAMP, getCurrentTimestamp());
 
     return new Uint8Array(buffer);
@@ -118,6 +118,7 @@ function generateMockLogItem(index) {
     setBufferValue(view, LOG_LAYOUT.LONGITUDE, MOCK_DATA.GPS_LON);
     setBufferValue(view, LOG_LAYOUT.GPS_FIX, MOCK_DATA.GPS_FIX_QUALITY);
     setBufferValue(view, LOG_LAYOUT.BATTERY, battery);
+    setBufferValue(view, LOG_LAYOUT.PADDING, 0);  // Compiler alignment padding
     setBufferValue(view, LOG_LAYOUT.TIMESTAMP, baseTime);
 
     return new Uint8Array(buffer);

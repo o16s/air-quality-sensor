@@ -267,19 +267,29 @@ Vendor Code: 0x22
 
 ### Commands
 
+**⚠️ Breaking Changes (Nov 4, 2025)**: Command codes reorganized, READ_LOG moved to 0x03
+
 | Command | Code | Response Size | Description |
 |---------|------|---------------|-------------|
 | GET_STATUS | 0x00 | 16 bytes | Current sensor readings |
 | GET_LOG_COUNT | 0x01 | 2 bytes | Number of stored logs |
-| READ_LOG | 0x02 | 22 bytes | Single log record |
-| ERASE_LOGS | 0x03 | 1 byte | Erase all logs (wValue=0xDEAD) |
-| GET_VERSION | 0x04 | 32 bytes | Firmware version string |
+| GET_URL | 0x02 | variable | WebUSB landing page URL |
+| READ_LOG | 0x03 | 24 bytes | Single log record (was 0x02, now 24 bytes) |
+| ERASE_LOGS | 0x04 | 1 byte | Erase all logs (wValue=0xDEAD) (was 0x03) |
+| GET_VERSION | 0x05 | 32 bytes | Firmware version string (was 0x04) |
+| GET_TEST_RESULTS | 0x06 | 64 bytes | Unity test framework results |
+| GET_PRINT_BUFFER | 0x07 | 64 bytes | Debug print buffer |
 
 ### Buffer Layouts
 
 Defined in `constants.js`:
 - `STATUS_LAYOUT` - 16-byte status response
-- `LOG_LAYOUT` - 22-byte log record
+  - **Humidity changed**: Now centi-percent (÷100) instead of milli-percent (÷1000)
+  - **Device Flags added** at offset 11 (was RESERVED)
+- `LOG_LAYOUT` - 24-byte log record (was 22 bytes)
+  - **Humidity changed**: Now centi-percent (÷100)
+  - **Includes 2-byte padding** at offset 18-19 (compiler alignment)
+  - **Timestamp moved** from offset 18 to offset 20
 
 Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
 

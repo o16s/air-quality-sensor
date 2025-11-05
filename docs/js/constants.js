@@ -12,46 +12,57 @@ export const USB = {
 };
 
 // WebUSB Command Codes
+// Updated Nov 4, 2025 - Breaking changes: command codes reorganized
 export const COMMANDS = {
     GET_STATUS: 0x00,       // Get current sensor readings
     GET_LOG_COUNT: 0x01,    // Get number of log records
-    READ_LOG: 0x02,         // Read log record by index
-    ERASE_LOGS: 0x03,       // Erase all logs (requires wValue=0xDEAD)
-    GET_VERSION: 0x04       // Get firmware version string
+    GET_URL: 0x02,          // Get WebUSB landing page URL descriptor
+    READ_LOG: 0x03,         // Read log record by index (was 0x02)
+    ERASE_LOGS: 0x04,       // Erase all logs (requires wValue=0xDEAD) (was 0x03)
+    GET_VERSION: 0x05,      // Get firmware version string (was 0x04)
+    GET_TEST_RESULTS: 0x06, // Get Unity test framework results
+    GET_PRINT_BUFFER: 0x07  // Get debug print buffer
 };
 
 // Buffer Sizes (in bytes)
+// Updated Nov 4, 2025 - LOG_RECORD increased from 22 to 24 bytes (includes padding)
 export const BUFFER_SIZES = {
     STATUS: 16,             // Device status response
     LOG_COUNT: 2,           // Log count response
-    LOG_RECORD: 22,         // Single log record
-    VERSION: 32             // Firmware version string
+    URL: 64,                // WebUSB URL descriptor (variable, max 64)
+    LOG_RECORD: 24,         // Single log record (includes 2-byte padding)
+    VERSION: 32,            // Firmware version string
+    TEST_RESULTS: 64,       // Unity test framework results
+    PRINT_BUFFER: 64        // Debug print buffer
 };
 
 // Status Buffer Layout (16 bytes)
+// Updated Nov 4, 2025 - Humidity changed from milli-percent (÷1000) to centi-percent (÷100)
 export const STATUS_LAYOUT = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
-    HUMIDITY: { offset: 2, type: 'Uint16', scale: 1000 },       // % × 1000
+    HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
     PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     BATTERY: { offset: 8, type: 'Uint8', scale: 1 },            // 0-100%
     CHARGING: { offset: 9, type: 'Uint8', scale: 1 },           // 0 or 1
     GPS_FIX: { offset: 10, type: 'Uint8', scale: 1 },           // 0-2
-    RESERVED: { offset: 11, type: 'Uint8', scale: 1 },          // Reserved
+    DEVICE_FLAGS: { offset: 11, type: 'Uint8', scale: 1 },      // Bit 0: GPS enabled
     TIMESTAMP: { offset: 12, type: 'Uint32', scale: 1 }         // Seconds
 };
 
-// Log Record Buffer Layout (22 bytes)
+// Log Record Buffer Layout (24 bytes)
+// Updated Nov 4, 2025 - Added 2-byte padding, timestamp moved to offset 20
 export const LOG_LAYOUT = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
-    HUMIDITY: { offset: 2, type: 'Uint16', scale: 1000 },       // % × 1000
+    HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
     PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     LATITUDE: { offset: 8, type: 'Int32', scale: 1e7 },         // degrees × 10⁷
     LONGITUDE: { offset: 12, type: 'Int32', scale: 1e7 },       // degrees × 10⁷
     GPS_FIX: { offset: 16, type: 'Uint8', scale: 1 },           // 0-2
     BATTERY: { offset: 17, type: 'Uint8', scale: 1 },           // 0-100%
-    TIMESTAMP: { offset: 18, type: 'Uint32', scale: 1 }         // Unix epoch
+    PADDING: { offset: 18, type: 'Uint16', scale: 1 },          // Compiler alignment padding
+    TIMESTAMP: { offset: 20, type: 'Uint32', scale: 1 }         // Unix epoch
 };
 
 // Mock Data Values (for testing without hardware)

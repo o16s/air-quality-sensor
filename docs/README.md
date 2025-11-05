@@ -200,12 +200,18 @@ This webapp expects the firmware to implement WebUSB vendor requests:
 
 ### Required Commands
 
+**⚠️ Breaking Changes (Nov 4, 2025)**: Command codes reorganized
+
 | Command | Code | Description |
 |---------|------|-------------|
 | GET_STATUS | 0x00 | Get current sensor readings (16 bytes) |
 | GET_LOG_COUNT | 0x01 | Get number of stored logs (2 bytes) |
-| READ_LOG | 0x02 | Read log record by index (20 bytes) |
-| GET_VERSION | 0x04 | Get firmware version string (32 bytes) |
+| GET_URL | 0x02 | Get WebUSB landing page URL (variable) |
+| READ_LOG | 0x03 | Read log record by index (24 bytes) - **was 0x02** |
+| ERASE_LOGS | 0x04 | Erase all logs (1 byte) - **was 0x03** |
+| GET_VERSION | 0x05 | Get firmware version string (32 bytes) - **was 0x04** |
+| GET_TEST_RESULTS | 0x06 | Get Unity test results (64 bytes) |
+| GET_PRINT_BUFFER | 0x07 | Get debug print buffer (64 bytes) |
 
 ### Device Filter
 
@@ -218,25 +224,31 @@ See the full specification document for detailed protocol information.
 
 ### Live Status (16 bytes)
 
+**Breaking Change**: Humidity now uses centi-percent (÷100) instead of milli-percent (÷1000)
+
 - Temperature: int16_t (°C × 1000)
-- Humidity: uint16_t (% × 1000)
+- **Humidity: uint16_t (% × 100)** - changed from ×1000
 - PM2.5: uint16_t (μg/m³ × 10)
 - PM10: uint16_t (μg/m³ × 10)
 - Battery: uint8_t (0-100%)
 - Charging: uint8_t (0 or 1)
 - GPS Fix: uint8_t (0=no fix, 1=GPS, 2=DGPS)
+- **Device Flags: uint8_t** - Bit 0: GPS enabled (0=disabled, 1=enabled)
 - Timestamp: uint32_t (seconds)
 
-### Log Record (20 bytes)
+### Log Record (24 bytes)
+
+**Breaking Changes**: Size increased to 24 bytes (includes 2-byte padding), humidity scale changed
 
 - Temperature: int16_t (°C × 1000)
-- Humidity: uint16_t (% × 1000)
+- **Humidity: uint16_t (% × 100)** - changed from ×1000
 - PM2.5: uint16_t (μg/m³ × 10)
 - PM10: uint16_t (μg/m³ × 10)
 - Latitude: int32_t (degrees × 10⁷)
 - Longitude: int32_t (degrees × 10⁷)
 - GPS Fix: uint8_t
 - Battery: uint8_t
+- **Padding: uint16_t (2 bytes)** - Compiler alignment
 - Timestamp: uint32_t (Unix epoch)
 
 ## Troubleshooting
