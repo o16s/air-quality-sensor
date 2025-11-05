@@ -269,16 +269,40 @@ Vendor Code: 0x22
 
 **⚠️ Breaking Changes (Nov 4, 2025)**: Command codes reorganized, READ_LOG moved to 0x03
 
-| Command | Code | Response Size | Description |
-|---------|------|---------------|-------------|
-| GET_STATUS | 0x00 | 16 bytes | Current sensor readings |
-| GET_LOG_COUNT | 0x01 | 2 bytes | Number of stored logs |
-| GET_URL | 0x02 | variable | WebUSB landing page URL |
-| READ_LOG | 0x03 | 24 bytes | Single log record (was 0x02, now 24 bytes) |
-| ERASE_LOGS | 0x04 | 1 byte | Erase all logs (wValue=0xDEAD) (was 0x03) |
-| GET_VERSION | 0x05 | 32 bytes | Firmware version string (was 0x04) |
-| GET_TEST_RESULTS | 0x06 | 64 bytes | Unity test framework results |
-| GET_PRINT_BUFFER | 0x07 | 64 bytes | Debug print buffer |
+| Command | Code | Direction | Size | Description |
+|---------|------|-----------|------|-------------|
+| GET_STATUS | 0x00 | IN | 16 bytes | Current sensor readings |
+| GET_LOG_COUNT | 0x01 | IN | 2 bytes | Number of stored logs |
+| GET_URL | 0x02 | IN | variable | WebUSB landing page URL |
+| READ_LOG | 0x03 | IN | 24 bytes | Single log record (was 0x02, now 24 bytes) |
+| ERASE_LOGS | 0x04 | IN | 1 byte | Erase all logs (wValue=0xDEAD) (was 0x03) |
+| GET_VERSION | 0x05 | IN | 32 bytes | Firmware version string (was 0x04) |
+| GET_TEST_RESULTS | 0x06 | IN | 64 bytes | Unity test framework results |
+| GET_PRINT_BUFFER | 0x07 | IN | 64 bytes | Debug print buffer |
+| **SET_TIME** | **0x08** | **OUT** | **4 bytes** | **Set device RTC (Host-to-Device)** |
+
+### SET_TIME Command (0x08)
+
+**Special**: This is a **Host-to-Device OUT transfer** (all others are IN transfers)
+
+**Sends 4 bytes**: uint32_t Unix epoch timestamp (little-endian)
+
+**Control Transfer Parameters**:
+- `bmRequestType`: `0x40` (Host-to-Device, Vendor, Device) - **different from IN transfers!**
+- `bRequest`: `0x22` (WebUSB vendor code)
+- `wIndex`: `0x08` (SET_TIME command)
+- `wValue`: `0` (unused)
+- `wLength`: `4` (sending 4 bytes)
+
+**Usage**: Automatically called when device connects to sync device time with system time.
+
+**Example**:
+```javascript
+const now = Math.floor(Date.now() / 1000);  // Unix timestamp
+await setDeviceTime(device, now);
+```
+
+**Verification**: Use GET_STATUS to read back the timestamp field and verify it's correct.
 
 ### Buffer Layouts
 

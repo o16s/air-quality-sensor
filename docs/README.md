@@ -7,6 +7,7 @@ A browser-based interface for Octanis environmental sensor devices using the Web
 - **Real-time Monitoring**: View live sensor data (temperature, humidity, PM2.5, PM10)
 - **GPS Tracking**: Display GPS coordinates and fix quality
 - **Battery Status**: Monitor battery level and charging state
+- **Automatic Time Sync**: Device RTC automatically synchronized on connect
 - **Data Logging**: Download and store historical sensor logs
 - **Data Export**: Export logs to CSV or JSON formats
 - **No Drivers Required**: Direct USB communication via WebUSB API
@@ -69,7 +70,10 @@ Once connected, the dashboard will automatically:
 - Display current sensor readings
 - Update every 10 seconds
 - Show battery status and GPS information
-- Display connection status
+- **Synchronize device time** with your system time
+- Display connection status and device time
+
+**Device Time Widget**: Shows device time vs system time with drift indicator. Click the refresh icon to manually re-sync time if needed.
 
 ### Downloading Logs
 
@@ -202,16 +206,17 @@ This webapp expects the firmware to implement WebUSB vendor requests:
 
 **⚠️ Breaking Changes (Nov 4, 2025)**: Command codes reorganized
 
-| Command | Code | Description |
-|---------|------|-------------|
-| GET_STATUS | 0x00 | Get current sensor readings (16 bytes) |
-| GET_LOG_COUNT | 0x01 | Get number of stored logs (2 bytes) |
-| GET_URL | 0x02 | Get WebUSB landing page URL (variable) |
-| READ_LOG | 0x03 | Read log record by index (24 bytes) - **was 0x02** |
-| ERASE_LOGS | 0x04 | Erase all logs (1 byte) - **was 0x03** |
-| GET_VERSION | 0x05 | Get firmware version string (32 bytes) - **was 0x04** |
-| GET_TEST_RESULTS | 0x06 | Get Unity test results (64 bytes) |
-| GET_PRINT_BUFFER | 0x07 | Get debug print buffer (64 bytes) |
+| Command | Code | Direction | Description |
+|---------|------|-----------|-------------|
+| GET_STATUS | 0x00 | IN | Get current sensor readings (16 bytes) |
+| GET_LOG_COUNT | 0x01 | IN | Get number of stored logs (2 bytes) |
+| GET_URL | 0x02 | IN | Get WebUSB landing page URL (variable) |
+| READ_LOG | 0x03 | IN | Read log record by index (24 bytes) - **was 0x02** |
+| ERASE_LOGS | 0x04 | IN | Erase all logs (1 byte) - **was 0x03** |
+| GET_VERSION | 0x05 | IN | Get firmware version string (32 bytes) - **was 0x04** |
+| GET_TEST_RESULTS | 0x06 | IN | Get Unity test results (64 bytes) |
+| GET_PRINT_BUFFER | 0x07 | IN | Get debug print buffer (64 bytes) |
+| **SET_TIME** | **0x08** | **OUT** | **Set device RTC (4 bytes, Host-to-Device)** |
 
 ### Device Filter
 

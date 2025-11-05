@@ -20,6 +20,7 @@ import {
     getLogCount,
     downloadAllLogs,
     getFirmwareVersion,
+    setDeviceTime,
     formatGPSFix,
     createMapsURL,
     setMockMode
@@ -34,6 +35,8 @@ import {
 } from './storage.js';
 
 import { exportToCSV, exportToJSON } from './export.js';
+
+import { TIME_SYNC } from './constants.js';
 
 // UI state
 let autoRefreshInterval = null;
@@ -57,6 +60,9 @@ function setupEventHandlers() {
 
     // Refresh button
     document.getElementById('refresh-btn').addEventListener('click', handleRefresh);
+
+    // Refresh time button
+    document.getElementById('refresh-time-btn').addEventListener('click', handleRefreshTime);
 
     // Download logs button
     document.getElementById('download-logs-btn').addEventListener('click', handleDownloadLogs);
@@ -149,6 +155,15 @@ async function handleDeviceConnected(device) {
         document.getElementById('device-firmware').textContent = 'N/A';
     }
 
+    // Set device time to current system time
+    try {
+        await syncDeviceTime(device, false);
+        console.log('Device time synchronized to system time');
+    } catch (error) {
+        console.log('Failed to set device time on connect:', error.message);
+        // Non-critical, continue anyway
+    }
+
     // Get device log count
     updateDeviceLogCount();
 
@@ -233,6 +248,9 @@ async function updateLiveData() {
         // Update GPS
         updateGPS(status.gpsFix, status.lat, status.lon);
 
+        // Update device time
+        updateDeviceTime(status.timestamp);
+
         // Update timestamp
         document.getElementById('last-update').textContent = 'Just now';
 
@@ -250,6 +268,9 @@ async function updateLiveData() {
         document.getElementById('gps-fix').textContent = 'N/A';
         document.getElementById('gps-lat').textContent = 'N/A';
         document.getElementById('gps-lon').textContent = 'N/A';
+        document.getElementById('device-time').textContent = '--:--:--';
+        document.getElementById('system-time').textContent = '--:--:--';
+        document.getElementById('time-drift').textContent = '-';
         document.getElementById('last-update').textContent = 'Never';
     }
 }
@@ -320,6 +341,50 @@ function updateGPS(fix, lat, lon) {
 }
 
 /**
+ * Update device time display
+ * Displays device timestamp vs system time and calculates/shows time drift
+ * @param {number} deviceTimestamp - Unix epoch timestamp from device
+ */
+function updateDeviceTime(deviceTimestamp) {
+    // Device time from firmware
+    const deviceTime = new Date(deviceTimestamp * 1000);
+    document.getElementById('device-time').textContent = deviceTime.toLocaleTimeString();
+
+    // System time
+    const systemTime = new Date();
+    document.getElementById('system-time').textContent = systemTime.toLocaleTimeString();
+
+    // Calculate drift
+    const driftSeconds = Math.abs(deviceTime - systemTime) / 1000;
+    const driftEl = document.getElementById('time-drift');
+
+    if (driftSeconds < TIME_SYNC.DRIFT_THRESHOLD_SECONDS) {
+        driftEl.textContent = 'Synced';
+        driftEl.classList.remove('text-red-600');
+        driftEl.classList.add('text-green-600');
+    } else {
+        driftEl.textContent = `±${driftSeconds.toFixed(0)}s`;
+        driftEl.classList.remove('text-green-600');
+        driftEl.classList.add('text-red-600');
+    }
+}
+
+/**
+ * Synchronize device time with system time
+ * @param {USBDevice} device - The USB device
+ * @param {boolean} updateAfter - Whether to update live data after sync
+ * @returns {Promise<void>}
+ */
+async function syncDeviceTime(device, updateAfter = false) {
+    const now = Math.floor(Date.now() / 1000);
+    await setDeviceTime(device, now);
+
+    if (updateAfter) {
+        await updateLiveData();
+    }
+}
+
+/**
  * Start auto-refresh timer
  */
 function startAutoRefresh() {
@@ -351,6 +416,29 @@ async function handleRefresh() {
         btn.disabled = false;
         btn.textContent = 'Refresh';
     }, 500);
+}
+
+/**
+ * Handle refresh time button
+ */
+async function handleRefreshTime() {
+    if (!isDeviceConnected()) {
+        return;
+    }
+
+    const btn = document.getElementById('refresh-time-btn');
+    btn.disabled = true;
+
+    try {
+        const device = getDevice();
+        await syncDeviceTime(device, true);  // true: update display immediately
+        console.log('Device time re-synchronized');
+    } catch (error) {
+        console.error('Failed to refresh device time:', error);
+        showError('Failed to sync time: ' + error.message);
+    } finally {
+        btn.disabled = false;
+    }
 }
 
 /**

@@ -319,6 +319,48 @@ export async function eraseLogs(device) {
     }
 }
 
+/**
+ * Set device RTC to specified Unix timestamp
+ * Host-to-Device OUT transfer (different from all other commands)
+ * @param {USBDevice} device - The USB device
+ * @param {number} unixTimestamp - Unix epoch seconds (e.g., Math.floor(Date.now() / 1000))
+ * @returns {Promise<void>}
+ */
+export async function setDeviceTime(device, unixTimestamp) {
+    validateDevice(device);
+
+    // Validate timestamp parameter
+    if (!Number.isInteger(unixTimestamp) || unixTimestamp < 0) {
+        throw new Error('unixTimestamp must be a non-negative integer');
+    }
+
+    if (useMockData) {
+        console.log(`Mock mode: Would set device time to ${unixTimestamp}`);
+        return;
+    }
+
+    try {
+        // Create 4-byte buffer with Unix timestamp (little-endian)
+        const buffer = new Uint8Array(4);
+        const view = new DataView(buffer.buffer);
+        view.setUint32(0, unixTimestamp, true);
+
+        // Send Host-to-Device OUT transfer
+        await device.controlTransferOut({
+            requestType: 'vendor',
+            recipient: 'device',
+            request: USB.VENDOR_CODE,
+            value: 0,
+            index: COMMANDS.SET_TIME
+        }, buffer);
+
+        console.log(`Device time set to ${new Date(unixTimestamp * 1000).toLocaleString()}`);
+
+    } catch (error) {
+        throw new Error(`Failed to set device time: ${error}`);
+    }
+}
+
 // Export utility functions that are used by UI
 export { formatGPSFix, createMapsURL };
 

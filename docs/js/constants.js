@@ -21,7 +21,8 @@ export const COMMANDS = {
     ERASE_LOGS: 0x04,       // Erase all logs (requires wValue=0xDEAD) (was 0x03)
     GET_VERSION: 0x05,      // Get firmware version string (was 0x04)
     GET_TEST_RESULTS: 0x06, // Get Unity test framework results
-    GET_PRINT_BUFFER: 0x07  // Get debug print buffer
+    GET_PRINT_BUFFER: 0x07, // Get debug print buffer
+    SET_TIME: 0x08          // Set device RTC (Host-to-Device OUT transfer)
 };
 
 // Buffer Sizes (in bytes)
@@ -103,6 +104,11 @@ export const DELAYS = {
     LOG_COUNT_READ: 50,         // Mock delay for log count
     LOG_RECORD_READ: 10,        // Mock delay for single log read
     AUTO_REFRESH_INTERVAL: 10000 // UI auto-refresh interval
+};
+
+// Time Sync Configuration
+export const TIME_SYNC = {
+    DRIFT_THRESHOLD_SECONDS: 5  // Threshold for displaying "Synced" status
 };
 
 // GPS Fix Quality Labels
