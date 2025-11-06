@@ -9,6 +9,8 @@ import {
     BUFFER_SIZES,
     STATUS_LAYOUT,
     LOG_LAYOUT,
+    LOG_LAYOUT_TSL,
+    LOG_TYPE,
     MOCK_DATA,
     DELAYS,
     ERRORS
@@ -99,7 +101,7 @@ function generateMockStatus() {
 }
 
 /**
- * Generate mock log item for testing
+ * Generate mock log item for testing (GPS format)
  */
 function generateMockLogItem(index) {
     const buffer = new ArrayBuffer(BUFFER_SIZES.LOG_RECORD);
@@ -124,6 +126,41 @@ function generateMockLogItem(index) {
     setBufferValue(view, LOG_LAYOUT.BATTERY, battery);
     setBufferValue(view, LOG_LAYOUT.PADDING, 0);  // Compiler alignment padding
     setBufferValue(view, LOG_LAYOUT.TIMESTAMP, baseTime);
+
+    return new Uint8Array(buffer);
+}
+
+/**
+ * Generate mock log item for testing (TSL2591 format)
+ */
+function generateMockLogItemTSL(index) {
+    const buffer = new ArrayBuffer(BUFFER_SIZES.LOG_RECORD);
+    const view = new DataView(buffer);
+
+    // Generate realistic-looking data with some variation
+    const baseTime = getCurrentTimestamp() - (MOCK_DATA.LOG_COUNT - index) * MOCK_DATA.LOG_INTERVAL_SECONDS;
+
+    const temperature = MOCK_DATA.TEMP_MIN_C + Math.random() * (MOCK_DATA.TEMP_MAX_C - MOCK_DATA.TEMP_MIN_C);
+    const humidity = MOCK_DATA.HUMIDITY_MIN_PERCENT + Math.random() * (MOCK_DATA.HUMIDITY_MAX_PERCENT - MOCK_DATA.HUMIDITY_MIN_PERCENT);
+    const pm25 = MOCK_DATA.PM25_MIN_UG_M3 + Math.random() * (MOCK_DATA.PM25_MAX_UG_M3 - MOCK_DATA.PM25_MIN_UG_M3);
+    const pm10 = MOCK_DATA.PM10_MIN_UG_M3 + Math.random() * (MOCK_DATA.PM10_MAX_UG_M3 - MOCK_DATA.PM10_MIN_UG_M3);
+    const battery = MOCK_DATA.BATTERY_MIN_PERCENT + Math.random() * (MOCK_DATA.BATTERY_MAX_PERCENT - MOCK_DATA.BATTERY_MIN_PERCENT);
+    const lux = MOCK_DATA.TSL_LUX_MIN + Math.random() * (MOCK_DATA.TSL_LUX_MAX - MOCK_DATA.TSL_LUX_MIN);
+    const ch0 = Math.floor(MOCK_DATA.TSL_CH0_MIN + Math.random() * (MOCK_DATA.TSL_CH0_MAX - MOCK_DATA.TSL_CH0_MIN));
+    const ch1 = Math.floor(MOCK_DATA.TSL_CH1_MIN + Math.random() * (MOCK_DATA.TSL_CH1_MAX - MOCK_DATA.TSL_CH1_MIN));
+
+    setBufferValue(view, LOG_LAYOUT_TSL.TEMPERATURE, temperature);
+    setBufferValue(view, LOG_LAYOUT_TSL.HUMIDITY, humidity);
+    setBufferValue(view, LOG_LAYOUT_TSL.PM25, pm25);
+    setBufferValue(view, LOG_LAYOUT_TSL.PM10, pm10);
+    setBufferValue(view, LOG_LAYOUT_TSL.TSL_CH0, ch0);
+    setBufferValue(view, LOG_LAYOUT_TSL.TSL_CH1, ch1);
+    setBufferValue(view, LOG_LAYOUT_TSL.LUX, lux);
+    setBufferValue(view, LOG_LAYOUT_TSL.OVERFLOW, MOCK_DATA.TSL_OVERFLOW);
+    setBufferValue(view, LOG_LAYOUT_TSL.BATTERY, battery);
+    setBufferValue(view, LOG_LAYOUT_TSL.RESERVED1, 0);
+    setBufferValue(view, LOG_LAYOUT_TSL.RESERVED2, 0);
+    setBufferValue(view, LOG_LAYOUT_TSL.TIMESTAMP, baseTime);
 
     return new Uint8Array(buffer);
 }
@@ -200,9 +237,17 @@ export async function getLogCount(device) {
 
 /**
  * Read a single log record by index
- * Returns: { temperature, humidity, pm25, pm10, lat, lon, fix, battery, timestamp }
+ * @param {USBDevice} device - The USB device
+ * @param {number} index - Log record index (0-based)
+ * @param {number} logType - Optional log type (LOG_TYPE.GPS or LOG_TYPE.TSL2591)
+ * Returns: { temperature, humidity, pm25, pm10, ... } - fields depend on log type
  */
-export async function readLogRecord(device, index) {
+export async function readLogRecord(device, index, logType = null) {
+    // Auto-detect log type if not provided
+    if (logType === null) {
+        logType = await getLogType(device);
+    }
+
     const data = await executeWithMockFallback(
         device,
         async (d) => {
@@ -210,17 +255,21 @@ export async function readLogRecord(device, index) {
         },
         async () => {
             await delay(DELAYS.LOG_RECORD_READ);
-            return generateMockLogItem(index);
+            return logType === LOG_TYPE.TSL2591
+                ? generateMockLogItemTSL(index)
+                : generateMockLogItem(index);
         },
         useMockData,
         setMockMode
     );
 
-    return parseLogItem(data);
+    return logType === LOG_TYPE.TSL2591
+        ? parseLogItemTSL(data)
+        : parseLogItem(data);
 }
 
 /**
- * Parse log item data buffer
+ * Parse log item data buffer (GPS format)
  */
 function parseLogItem(data) {
     const view = new DataView(data.buffer);
@@ -239,16 +288,39 @@ function parseLogItem(data) {
 }
 
 /**
+ * Parse log item data buffer (TSL2591 format)
+ */
+function parseLogItemTSL(data) {
+    const view = new DataView(data.buffer);
+
+    return {
+        temperature: getBufferValue(view, LOG_LAYOUT_TSL.TEMPERATURE),
+        humidity: getBufferValue(view, LOG_LAYOUT_TSL.HUMIDITY),
+        pm25: getBufferValue(view, LOG_LAYOUT_TSL.PM25),
+        pm10: getBufferValue(view, LOG_LAYOUT_TSL.PM10),
+        tslCH0: getBufferValue(view, LOG_LAYOUT_TSL.TSL_CH0),
+        tslCH1: getBufferValue(view, LOG_LAYOUT_TSL.TSL_CH1),
+        lux: getBufferValue(view, LOG_LAYOUT_TSL.LUX),
+        overflow: getBufferValue(view, LOG_LAYOUT_TSL.OVERFLOW),
+        battery: getBufferValue(view, LOG_LAYOUT_TSL.BATTERY),
+        timestamp: getBufferValue(view, LOG_LAYOUT_TSL.TIMESTAMP)
+    };
+}
+
+/**
  * Download all logs from device
  * Calls progressCallback(current, total) for each record
- * Returns: array of log records
+ * Returns: { logType, logs } - logType indicates GPS or TSL2591 format
  */
 export async function downloadAllLogs(device, progressCallback) {
+    // Detect log type once for all records
+    const logType = await getLogType(device);
+
     // Get total count
     const count = await getLogCount(device);
 
     if (count === 0) {
-        return [];
+        return { logType, logs: [] };
     }
 
     const logs = [];
@@ -256,7 +328,7 @@ export async function downloadAllLogs(device, progressCallback) {
     // Download each record
     for (let i = 0; i < count; i++) {
         try {
-            const logItem = await readLogRecord(device, i);
+            const logItem = await readLogRecord(device, i, logType);
             logs.push(logItem);
 
             // Report progress
@@ -270,7 +342,7 @@ export async function downloadAllLogs(device, progressCallback) {
         }
     }
 
-    return logs;
+    return { logType, logs };
 }
 
 /**
@@ -298,6 +370,30 @@ export async function getFirmwareVersion(device) {
     const decoder = new TextDecoder('utf-8');
     const version = decoder.decode(data).replace(/\0/g, '').trim();
     return version || "Unknown";
+}
+
+/**
+ * Get log format type (GPS or TSL2591)
+ * Returns: LOG_TYPE.GPS (0) or LOG_TYPE.TSL2591 (1)
+ */
+export async function getLogType(device) {
+    const data = await executeWithMockFallback(
+        device,
+        async (d) => {
+            return await sendControlTransfer(d, COMMANDS.GET_LOG_TYPE, 0, BUFFER_SIZES.LOG_TYPE_RESPONSE);
+        },
+        async () => {
+            await delay(DELAYS.STATUS_READ);
+            const buffer = new Uint8Array(BUFFER_SIZES.LOG_TYPE_RESPONSE);
+            // Mock mode: Return GPS format by default (can be overridden via URL hash #tsl)
+            buffer[0] = window.location.hash === '#tsl' ? LOG_TYPE.TSL2591 : LOG_TYPE.GPS;
+            return buffer;
+        },
+        useMockData,
+        setMockMode
+    );
+
+    return data[0];
 }
 
 /**

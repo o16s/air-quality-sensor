@@ -80,14 +80,16 @@ describe('Protocol - Mock Mode', () => {
     const mockDevice = { opened: true };
     const progressUpdates = [];
 
-    const logs = await downloadAllLogs(mockDevice, (current, total) => {
+    const result = await downloadAllLogs(mockDevice, (current, total) => {
       progressUpdates.push({ current, total });
     });
 
-    expect(logs).toBeInstanceOf(Array);
-    expect(logs.length).toBeGreaterThan(0);
+    expect(result).toHaveProperty('logType');
+    expect(result).toHaveProperty('logs');
+    expect(result.logs).toBeInstanceOf(Array);
+    expect(result.logs.length).toBeGreaterThan(0);
     expect(progressUpdates.length).toBeGreaterThan(0);
-    expect(progressUpdates[progressUpdates.length - 1].current).toBe(logs.length);
+    expect(progressUpdates[progressUpdates.length - 1].current).toBe(result.logs.length);
   });
 
   it('should get firmware version in mock mode', async () => {
@@ -200,10 +202,12 @@ describe('Protocol - Error Handling', () => {
     const originalMockLogCount = 50;
     // We can't easily mock the internal mockLogCount, but we can test the behavior
     // by checking that downloadAllLogs handles an empty array correctly
-    const logs = await downloadAllLogs(mockDevice, null);
+    const result = await downloadAllLogs(mockDevice, null);
 
-    // With mock data, we always get logs, so just verify it returns an array
-    expect(logs).toBeInstanceOf(Array);
+    // With mock data, we always get logs, so just verify it returns an object with logs array
+    expect(result).toHaveProperty('logType');
+    expect(result).toHaveProperty('logs');
+    expect(result.logs).toBeInstanceOf(Array);
   });
 });
 

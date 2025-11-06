@@ -8,28 +8,49 @@ import { downloadFile, formatGPSFix } from './utils.js';
 
 /**
  * Export logs to CSV format
+ * Automatically detects GPS vs TSL2591 format
  */
 export function exportToCSV(logs) {
     if (!logs || logs.length === 0) {
         throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
 
-    // CSV headers
-    const headers = [
-        'Timestamp',
-        'Date',
-        'Time',
-        'Temperature (°C)',
-        'Humidity (%)',
-        'PM2.5 (μg/m³)',
-        'PM10 (μg/m³)',
-        'Latitude',
-        'Longitude',
-        'GPS Fix',
-        'Battery (%)',
-        'Device Serial',
-        'Downloaded At'
-    ];
+    // Detect format from first log
+    const isTSL = logs[0].hasOwnProperty('lux');
+
+    // CSV headers based on format
+    const headers = isTSL
+        ? [
+            'Timestamp',
+            'Date',
+            'Time',
+            'Temperature (°C)',
+            'Humidity (%)',
+            'PM2.5 (μg/m³)',
+            'PM10 (μg/m³)',
+            'Lux',
+            'TSL CH0',
+            'TSL CH1',
+            'Overflow',
+            'Battery (%)',
+            'Device Serial',
+            'Downloaded At'
+        ]
+        : [
+            'Timestamp',
+            'Date',
+            'Time',
+            'Temperature (°C)',
+            'Humidity (%)',
+            'PM2.5 (μg/m³)',
+            'PM10 (μg/m³)',
+            'Latitude',
+            'Longitude',
+            'GPS Fix',
+            'Battery (%)',
+            'Device Serial',
+            'Downloaded At'
+        ];
 
     // Build CSV content
     const rows = [headers.join(',')];
@@ -38,21 +59,38 @@ export function exportToCSV(logs) {
         const date = new Date(log.timestamp * 1000);
         const downloadDate = log.downloadedAt ? new Date(log.downloadedAt * 1000) : null;
 
-        const row = [
-            log.timestamp,
-            date.toLocaleDateString(),
-            date.toLocaleTimeString(),
-            log.temperature?.toFixed(3) || '',
-            log.humidity?.toFixed(3) || '',
-            log.pm25?.toFixed(1) || '',
-            log.pm10?.toFixed(1) || '',
-            log.lat?.toFixed(7) || '',
-            log.lon?.toFixed(7) || '',
-            formatGPSFix(log.fix),
-            log.battery || '',
-            log.deviceSerial || '',
-            downloadDate ? downloadDate.toISOString() : ''
-        ];
+        const row = isTSL
+            ? [
+                log.timestamp,
+                date.toLocaleDateString(),
+                date.toLocaleTimeString(),
+                log.temperature?.toFixed(3) || '',
+                log.humidity?.toFixed(3) || '',
+                log.pm25?.toFixed(1) || '',
+                log.pm10?.toFixed(1) || '',
+                log.lux?.toFixed(1) || '',
+                log.tslCH0 || '',
+                log.tslCH1 || '',
+                log.overflow || '0',
+                log.battery || '',
+                log.deviceSerial || '',
+                downloadDate ? downloadDate.toISOString() : ''
+            ]
+            : [
+                log.timestamp,
+                date.toLocaleDateString(),
+                date.toLocaleTimeString(),
+                log.temperature?.toFixed(3) || '',
+                log.humidity?.toFixed(3) || '',
+                log.pm25?.toFixed(1) || '',
+                log.pm10?.toFixed(1) || '',
+                log.lat?.toFixed(7) || '',
+                log.lon?.toFixed(7) || '',
+                formatGPSFix(log.fix),
+                log.battery || '',
+                log.deviceSerial || '',
+                downloadDate ? downloadDate.toISOString() : ''
+            ];
 
         // Escape fields that contain commas or quotes
         const escapedRow = row.map(field => {

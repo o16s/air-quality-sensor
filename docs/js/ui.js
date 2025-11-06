@@ -22,10 +22,13 @@ import {
     getFirmwareVersion,
     setDeviceTime,
     triggerAcquisition,
+    getLogType,
     formatGPSFix,
     createMapsURL,
     setMockMode
 } from './protocol.js';
+
+import { LOG_TYPE } from './constants.js';
 
 import {
     getAllLogs,
@@ -42,6 +45,7 @@ import { TIME_SYNC } from './constants.js';
 // UI state
 let autoRefreshInterval = null;
 let isDownloading = false;
+let currentLogType = null;  // LOG_TYPE.GPS or LOG_TYPE.TSL2591
 
 /**
  * Initialize UI and event handlers
@@ -154,6 +158,21 @@ async function handleDeviceConnected(device) {
         document.getElementById('device-firmware').textContent = version;
     } catch (error) {
         document.getElementById('device-firmware').textContent = 'N/A';
+    }
+
+    // Detect log format type
+    try {
+        currentLogType = await getLogType(device);
+        const formatText = currentLogType === LOG_TYPE.TSL2591 ? 'TSL2591 (Light Sensor)' : 'GPS';
+        console.log(`Log format: ${formatText}`);
+        // Display log format if we have a UI element for it
+        const logFormatEl = document.getElementById('log-format');
+        if (logFormatEl) {
+            logFormatEl.textContent = formatText;
+        }
+    } catch (error) {
+        console.log('Failed to detect log format:', error.message);
+        currentLogType = LOG_TYPE.GPS;  // Default to GPS format
     }
 
     // Set device time to current system time
@@ -530,17 +549,25 @@ async function handleDownloadLogs() {
         const device = getDevice();
         const info = getDeviceInfo();
 
-        const logs = await downloadAllLogs(device, (current, total) => {
+        const result = await downloadAllLogs(device, (current, total) => {
             const percent = (current / total) * 100;
             progressFill.style.width = `${percent}%`;
             progressText.textContent = `Downloading ${current} of ${total} records...`;
             document.getElementById('download-progress').textContent = `${current}/${total}`;
         });
 
-        // Store logs in IndexedDB
+        const { logType, logs } = result;
+
+        // Update current log type
+        currentLogType = logType;
+
+        // Store logs in IndexedDB with log type metadata
         if (logs.length > 0) {
-            await storeLogs(logs, info.serialNumber);
-            showSuccess(`Downloaded and stored ${logs.length} logs`);
+            // Add logType to each log record before storing
+            const logsWithType = logs.map(log => ({ ...log, logType }));
+            await storeLogs(logsWithType, info.serialNumber);
+            const formatName = logType === LOG_TYPE.TSL2591 ? 'TSL2591' : 'GPS';
+            showSuccess(`Downloaded and stored ${logs.length} logs (${formatName} format)`);
         } else {
             showSuccess('No new logs to download');
         }
@@ -569,22 +596,65 @@ async function updateLogTable() {
     try {
         const logs = await getRecentLogs(20);
         const tbody = document.getElementById('log-table-body');
+        const thead = document.querySelector('#log-table-body').closest('table').querySelector('thead tr');
 
         if (logs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
             return;
         }
 
-        tbody.innerHTML = logs.map(log => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
-                <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
-                <td class="px-4 py-3 text-sm text-gray-900">${log.humidity.toFixed(1)}</td>
-                <td class="px-4 py-3 text-sm text-gray-900">${log.pm25.toFixed(1)}</td>
-                <td class="px-4 py-3 text-sm text-gray-900">${log.pm10.toFixed(1)}</td>
-                <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
-            </tr>
-        `).join('');
+        // Detect log format from first log
+        const isTSL = logs[0].hasOwnProperty('lux');
+
+        // Update table headers based on format
+        if (isTSL) {
+            thead.innerHTML = `
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lux</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CH0</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CH1</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overflow</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+            `;
+            tbody.innerHTML = logs.map(log => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.humidity.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.pm25.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.pm10.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.lux.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${log.tslCH0}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600">${log.tslCH1}</td>
+                    <td class="px-4 py-3 text-sm ${log.overflow ? 'text-red-600 font-semibold' : 'text-green-600'}">${log.overflow ? '⚠️ SAT' : 'OK'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
+                </tr>
+            `).join('');
+        } else {
+            // GPS format
+            thead.innerHTML = `
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+            `;
+            tbody.innerHTML = logs.map(log => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.humidity.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.pm25.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.pm10.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
+                </tr>
+            `).join('');
+        }
 
     } catch (error) {
         console.error('Failed to update log table:', error);

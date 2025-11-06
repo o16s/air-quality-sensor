@@ -14,6 +14,7 @@ export const USB = {
 // WebUSB Command Codes
 // Updated Nov 4, 2025 - Breaking changes: command codes reorganized
 // Updated Nov 6, 2025 - Added ACQUIRE command
+// Updated Nov 6, 2025 - Added GET_LOG_TYPE command
 export const COMMANDS = {
     GET_STATUS: 0x00,       // Get current sensor readings
     GET_LOG_COUNT: 0x01,    // Get number of log records
@@ -24,15 +25,24 @@ export const COMMANDS = {
     GET_TEST_RESULTS: 0x06, // Get Unity test framework results
     GET_PRINT_BUFFER: 0x07, // Get debug print buffer
     SET_TIME: 0x08,         // Set device RTC (Host-to-Device OUT transfer)
-    ACQUIRE: 0x09           // Trigger immediate sensor measurement (Host-to-Device OUT)
+    ACQUIRE: 0x09,          // Trigger immediate sensor measurement (Host-to-Device OUT)
+    GET_LOG_TYPE: 0x0A      // Get log format type (0=GPS, 1=TSL2591)
+};
+
+// Log Format Types
+export const LOG_TYPE = {
+    GPS: 0,         // GPS format: lat/lon/fix
+    TSL2591: 1      // TSL2591 light sensor format: lux/ch0/ch1
 };
 
 // Buffer Sizes (in bytes)
 // Updated Nov 4, 2025 - LOG_RECORD increased from 22 to 24 bytes (includes padding)
 // Updated Nov 6, 2025 - STATUS increased from 16 to 20 bytes (added MEASURED_AT field)
+// Updated Nov 6, 2025 - Added LOG_TYPE response size
 export const BUFFER_SIZES = {
     STATUS: 20,             // Device status response (was 16 bytes)
     LOG_COUNT: 2,           // Log count response
+    LOG_TYPE_RESPONSE: 1,   // Log type response (0=GPS, 1=TSL2591)
     URL: 64,                // WebUSB URL descriptor (variable, max 64)
     LOG_RECORD: 24,         // Single log record (includes 2-byte padding)
     VERSION: 32,            // Firmware version string
@@ -56,7 +66,7 @@ export const STATUS_LAYOUT = {
     MEASURED_AT: { offset: 16, type: 'Uint32', scale: 1 }       // When sensor data was captured
 };
 
-// Log Record Buffer Layout (24 bytes)
+// Log Record Buffer Layout - GPS Format (24 bytes)
 // Updated Nov 4, 2025 - Added 2-byte padding, timestamp moved to offset 20
 export const LOG_LAYOUT = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
@@ -68,6 +78,23 @@ export const LOG_LAYOUT = {
     GPS_FIX: { offset: 16, type: 'Uint8', scale: 1 },           // 0-2
     BATTERY: { offset: 17, type: 'Uint8', scale: 1 },           // 0-100%
     PADDING: { offset: 18, type: 'Uint16', scale: 1 },          // Compiler alignment padding
+    TIMESTAMP: { offset: 20, type: 'Uint32', scale: 1 }         // Unix epoch
+};
+
+// Log Record Buffer Layout - TSL2591 Light Sensor Format (24 bytes)
+// Added Nov 6, 2025 - Alternative format for light sensor builds
+export const LOG_LAYOUT_TSL = {
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
+    HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
+    PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
+    PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
+    TSL_CH0: { offset: 8, type: 'Uint16', scale: 1 },           // Full spectrum raw count (0-65535)
+    TSL_CH1: { offset: 10, type: 'Uint16', scale: 1 },          // IR spectrum raw count (0-65535)
+    LUX: { offset: 12, type: 'Uint16', scale: 10 },             // lux × 10 (deci-lux)
+    OVERFLOW: { offset: 14, type: 'Uint8', scale: 1 },          // 0=valid, 1=saturated
+    BATTERY: { offset: 15, type: 'Uint8', scale: 1 },           // 0-100%
+    RESERVED1: { offset: 16, type: 'Uint16', scale: 1 },        // Reserved for future use
+    RESERVED2: { offset: 18, type: 'Uint16', scale: 1 },        // Reserved for future use
     TIMESTAMP: { offset: 20, type: 'Uint32', scale: 1 }         // Unix epoch
 };
 
@@ -97,6 +124,18 @@ export const MOCK_DATA = {
     // GPS mock coordinates (Zurich, Switzerland area)
     GPS_LAT: 47.1234567,
     GPS_LON: 8.5678901,
+
+    // TSL2591 light sensor mock values (added Nov 6, 2025)
+    TSL_LUX: 123.4,             // Mock lux value
+    TSL_CH0: 12345,             // Mock full spectrum raw count
+    TSL_CH1: 6789,              // Mock IR spectrum raw count
+    TSL_OVERFLOW: 0,            // 0 = valid reading
+    TSL_LUX_MIN: 0.1,           // Minimum lux (dark)
+    TSL_LUX_MAX: 800.0,         // Maximum lux (bright indoor/outdoor)
+    TSL_CH0_MIN: 100,           // Minimum CH0 raw count
+    TSL_CH0_MAX: 50000,         // Maximum CH0 raw count (below saturation)
+    TSL_CH1_MIN: 50,            // Minimum CH1 raw count
+    TSL_CH1_MAX: 30000,         // Maximum CH1 raw count (below saturation)
 
     // Timing
     LOG_INTERVAL_SECONDS: 300,  // 5 minutes between logs
@@ -156,6 +195,12 @@ export const MIME_TYPES = {
     JSON: 'application/json',
     GEOJSON: 'application/geo+json',
     TEXT: 'text/plain'
+};
+
+// CSV Column Headers (Added Nov 6, 2025)
+export const CSV_HEADERS = {
+    GPS: 'Timestamp,Temperature_C,Humidity_Pct,PM25_ugm3,PM10_ugm3,Latitude,Longitude,GPS_Fix,Battery_Pct',
+    TSL: 'Timestamp,Temperature_C,Humidity_Pct,PM25_ugm3,PM10_ugm3,Lux,TSL_CH0,TSL_CH1,Overflow,Battery_Pct'
 };
 
 // Air Quality Index (AQI) Thresholds for PM2.5 (μg/m³)

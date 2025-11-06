@@ -281,6 +281,7 @@ Vendor Code: 0x22
 | GET_PRINT_BUFFER | 0x07 | IN | 64 bytes | Debug print buffer |
 | **SET_TIME** | **0x08** | **OUT** | **4 bytes** | **Set device RTC (Host-to-Device)** |
 | **ACQUIRE** | **0x09** | **OUT** | **0 bytes** | **Trigger sensor measurement** |
+| **GET_LOG_TYPE** | **0x0A** | **IN** | **1 byte** | **Get log format type (0=GPS, 1=TSL2591)** |
 
 ### SET_TIME Command (0x08)
 
@@ -305,6 +306,28 @@ await setDeviceTime(device, now);
 
 **Verification**: Use GET_STATUS to read back the timestamp field and verify it's correct.
 
+### GET_LOG_TYPE Command (0x0A) - Added Nov 6, 2025
+
+**Purpose**: Detects which log format the device uses (GPS or TSL2591 light sensor)
+
+**Returns**: 1 byte
+- `0x00` = GPS format (latitude, longitude, GPS fix)
+- `0x01` = TSL2591 format (lux, CH0, CH1, overflow)
+
+**Usage**: Call once when device connects to determine how to parse log records.
+
+**Example**:
+```javascript
+const logType = await getLogType(device);
+if (logType === LOG_TYPE.GPS) {
+    // Parse logs with GPS fields (lat/lon/fix)
+} else if (logType === LOG_TYPE.TSL2591) {
+    // Parse logs with light sensor fields (lux/ch0/ch1/overflow)
+}
+```
+
+**Note**: Log format is determined at firmware compile time and cannot change without reflashing. All logs on a device use the same format.
+
 ### Buffer Layouts
 
 Defined in `constants.js`:
@@ -313,14 +336,25 @@ Defined in `constants.js`:
   - **Device Flags added** at offset 11 (was RESERVED)
   - **CURRENT_TIME added** at offset 12-15 (renamed from TIMESTAMP)
   - **MEASURED_AT added** at offset 16-19 (NEW field showing when sensor data was captured)
-- `LOG_LAYOUT` - 24-byte log record (was 22 bytes)
+- `LOG_LAYOUT` - 24-byte GPS log record (was 22 bytes)
   - **Humidity changed**: Now centi-percent (÷100)
   - **Includes 2-byte padding** at offset 18-19 (compiler alignment)
   - **Timestamp moved** from offset 18 to offset 20
+  - Contains: lat, lon, GPS fix
+- **`LOG_LAYOUT_TSL`** - **24-byte TSL2591 light sensor log record (NEW format)**
+  - Same common fields (temp, humidity, PM2.5, PM10, battery, timestamp)
+  - **Contains light sensor data instead of GPS**:
+    - **Lux** (offset 12-13): Illuminance in deci-lux (÷10 for actual lux)
+    - **TSL_CH0** (offset 8-9): Full spectrum raw count (0-65535)
+    - **TSL_CH1** (offset 10-11): IR spectrum raw count (0-65535)
+    - **Overflow** (offset 14): 0=valid, 1=sensor saturated
+  - Use `getLogType()` to determine which layout to use
 
 Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
 
-**Key difference**: `CURRENT_TIME` is the device's current time (from GPS/RTC/Uptime), while `MEASURED_AT` is when the sensor data was actually captured. The difference shows measurement age (e.g., "32s ago").
+**Key differences**:
+- `CURRENT_TIME` is the device's current time (from GPS/RTC/Uptime), while `MEASURED_AT` is when the sensor data was actually captured. The difference shows measurement age (e.g., "32s ago").
+- GPS vs TSL format is compile-time determined. Use `GET_LOG_TYPE` to detect at runtime.
 
 ## Mock Mode (Testing Without Hardware)
 
@@ -333,9 +367,12 @@ Mock mode allows testing the dashboard without real hardware connected. It is **
 Mock mode is **ONLY active** when the URL contains `#mock`:
 
 ```
-✅ Mock Mode ON:  index.html#mock
-❌ Mock Mode OFF: index.html
+✅ Mock Mode ON (GPS format):  index.html#mock
+✅ Mock Mode ON (TSL format):  index.html#tsl
+❌ Mock Mode OFF:              index.html
 ```
+
+**Note**: Use `#tsl` to test TSL2591 light sensor format in mock mode.
 
 ### Behavior
 
@@ -374,7 +411,8 @@ Defined in `constants.js` → `MOCK_DATA`:
 - PM2.5: 12.5 μg/m³
 - PM10: 18.3 μg/m³
 - Battery: 85% (charging)
-- GPS: Zurich coordinates (47.123°, 8.568°)
+- **GPS format**: Zurich coordinates (47.123°, 8.568°)
+- **TSL2591 format**: 123.4 lux, CH0: 12345, CH1: 6789, Overflow: 0
 - Logs: 50 records with 5-minute intervals
 
 ### For Tests
@@ -583,7 +621,8 @@ For questions about the codebase or WebUSB protocol, refer to:
 
 ---
 
-**Last Updated**: 2025-11-04
+**Last Updated**: 2025-11-06
 **Code Quality Grade**: A-
 **Test Coverage**: 67.82%
 **Total Tests**: 103 passing
+**New Features**: TSL2591 light sensor log format support, GET_LOG_TYPE command
