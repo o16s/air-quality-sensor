@@ -21,6 +21,7 @@ import {
     downloadAllLogs,
     getFirmwareVersion,
     setDeviceTime,
+    triggerAcquisition,
     formatGPSFix,
     createMapsURL,
     setMockMode
@@ -417,16 +418,40 @@ function stopAutoRefresh() {
  * Handle manual refresh button
  */
 async function handleRefresh() {
+    if (!isDeviceConnected()) {
+        return;
+    }
+
     const btn = document.getElementById('refresh-btn');
     btn.disabled = true;
-    btn.textContent = 'Refreshing...';
 
-    await updateLiveData();
+    try {
+        // Trigger sensor acquisition
+        const device = getDevice();
+        btn.textContent = 'Acquiring...';
+        await triggerAcquisition(device);
 
-    setTimeout(() => {
+        // 20-second countdown
+        for (let i = 20; i > 0; i--) {
+            btn.textContent = `Acquiring... ${i}s`;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Fetch fresh data
+        btn.textContent = 'Reading...';
+        await updateLiveData();
+
+        // Success feedback
+        btn.textContent = 'Refreshed!';
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+    } catch (error) {
+        console.error('Failed to refresh:', error);
+        showError('Failed to refresh: ' + error.message);
+    } finally {
         btn.disabled = false;
         btn.textContent = 'Refresh';
-    }, 500);
+    }
 }
 
 /**

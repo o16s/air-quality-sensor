@@ -369,6 +369,37 @@ export async function setDeviceTime(device, unixTimestamp) {
     }
 }
 
+/**
+ * Trigger immediate sensor measurement (ACQUIRE command)
+ * Host-to-Device OUT transfer with 0 bytes payload
+ * @param {USBDevice} device - The USB device
+ * @returns {Promise<void>}
+ */
+export async function triggerAcquisition(device) {
+    validateDevice(device);
+
+    if (useMockData) {
+        console.log('Mock mode: Would trigger sensor acquisition');
+        return;
+    }
+
+    try {
+        // Send Host-to-Device OUT transfer with 0 bytes
+        await device.controlTransferOut({
+            requestType: 'vendor',
+            recipient: 'device',
+            request: USB.VENDOR_CODE,
+            value: 0,
+            index: COMMANDS.ACQUIRE
+        }, new Uint8Array(0));
+
+        console.log('Sensor acquisition triggered');
+
+    } catch (error) {
+        throw new Error(`Failed to trigger acquisition: ${error.message}`);
+    }
+}
+
 // Export utility functions that are used by UI
 export { formatGPSFix, createMapsURL };
 
