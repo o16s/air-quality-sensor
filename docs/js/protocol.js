@@ -8,6 +8,7 @@ import {
     COMMANDS,
     BUFFER_SIZES,
     STATUS_LAYOUT,
+    STATUS_LAYOUT_TSL,
     LOG_LAYOUT,
     LOG_LAYOUT_TSL,
     LOG_TYPE,
@@ -57,6 +58,7 @@ async function sendControlTransfer(device, command, param, length) {
     }
 
     try {
+        console.log(`USB Control Transfer: command=0x${command.toString(16).padStart(2, '0')}, param=${param}, length=${length}`);
         const result = await device.controlTransferIn({
             requestType: 'vendor',
             recipient: 'device',
@@ -64,6 +66,8 @@ async function sendControlTransfer(device, command, param, length) {
             value: param,
             index: command
         }, length);
+
+        console.log(`USB Response: status=${result.status}, bytesRead=${result.data?.byteLength || 0}`);
 
         if (result.status !== 'ok') {
             throw new Error(`Transfer failed: ${result.status}`);
@@ -77,7 +81,7 @@ async function sendControlTransfer(device, command, param, length) {
 }
 
 /**
- * Generate mock status data for testing
+ * Generate mock status data for testing (GPS format)
  */
 function generateMockStatus() {
     const buffer = new ArrayBuffer(BUFFER_SIZES.STATUS);
@@ -94,8 +98,33 @@ function generateMockStatus() {
     setBufferValue(view, STATUS_LAYOUT.CHARGING, boolToNumber(MOCK_DATA.IS_CHARGING));
     setBufferValue(view, STATUS_LAYOUT.GPS_FIX, MOCK_DATA.GPS_FIX_QUALITY);
     setBufferValue(view, STATUS_LAYOUT.DEVICE_FLAGS, 0x01);  // Bit 0: GPS enabled
+    setBufferValue(view, STATUS_LAYOUT.RESERVED, 0);
     setBufferValue(view, STATUS_LAYOUT.CURRENT_TIME, now);
     setBufferValue(view, STATUS_LAYOUT.MEASURED_AT, measuredAt);
+
+    return new Uint8Array(buffer);
+}
+
+/**
+ * Generate mock status data for testing (TSL2591 format)
+ */
+function generateMockStatusTSL() {
+    const buffer = new ArrayBuffer(BUFFER_SIZES.STATUS);
+    const view = new DataView(buffer);
+
+    const now = getCurrentTimestamp();
+    const measuredAt = now - 32;  // Simulate measurement 32 seconds ago
+
+    setBufferValue(view, STATUS_LAYOUT_TSL.TEMPERATURE, MOCK_DATA.TEMPERATURE_C);
+    setBufferValue(view, STATUS_LAYOUT_TSL.HUMIDITY, MOCK_DATA.HUMIDITY_PERCENT);
+    setBufferValue(view, STATUS_LAYOUT_TSL.PM25, MOCK_DATA.PM25_UG_M3);
+    setBufferValue(view, STATUS_LAYOUT_TSL.PM10, MOCK_DATA.PM10_UG_M3);
+    setBufferValue(view, STATUS_LAYOUT_TSL.BATTERY, MOCK_DATA.BATTERY_PERCENT);
+    setBufferValue(view, STATUS_LAYOUT_TSL.CHARGING, boolToNumber(MOCK_DATA.IS_CHARGING));
+    setBufferValue(view, STATUS_LAYOUT_TSL.LUX, MOCK_DATA.TSL_LUX);
+    setBufferValue(view, STATUS_LAYOUT_TSL.RESERVED, 0);
+    setBufferValue(view, STATUS_LAYOUT_TSL.CURRENT_TIME, now);
+    setBufferValue(view, STATUS_LAYOUT_TSL.MEASURED_AT, measuredAt);
 
     return new Uint8Array(buffer);
 }
@@ -167,11 +196,23 @@ function generateMockLogItemTSL(index) {
 
 /**
  * Get current sensor status (live data)
- * Returns: { temperature, humidity, pm25, pm10, battery, charging, gpsFix, timestamp }
+ * @param {USBDevice} device - The USB device
+ * @param {number} logType - Optional log type (LOG_TYPE.GPS or LOG_TYPE.TSL2591)
+ * Returns: { temperature, humidity, pm25, pm10, battery, charging, ... }
  */
-export async function getDeviceStatus(device) {
+export async function getDeviceStatus(device, logType = null) {
     // Always validate device first
     validateDevice(device);
+
+    // Auto-detect log type if not provided
+    if (logType === null) {
+        try {
+            logType = await getLogType(device);
+        } catch (error) {
+            console.log('Failed to detect log type, defaulting to GPS:', error.message);
+            logType = LOG_TYPE.GPS;
+        }
+    }
 
     const data = await executeWithMockFallback(
         device,
@@ -180,17 +221,21 @@ export async function getDeviceStatus(device) {
         },
         async () => {
             await delay(DELAYS.STATUS_READ);
-            return generateMockStatus();
+            return logType === LOG_TYPE.TSL2591
+                ? generateMockStatusTSL()
+                : generateMockStatus();
         },
         useMockData,
         setMockMode
     );
 
-    return parseStatusData(data);
+    return logType === LOG_TYPE.TSL2591
+        ? parseStatusDataTSL(data)
+        : parseStatusData(data);
 }
 
 /**
- * Parse status data buffer
+ * Parse status data buffer (GPS format)
  */
 function parseStatusData(data) {
     const view = new DataView(data.buffer);
@@ -207,6 +252,29 @@ function parseStatusData(data) {
         gpsFix: getBufferValue(view, STATUS_LAYOUT.GPS_FIX),
         currentTime: currentTime,
         measuredAt: getBufferValue(view, STATUS_LAYOUT.MEASURED_AT),
+        timestamp: currentTime  // Backward compatibility - maps to currentTime
+    };
+}
+
+/**
+ * Parse status data buffer (TSL2591 format)
+ */
+function parseStatusDataTSL(data) {
+    const view = new DataView(data.buffer);
+
+    const currentTime = getBufferValue(view, STATUS_LAYOUT_TSL.CURRENT_TIME);
+    const measuredAt = getBufferValue(view, STATUS_LAYOUT_TSL.MEASURED_AT);
+
+    return {
+        temperature: getBufferValue(view, STATUS_LAYOUT_TSL.TEMPERATURE),
+        humidity: getBufferValue(view, STATUS_LAYOUT_TSL.HUMIDITY),
+        pm25: getBufferValue(view, STATUS_LAYOUT_TSL.PM25),
+        pm10: getBufferValue(view, STATUS_LAYOUT_TSL.PM10),
+        battery: getBufferValue(view, STATUS_LAYOUT_TSL.BATTERY),
+        charging: getBufferValue(view, STATUS_LAYOUT_TSL.CHARGING) === 1,
+        lux: getBufferValue(view, STATUS_LAYOUT_TSL.LUX),  // Float32, no scaling
+        currentTime: currentTime,
+        measuredAt: measuredAt,
         timestamp: currentTime  // Backward compatibility - maps to currentTime
     };
 }
@@ -384,16 +452,18 @@ export async function getLogType(device) {
         },
         async () => {
             await delay(DELAYS.STATUS_READ);
-            const buffer = new Uint8Array(BUFFER_SIZES.LOG_TYPE_RESPONSE);
-            // Mock mode: Return GPS format by default (can be overridden via URL hash #tsl)
-            buffer[0] = window.location.hash === '#tsl' ? LOG_TYPE.TSL2591 : LOG_TYPE.GPS;
-            return buffer;
+            const buffer = new ArrayBuffer(BUFFER_SIZES.LOG_TYPE_RESPONSE);
+            new DataView(buffer).setUint8(0, window.location.hash === '#tsl' ? LOG_TYPE.TSL2591 : LOG_TYPE.GPS);
+            return new Uint8Array(buffer);
         },
         useMockData,
         setMockMode
     );
 
-    return data[0];
+    const view = new DataView(data.buffer);
+    const logType = view.getUint8(0);
+    console.log(`GET_LOG_TYPE returned: ${logType} (${logType === 0 ? 'GPS' : logType === 1 ? 'TSL2591' : 'UNKNOWN'})`);
+    return logType;
 }
 
 /**

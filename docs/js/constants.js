@@ -40,7 +40,7 @@ export const LOG_TYPE = {
 // Updated Nov 6, 2025 - STATUS increased from 16 to 20 bytes (added MEASURED_AT field)
 // Updated Nov 6, 2025 - Added LOG_TYPE response size
 export const BUFFER_SIZES = {
-    STATUS: 20,             // Device status response (was 16 bytes)
+    STATUS: 24,             // Device status response (24 bytes for both GPS and TSL)
     LOG_COUNT: 2,           // Log count response
     LOG_TYPE_RESPONSE: 1,   // Log type response (0=GPS, 1=TSL2591)
     URL: 64,                // WebUSB URL descriptor (variable, max 64)
@@ -50,9 +50,9 @@ export const BUFFER_SIZES = {
     PRINT_BUFFER: 64        // Debug print buffer
 };
 
-// Status Buffer Layout (20 bytes)
+// Status Buffer Layout - GPS Format (24 bytes)
 // Updated Nov 4, 2025 - Humidity changed from milli-percent (÷1000) to centi-percent (÷100)
-// Updated Nov 6, 2025 - Added MEASURED_AT field, TIMESTAMP renamed to CURRENT_TIME
+// Updated Nov 6, 2025 - Added MEASURED_AT field, TIMESTAMP renamed to CURRENT_TIME, expanded to 24 bytes
 export const STATUS_LAYOUT = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
@@ -62,8 +62,24 @@ export const STATUS_LAYOUT = {
     CHARGING: { offset: 9, type: 'Uint8', scale: 1 },           // 0 or 1
     GPS_FIX: { offset: 10, type: 'Uint8', scale: 1 },           // 0-2
     DEVICE_FLAGS: { offset: 11, type: 'Uint8', scale: 1 },      // Bit 0: GPS enabled
-    CURRENT_TIME: { offset: 12, type: 'Uint32', scale: 1 },     // Current device time (GPS/RTC/Uptime)
-    MEASURED_AT: { offset: 16, type: 'Uint32', scale: 1 }       // When sensor data was captured
+    RESERVED: { offset: 12, type: 'Uint32', scale: 1 },         // Reserved (4 bytes)
+    CURRENT_TIME: { offset: 16, type: 'Uint32', scale: 1 },     // Current device time (GPS/RTC/Uptime)
+    MEASURED_AT: { offset: 20, type: 'Uint32', scale: 1 }       // When sensor data was captured
+};
+
+// Status Buffer Layout - TSL2591 Format (24 bytes)
+// Added Nov 6, 2025 - For TSL2591 light sensor builds
+export const STATUS_LAYOUT_TSL = {
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
+    HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
+    PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
+    PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
+    BATTERY: { offset: 8, type: 'Uint8', scale: 1 },            // 0-100%
+    CHARGING: { offset: 9, type: 'Uint8', scale: 1 },           // 0 or 1
+    LUX: { offset: 10, type: 'Float32', scale: 1 },             // lux as float32 (NO SCALING!)
+    RESERVED: { offset: 14, type: 'Uint16', scale: 1 },         // Reserved (2 bytes)
+    CURRENT_TIME: { offset: 16, type: 'Uint32', scale: 1 },     // Current device time (GPS/RTC/Uptime)
+    MEASURED_AT: { offset: 20, type: 'Uint32', scale: 1 }       // When sensor data was captured
 };
 
 // Log Record Buffer Layout - GPS Format (24 bytes)

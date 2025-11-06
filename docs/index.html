@@ -119,7 +119,7 @@
                     </div>
 
                     <!-- GPS Status -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
+                    <div id="gps-panel" class="bg-white rounded-lg shadow-md p-6">
                         <h3 class="text-lg font-semibold text-gray-800 mb-3">GPS</h3>
                         <div class="space-y-2 text-sm">
                             <div class="flex justify-between">
@@ -137,6 +137,17 @@
                             <a id="gps-map-link" href="#" target="_blank" class="hidden text-blue-600 hover:text-blue-800 text-xs">
                                 View on Map →
                             </a>
+                        </div>
+                    </div>
+
+                    <!-- Light Sensor Status (TSL2591) -->
+                    <div id="lux-panel" class="hidden bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Light Sensor</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Illuminance:</span>
+                                <span id="lux-value" class="font-medium text-lg">-- lux</span>
+                            </div>
                         </div>
                     </div>
 

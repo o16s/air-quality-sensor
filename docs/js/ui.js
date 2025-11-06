@@ -247,7 +247,7 @@ async function updateLiveData() {
 
     try {
         const device = getDevice();
-        const status = await getDeviceStatus(device);
+        const status = await getDeviceStatus(device, currentLogType);
 
         // Update temperature (°C and °F)
         const tempF = (status.temperature * 9 / 5) + 32;
@@ -265,8 +265,12 @@ async function updateLiveData() {
         // Update battery
         updateBattery(status.battery, status.charging);
 
-        // Update GPS
-        updateGPS(status.gpsFix, status.lat, status.lon);
+        // Update GPS or Lux based on log type
+        if (currentLogType === LOG_TYPE.TSL2591) {
+            updateLux(status.lux);
+        } else {
+            updateGPS(status.gpsFix, status.lat, status.lon);
+        }
 
         // Update device time
         updateDeviceTime(status.timestamp);
@@ -355,6 +359,12 @@ function updateBattery(level, charging) {
  * Update GPS display
  */
 function updateGPS(fix, lat, lon) {
+    const gpsPanel = document.getElementById('gps-panel');
+    const luxPanel = document.getElementById('lux-panel');
+
+    if (gpsPanel) gpsPanel.classList.remove('hidden');
+    if (luxPanel) luxPanel.classList.add('hidden');
+
     document.getElementById('gps-fix').textContent = formatGPSFix(fix);
 
     if (fix > 0 && lat !== undefined && lon !== undefined) {
@@ -368,6 +378,23 @@ function updateGPS(fix, lat, lon) {
         document.getElementById('gps-lat').textContent = '-';
         document.getElementById('gps-lon').textContent = '-';
         document.getElementById('gps-map-link').classList.add('hidden');
+    }
+}
+
+/**
+ * Update Lux display (TSL2591 light sensor)
+ */
+function updateLux(lux) {
+    const gpsPanel = document.getElementById('gps-panel');
+    const luxPanel = document.getElementById('lux-panel');
+
+    if (gpsPanel) gpsPanel.classList.add('hidden');
+    if (luxPanel) luxPanel.classList.remove('hidden');
+
+    if (lux !== undefined) {
+        document.getElementById('lux-value').textContent = `${lux.toFixed(1)} lux`;
+    } else {
+        document.getElementById('lux-value').textContent = '--';
     }
 }
 
