@@ -251,6 +251,16 @@ async function updateLiveData() {
         // Update device time
         updateDeviceTime(status.timestamp);
 
+        // Update measurement age
+        const ageSeconds = status.currentTime - status.measuredAt;
+        if (ageSeconds < 60) {
+            document.getElementById('measured-age').textContent = `${ageSeconds}s ago`;
+        } else if (ageSeconds < 3600) {
+            document.getElementById('measured-age').textContent = `${Math.floor(ageSeconds / 60)}m ago`;
+        } else {
+            document.getElementById('measured-age').textContent = `${Math.floor(ageSeconds / 3600)}h ago`;
+        }
+
         // Update timestamp
         document.getElementById('last-update').textContent = 'Just now';
 
@@ -271,6 +281,7 @@ async function updateLiveData() {
         document.getElementById('device-time').textContent = '--:--:--';
         document.getElementById('system-time').textContent = '--:--:--';
         document.getElementById('time-drift').textContent = '-';
+        document.getElementById('measured-age').textContent = '--';
         document.getElementById('last-update').textContent = 'Never';
     }
 }

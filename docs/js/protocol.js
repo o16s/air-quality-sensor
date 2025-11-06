@@ -81,6 +81,9 @@ function generateMockStatus() {
     const buffer = new ArrayBuffer(BUFFER_SIZES.STATUS);
     const view = new DataView(buffer);
 
+    const now = getCurrentTimestamp();
+    const measuredAt = now - 32;  // Simulate measurement 32 seconds ago
+
     setBufferValue(view, STATUS_LAYOUT.TEMPERATURE, MOCK_DATA.TEMPERATURE_C);
     setBufferValue(view, STATUS_LAYOUT.HUMIDITY, MOCK_DATA.HUMIDITY_PERCENT);
     setBufferValue(view, STATUS_LAYOUT.PM25, MOCK_DATA.PM25_UG_M3);
@@ -89,7 +92,8 @@ function generateMockStatus() {
     setBufferValue(view, STATUS_LAYOUT.CHARGING, boolToNumber(MOCK_DATA.IS_CHARGING));
     setBufferValue(view, STATUS_LAYOUT.GPS_FIX, MOCK_DATA.GPS_FIX_QUALITY);
     setBufferValue(view, STATUS_LAYOUT.DEVICE_FLAGS, 0x01);  // Bit 0: GPS enabled
-    setBufferValue(view, STATUS_LAYOUT.TIMESTAMP, getCurrentTimestamp());
+    setBufferValue(view, STATUS_LAYOUT.CURRENT_TIME, now);
+    setBufferValue(view, STATUS_LAYOUT.MEASURED_AT, measuredAt);
 
     return new Uint8Array(buffer);
 }
@@ -154,6 +158,8 @@ export async function getDeviceStatus(device) {
 function parseStatusData(data) {
     const view = new DataView(data.buffer);
 
+    const currentTime = getBufferValue(view, STATUS_LAYOUT.CURRENT_TIME);
+
     return {
         temperature: getBufferValue(view, STATUS_LAYOUT.TEMPERATURE),
         humidity: getBufferValue(view, STATUS_LAYOUT.HUMIDITY),
@@ -162,7 +168,9 @@ function parseStatusData(data) {
         battery: getBufferValue(view, STATUS_LAYOUT.BATTERY),
         charging: getBufferValue(view, STATUS_LAYOUT.CHARGING) === 1,
         gpsFix: getBufferValue(view, STATUS_LAYOUT.GPS_FIX),
-        timestamp: getBufferValue(view, STATUS_LAYOUT.TIMESTAMP)
+        currentTime: currentTime,
+        measuredAt: getBufferValue(view, STATUS_LAYOUT.MEASURED_AT),
+        timestamp: currentTime  // Backward compatibility - maps to currentTime
     };
 }
 

@@ -271,7 +271,7 @@ Vendor Code: 0x22
 
 | Command | Code | Direction | Size | Description |
 |---------|------|-----------|------|-------------|
-| GET_STATUS | 0x00 | IN | 16 bytes | Current sensor readings |
+| GET_STATUS | 0x00 | IN | **20 bytes** | Current sensor readings **(was 16 bytes)** |
 | GET_LOG_COUNT | 0x01 | IN | 2 bytes | Number of stored logs |
 | GET_URL | 0x02 | IN | variable | WebUSB landing page URL |
 | READ_LOG | 0x03 | IN | 24 bytes | Single log record (was 0x02, now 24 bytes) |
@@ -280,6 +280,7 @@ Vendor Code: 0x22
 | GET_TEST_RESULTS | 0x06 | IN | 64 bytes | Unity test framework results |
 | GET_PRINT_BUFFER | 0x07 | IN | 64 bytes | Debug print buffer |
 | **SET_TIME** | **0x08** | **OUT** | **4 bytes** | **Set device RTC (Host-to-Device)** |
+| **ACQUIRE** | **0x09** | **OUT** | **0 bytes** | **Trigger sensor measurement** |
 
 ### SET_TIME Command (0x08)
 
@@ -307,15 +308,19 @@ await setDeviceTime(device, now);
 ### Buffer Layouts
 
 Defined in `constants.js`:
-- `STATUS_LAYOUT` - 16-byte status response
+- `STATUS_LAYOUT` - **20-byte status response (was 16 bytes)**
   - **Humidity changed**: Now centi-percent (÷100) instead of milli-percent (÷1000)
   - **Device Flags added** at offset 11 (was RESERVED)
+  - **CURRENT_TIME added** at offset 12-15 (renamed from TIMESTAMP)
+  - **MEASURED_AT added** at offset 16-19 (NEW field showing when sensor data was captured)
 - `LOG_LAYOUT` - 24-byte log record (was 22 bytes)
   - **Humidity changed**: Now centi-percent (÷100)
   - **Includes 2-byte padding** at offset 18-19 (compiler alignment)
   - **Timestamp moved** from offset 18 to offset 20
 
 Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
+
+**Key difference**: `CURRENT_TIME` is the device's current time (from GPS/RTC/Uptime), while `MEASURED_AT` is when the sensor data was actually captured. The difference shows measurement age (e.g., "32s ago").
 
 ## Mock Mode (Testing Without Hardware)
 

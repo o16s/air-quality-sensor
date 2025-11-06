@@ -13,6 +13,7 @@ export const USB = {
 
 // WebUSB Command Codes
 // Updated Nov 4, 2025 - Breaking changes: command codes reorganized
+// Updated Nov 6, 2025 - Added ACQUIRE command
 export const COMMANDS = {
     GET_STATUS: 0x00,       // Get current sensor readings
     GET_LOG_COUNT: 0x01,    // Get number of log records
@@ -22,13 +23,15 @@ export const COMMANDS = {
     GET_VERSION: 0x05,      // Get firmware version string (was 0x04)
     GET_TEST_RESULTS: 0x06, // Get Unity test framework results
     GET_PRINT_BUFFER: 0x07, // Get debug print buffer
-    SET_TIME: 0x08          // Set device RTC (Host-to-Device OUT transfer)
+    SET_TIME: 0x08,         // Set device RTC (Host-to-Device OUT transfer)
+    ACQUIRE: 0x09           // Trigger immediate sensor measurement (Host-to-Device OUT)
 };
 
 // Buffer Sizes (in bytes)
 // Updated Nov 4, 2025 - LOG_RECORD increased from 22 to 24 bytes (includes padding)
+// Updated Nov 6, 2025 - STATUS increased from 16 to 20 bytes (added MEASURED_AT field)
 export const BUFFER_SIZES = {
-    STATUS: 16,             // Device status response
+    STATUS: 20,             // Device status response (was 16 bytes)
     LOG_COUNT: 2,           // Log count response
     URL: 64,                // WebUSB URL descriptor (variable, max 64)
     LOG_RECORD: 24,         // Single log record (includes 2-byte padding)
@@ -37,8 +40,9 @@ export const BUFFER_SIZES = {
     PRINT_BUFFER: 64        // Debug print buffer
 };
 
-// Status Buffer Layout (16 bytes)
+// Status Buffer Layout (20 bytes)
 // Updated Nov 4, 2025 - Humidity changed from milli-percent (÷1000) to centi-percent (÷100)
+// Updated Nov 6, 2025 - Added MEASURED_AT field, TIMESTAMP renamed to CURRENT_TIME
 export const STATUS_LAYOUT = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
@@ -48,7 +52,8 @@ export const STATUS_LAYOUT = {
     CHARGING: { offset: 9, type: 'Uint8', scale: 1 },           // 0 or 1
     GPS_FIX: { offset: 10, type: 'Uint8', scale: 1 },           // 0-2
     DEVICE_FLAGS: { offset: 11, type: 'Uint8', scale: 1 },      // Bit 0: GPS enabled
-    TIMESTAMP: { offset: 12, type: 'Uint32', scale: 1 }         // Seconds
+    CURRENT_TIME: { offset: 12, type: 'Uint32', scale: 1 },     // Current device time (GPS/RTC/Uptime)
+    MEASURED_AT: { offset: 16, type: 'Uint32', scale: 1 }       // When sensor data was captured
 };
 
 // Log Record Buffer Layout (24 bytes)
