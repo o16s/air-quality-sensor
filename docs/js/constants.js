@@ -37,8 +37,9 @@ export const LOG_TYPE = {
 
 // Device Capacity
 export const DEVICE_CAPACITY = {
-    MAX_LOG_CAPACITY: 2048,     // Maximum number of log records device can store
-    ERASE_MAGIC_VALUE: 0xDEAD   // Safety value required for ERASE_LOGS command
+    MAX_LOG_CAPACITY: 2048,         // Maximum number of log records device can store
+    ERASE_MAGIC_VALUE: 0xDEAD,      // Safety value required for ERASE_LOGS command
+    MEASUREMENT_INTERVAL: 85        // Seconds between log records (85s = ~1.4 minutes)
 };
 
 // Buffer Sizes (in bytes)
@@ -246,4 +247,49 @@ export const ERRORS = {
     NO_GPS_LOGS: 'No logs with GPS coordinates',
     NO_DATA_FOR_STATS: 'No data to generate statistics',
     CONTROL_TRANSFER_FAILED: 'Control transfer failed'
+};
+
+// Sparkline Threshold Definitions
+// Based on WHO/EPA air quality standards and comfort guidelines
+export const SPARKLINE_THRESHOLDS = {
+    pm25: {
+        range: { min: 0, max: 55 },  // μg/m³ (top range at unhealthy threshold)
+        thresholds: [
+            { label: '12', value: 12, color: '#10b981', name: 'Good/Moderate' },      // green (WHO/EPA)
+            { label: '35', value: 35, color: '#f59e0b', name: 'Moderate/Unhealthy' }, // yellow
+            { label: '55', value: 55, color: '#ef4444', name: 'Unhealthy' }           // red
+        ]
+    },
+    pm10: {
+        range: { min: 0, max: 250 },  // μg/m³
+        thresholds: [
+            { label: '50', value: 50, color: '#10b981', name: 'Good/Moderate' },
+            { label: '150', value: 150, color: '#f59e0b', name: 'Moderate/Unhealthy' },
+            { label: '250', value: 250, color: '#ef4444', name: 'Unhealthy' }
+        ]
+    },
+    temperature: {
+        range: { min: 16, max: 27 },  // 16°C (too cold) to 27°C (too hot for indoor work)
+        thresholds: [
+            { label: '16', value: 16, color: '#3b82f6', name: 'Too cold for office' },     // blue
+            { label: '18', value: 18, color: '#10b981', name: 'Cool comfort boundary' },   // green
+            { label: '24', value: 24, color: '#f59e0b', name: 'Warm comfort boundary' },   // orange
+            { label: '27', value: 27, color: '#ef4444', name: 'Too hot for indoor work' }  // red
+        ]
+    },
+    humidity: {
+        range: { min: 0, max: 60 },  // % (max at mold risk threshold)
+        thresholds: [
+            { label: '30', value: 30, color: '#3b82f6', name: 'Dry threshold' },      // blue
+            { label: '60', value: 60, color: '#f59e0b', name: 'Mold risk' }           // amber
+        ]
+    },
+    lux: {
+        range: { min: 0, max: 2000 },  // lux (indoor focus)
+        thresholds: [
+            { label: '100', value: 100, color: '#6b7280', name: 'Dim' },               // gray
+            { label: '500', value: 500, color: '#3b82f6', name: 'Bright indoor' },     // blue
+            { label: '1000', value: 1000, color: '#f59e0b', name: 'Very bright' }      // yellow
+        ]
+    }
 };

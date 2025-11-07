@@ -758,6 +758,7 @@ If UI shows "N/A" for sensor values:
 - Skip writing tests
 - Modify buffer layouts without updating tests
 - Use inline USB constants
+- **Use emojis in UI text** - Emojis are forbidden in all user-facing text, labels, and headings
 
 ## Contact & Support
 

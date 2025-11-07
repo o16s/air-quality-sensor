@@ -29,14 +29,15 @@ import {
     eraseLogs
 } from './protocol.js';
 
-import { LOG_TYPE, DEVICE_CAPACITY } from './constants.js';
+import { LOG_TYPE, DEVICE_CAPACITY, SPARKLINE_THRESHOLDS } from './constants.js';
 
 import {
     getAllLogs,
     getLogCount as getStorageLogCount,
     storeLogs,
     clearAllLogs,
-    getRecentLogs
+    getRecentLogs,
+    getLogsByDateRange
 } from './storage.js';
 
 import { exportToCSV, exportToJSON } from './export.js';
@@ -48,6 +49,9 @@ let autoRefreshInterval = null;
 let isDownloading = false;
 let currentLogType = null;  // LOG_TYPE.GPS or LOG_TYPE.TSL2591
 
+// Sparklines are populated from browser storage, not in-memory history
+// This ensures sparklines show historical data, not just live readings
+
 /**
  * Initialize UI and event handlers
  */
@@ -56,6 +60,8 @@ export function initUI() {
     attemptAutoReconnect();
     updateBrowserLogCount();
     updateLogTable();  // Load existing logs from IndexedDB on page load
+    loadSparklinesFromStorage();  // Load sparklines from existing data
+    loadLastSyncTime();  // Load last sync time from localStorage
 }
 
 /**
@@ -68,21 +74,20 @@ function setupEventHandlers() {
     // Refresh button
     document.getElementById('refresh-btn').addEventListener('click', handleRefresh);
 
-    // Refresh time button
-    document.getElementById('refresh-time-btn').addEventListener('click', handleRefreshTime);
+    // Sync Data button (in header)
+    document.getElementById('sync-data-btn-header').addEventListener('click', handleDownloadLogs);
 
-    // Download logs button
-    document.getElementById('download-logs-btn').addEventListener('click', handleDownloadLogs);
+    // Disconnect button (in header)
+    document.getElementById('disconnect-btn-header').addEventListener('click', handleDisconnect);
 
-    // Export buttons
+    // Erase device button
+    document.getElementById('erase-device-btn').addEventListener('click', handleEraseDevice);
+
+    // Export button
     document.getElementById('export-csv-btn').addEventListener('click', handleExportCSV);
-    document.getElementById('export-json-btn').addEventListener('click', handleExportJSON);
 
     // Clear logs button
     document.getElementById('clear-logs-btn').addEventListener('click', handleClearLogs);
-
-    // Erase device logs button
-    document.getElementById('erase-device-logs-btn').addEventListener('click', handleEraseDeviceLogs);
 
     // WebUSB connection callbacks
     onConnect(handleDeviceConnected);
@@ -137,12 +142,10 @@ async function handleConnect() {
 async function handleDeviceConnected(device) {
     console.log('Device connected:', device);
 
-    // Update UI
-    const btn = document.getElementById('connect-btn');
-    btn.textContent = 'Disconnect';
-    btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-    btn.classList.add('bg-red-600', 'hover:bg-red-700');
-    btn.disabled = false;
+    // Switch header buttons
+    document.getElementById('connect-btn').classList.add('hidden');
+    document.getElementById('sync-data-btn-header').classList.remove('hidden');
+    document.getElementById('disconnect-btn-header').classList.remove('hidden');
 
     // Show device info
     document.getElementById('instructions').classList.add('hidden');
@@ -205,19 +208,18 @@ async function handleDeviceConnected(device) {
 function handleDeviceDisconnected() {
     console.log('Device disconnected');
 
-    // Update UI
-    const btn = document.getElementById('connect-btn');
-    btn.textContent = 'Connect Device';
-    btn.classList.remove('bg-red-600', 'hover:bg-red-700');
-    btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
-    btn.disabled = false;
+    // Switch header buttons
+    document.getElementById('connect-btn').classList.remove('hidden');
+    document.getElementById('sync-data-btn-header').classList.add('hidden');
+    document.getElementById('disconnect-btn-header').classList.add('hidden');
 
     // Update connection status
     updateConnectionStatus(false);
 
-    // Hide main content
+    // Hide main content and status indicators
     document.getElementById('main-content').classList.add('hidden');
     document.getElementById('instructions').classList.remove('hidden');
+    document.getElementById('storage-status-inline').classList.add('hidden');
 
     // Stop auto-refresh
     stopAutoRefresh();
@@ -254,10 +256,9 @@ async function updateLiveData() {
         const device = getDevice();
         const status = await getDeviceStatus(device, currentLogType);
 
-        // Update temperature (°C and °F)
-        const tempF = (status.temperature * 9 / 5) + 32;
+        // Update temperature (°C only)
         document.getElementById('temp-value').textContent =
-            `${status.temperature.toFixed(1)}°C (${tempF.toFixed(1)}°F)`;
+            `${status.temperature.toFixed(1)}°C`;
 
         // Update humidity
         document.getElementById('humidity-value').textContent =
@@ -270,15 +271,11 @@ async function updateLiveData() {
         // Update battery
         updateBattery(status.battery, status.charging);
 
-        // Update GPS or Lux based on log type
+        // Update Lux for TSL2591 format
+        // Sparklines are NOT updated here - they update only on Refresh or Sync
         if (currentLogType === LOG_TYPE.TSL2591) {
             updateLux(status.lux);
-        } else {
-            updateGPS(status.gpsFix, status.lat, status.lon);
         }
-
-        // Update device time
-        updateDeviceTime(status.timestamp);
 
         // Update measurement age
         const ageSeconds = status.currentTime - status.measuredAt;
@@ -304,12 +301,6 @@ async function updateLiveData() {
         document.getElementById('pm10-value').textContent = 'N/A';
         document.getElementById('battery-level').textContent = 'N/A';
         document.getElementById('battery-charging').textContent = 'N/A';
-        document.getElementById('gps-fix').textContent = 'N/A';
-        document.getElementById('gps-lat').textContent = 'N/A';
-        document.getElementById('gps-lon').textContent = 'N/A';
-        document.getElementById('device-time').textContent = '--:--:--';
-        document.getElementById('system-time').textContent = '--:--:--';
-        document.getElementById('time-drift').textContent = '-';
         document.getElementById('measured-age').textContent = '--';
         document.getElementById('last-update').textContent = 'Never';
     }
@@ -340,23 +331,38 @@ function updatePMValue(elementId, value) {
 }
 
 /**
- * Update battery display
+ * Update battery display (inline status bar)
  */
 function updateBattery(level, charging) {
-    document.getElementById('battery-level').textContent = `${level}%`;
-    document.getElementById('battery-charging').textContent = charging ? 'Yes ⚡' : 'No';
+    const batteryStatus = document.getElementById('battery-status-inline');
+    const batteryPercent = document.getElementById('battery-percent-inline');
+    const batteryCharging = document.getElementById('battery-charging-inline');
+    const batteryFill = document.getElementById('battery-fill');
 
-    const batteryBar = document.getElementById('battery-bar');
-    batteryBar.style.width = `${level}%`;
+    // Show battery status
+    batteryStatus.classList.remove('hidden');
+    batteryPercent.textContent = `${level}%`;
 
-    // Update battery bar color
-    batteryBar.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500');
-    if (level > 50) {
-        batteryBar.classList.add('bg-green-500');
-    } else if (level > 20) {
-        batteryBar.classList.add('bg-yellow-500');
+    // Update charging indicator
+    if (charging) {
+        batteryCharging.classList.remove('hidden');
     } else {
-        batteryBar.classList.add('bg-red-500');
+        batteryCharging.classList.add('hidden');
+    }
+
+    // Update battery fill width (SVG rect width attribute)
+    const fillWidth = (16 * level) / 100;  // 16 is the max width of the battery body
+    batteryFill.setAttribute('width', fillWidth);
+
+    // Update battery color based on level
+    const batteryContainer = batteryStatus.querySelector('svg');
+    batteryContainer.classList.remove('text-green-600', 'text-yellow-600', 'text-red-600');
+    if (level > 50) {
+        batteryContainer.classList.add('text-green-600');
+    } else if (level > 20) {
+        batteryContainer.classList.add('text-yellow-600');
+    } else {
+        batteryContainer.classList.add('text-red-600');
     }
 }
 
@@ -365,10 +371,10 @@ function updateBattery(level, charging) {
  */
 function updateGPS(fix, lat, lon) {
     const gpsPanel = document.getElementById('gps-panel');
-    const luxPanel = document.getElementById('lux-panel');
+    const luxWidget = document.getElementById('lux-widget');
 
     if (gpsPanel) gpsPanel.classList.remove('hidden');
-    if (luxPanel) luxPanel.classList.add('hidden');
+    if (luxWidget) luxWidget.classList.add('hidden');
 
     document.getElementById('gps-fix').textContent = formatGPSFix(fix);
 
@@ -391,15 +397,15 @@ function updateGPS(fix, lat, lon) {
  */
 function updateLux(lux) {
     const gpsPanel = document.getElementById('gps-panel');
-    const luxPanel = document.getElementById('lux-panel');
+    const luxCard = document.getElementById('lux-card');
 
     if (gpsPanel) gpsPanel.classList.add('hidden');
-    if (luxPanel) luxPanel.classList.remove('hidden');
+    if (luxCard) luxCard.classList.remove('hidden');
 
     if (lux !== undefined) {
         document.getElementById('lux-value').textContent = `${lux.toFixed(1)} lux`;
     } else {
-        document.getElementById('lux-value').textContent = '--';
+        document.getElementById('lux-value').textContent = '-- lux';
     }
 }
 
@@ -492,6 +498,9 @@ async function handleRefresh() {
         btn.textContent = 'Reading...';
         await updateLiveData();
 
+        // Update sparklines from browser storage
+        await loadSparklinesFromStorage();
+
         // Success feedback
         btn.textContent = 'Refreshed!';
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -501,7 +510,7 @@ async function handleRefresh() {
         showError('Failed to refresh: ' + error.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Refresh';
+        btn.textContent = 'Measure Now';
     }
 }
 
@@ -539,55 +548,52 @@ async function updateDeviceLogCount() {
     try {
         const device = getDevice();
         const count = await getLogCount(device);
-        document.getElementById('device-log-count').textContent = count.toLocaleString();
 
-        // Also update device capacity display
+        // Update device capacity display in status bar
         updateDeviceCapacity(count);
     } catch (error) {
         console.error('Failed to get log count:', error);
-        document.getElementById('device-log-count').textContent = 'N/A';
         updateDeviceCapacity(0);
     }
 }
 
 /**
- * Update device storage capacity display
+ * Update device storage capacity display in status bar
  * @param {number} count - Current number of logs on device
  */
 function updateDeviceCapacity(count) {
     const maxCapacity = DEVICE_CAPACITY.MAX_LOG_CAPACITY;
     const percent = (count / maxCapacity) * 100;
 
-    // Update main count display (e.g., "152 / 2048")
-    document.getElementById('device-log-count').textContent = count > 0
-        ? `${count} / ${maxCapacity}`
-        : '-';
+    // Show storage status in status bar
+    const storageStatus = document.getElementById('storage-status-inline');
+    storageStatus.classList.remove('hidden');
 
-    // Update percentage
-    const percentEl = document.getElementById('device-capacity-percent');
-    if (percentEl) {
-        percentEl.textContent = count > 0 ? `${percent.toFixed(1)}%` : '0%';
-    }
+    // Update percentage display
+    const percentEl = document.getElementById('storage-percent-inline');
+    percentEl.textContent = count > 0 ? `${percent.toFixed(1)}%` : '0%';
 
-    // Update progress bar
-    const bar = document.getElementById('device-capacity-bar');
-    bar.style.width = `${percent}%`;
+    // Calculate and display "Full in X days"
+    const fullDateEl = document.getElementById('storage-full-date');
+    if (count > 0 && count < maxCapacity) {
+        const remainingLogs = maxCapacity - count;
+        const measurementInterval = DEVICE_CAPACITY.MEASUREMENT_INTERVAL; // 85 seconds
+        const secondsUntilFull = remainingLogs * measurementInterval;
+        const daysUntilFull = secondsUntilFull / (60 * 60 * 24);
 
-    // Change color based on capacity
-    bar.classList.remove('bg-blue-600', 'bg-yellow-500', 'bg-orange-500', 'bg-red-600');
-    if (percent < 50) {
-        bar.classList.add('bg-blue-600');
-    } else if (percent < 75) {
-        bar.classList.add('bg-yellow-500');
-    } else if (percent < 90) {
-        bar.classList.add('bg-orange-500');
+        if (daysUntilFull < 1) {
+            const hoursUntilFull = Math.round(secondsUntilFull / 3600);
+            fullDateEl.textContent = `Full in ${hoursUntilFull}h`;
+        } else {
+            fullDateEl.textContent = `Full in ${Math.round(daysUntilFull)}d`;
+        }
+        fullDateEl.classList.remove('hidden');
+    } else if (count >= maxCapacity) {
+        fullDateEl.textContent = 'Full';
+        fullDateEl.classList.remove('hidden');
     } else {
-        bar.classList.add('bg-red-600');
+        fullDateEl.classList.add('hidden');
     }
-
-    // Enable/disable erase button
-    const eraseBtn = document.getElementById('erase-device-logs-btn');
-    eraseBtn.disabled = count === 0 || !isDeviceConnected();
 }
 
 /**
@@ -596,7 +602,11 @@ function updateDeviceCapacity(count) {
 async function updateBrowserLogCount() {
     try {
         const count = await getStorageLogCount();
-        document.getElementById('browser-log-count').textContent = count.toLocaleString();
+        const countEl = document.getElementById('browser-log-count');
+        const countSpan = countEl.querySelector('.font-medium');
+        if (countSpan) {
+            countSpan.textContent = count.toLocaleString();
+        }
     } catch (error) {
         console.error('Failed to get storage log count:', error);
     }
@@ -612,23 +622,18 @@ async function handleDownloadLogs() {
 
     isDownloading = true;
 
-    const btn = document.getElementById('download-logs-btn');
-    const syncProgress = document.getElementById('sync-progress');
-    const syncProgressBar = document.getElementById('sync-progress-bar');
-    const syncProgressText = document.getElementById('sync-progress-text');
+    const btn = document.getElementById('sync-data-btn-header');
+    const originalText = btn.textContent;
 
     btn.disabled = true;
     btn.textContent = 'Syncing...';
-    syncProgress.classList.remove('hidden');
 
     try {
         const device = getDevice();
         const info = getDeviceInfo();
 
         const result = await downloadAllLogs(device, (current, total) => {
-            const percent = (current / total) * 100;
-            syncProgressBar.style.width = `${percent}%`;
-            syncProgressText.textContent = `Syncing ${current} of ${total} records...`;
+            btn.textContent = `Syncing ${current}/${total}`;
         });
 
         const { logType, logs } = result;
@@ -636,12 +641,25 @@ async function handleDownloadLogs() {
         // Update current log type
         currentLogType = logType;
 
-        // Store logs in IndexedDB with log type metadata
+        // Store logs in IndexedDB with sync metadata
         if (logs.length > 0) {
-            // Add logType to each log record before storing
-            const logsWithType = logs.map(log => ({ ...log, logType }));
-            const storeResult = await storeLogs(logsWithType, info.serialNumber);
+            // Add metadata to each log record
+            const syncedOn = Date.now();
+            const logsWithMetadata = logs.map(log => ({
+                ...log,
+                logType,
+                syncedOn
+            }));
+
+            const storeResult = await storeLogs(logsWithMetadata, info.serialNumber);
             const formatName = logType === LOG_TYPE.TSL2591 ? 'TSL2591' : 'GPS';
+
+            // Sync device time AFTER downloading
+            try {
+                await syncDeviceTime(device, false);
+            } catch (error) {
+                console.log('Failed to sync device time after download:', error.message);
+            }
 
             // Report results with duplicate information
             if (storeResult.skipped > 0) {
@@ -653,9 +671,10 @@ async function handleDownloadLogs() {
             showSuccess('No new logs to download');
         }
 
-        // Update counts and last sync time
+        // Update counts, table, and sparklines
         await updateBrowserLogCount();
         await updateLogTable();
+        await loadSparklinesFromStorage();
         updateLastSyncTime();
 
     } catch (error) {
@@ -664,19 +683,31 @@ async function handleDownloadLogs() {
     } finally {
         isDownloading = false;
         btn.disabled = false;
-        btn.textContent = 'Sync Data';
-        syncProgress.classList.add('hidden');
-        syncProgressBar.style.width = '0%';
+        btn.textContent = originalText;
     }
 }
 
 /**
- * Update last sync time display
+ * Update last sync time display and store in localStorage
  */
 function updateLastSyncTime() {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = Date.now();
+    localStorage.setItem('lastSyncTime', now.toString());
+
+    const timeString = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     document.getElementById('last-sync-time').textContent = `Last synced: ${timeString}`;
+}
+
+/**
+ * Load last sync time from localStorage on page load
+ */
+function loadLastSyncTime() {
+    const lastSync = localStorage.getItem('lastSyncTime');
+    if (lastSync) {
+        const date = new Date(parseInt(lastSync));
+        const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('last-sync-time').textContent = `Last synced: ${timeString}`;
+    }
 }
 
 /**
@@ -689,7 +720,7 @@ async function updateLogTable() {
         const thead = document.querySelector('#log-table-body').closest('table').querySelector('thead tr');
 
         if (logs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
             return;
         }
 
@@ -710,8 +741,11 @@ async function updateLogTable() {
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overflow</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
             `;
-            tbody.innerHTML = logs.map(log => `
+            tbody.innerHTML = logs.map(log => {
+                const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                return `
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
@@ -724,8 +758,10 @@ async function updateLogTable() {
                     <td class="px-4 py-3 text-sm ${log.overflow ? 'text-red-600 font-semibold' : 'text-green-600'}">${log.overflow ? '⚠️ SAT' : 'OK'}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
                     <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
+                    <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
         } else {
             // GPS format
             thead.innerHTML = `
@@ -736,8 +772,11 @@ async function updateLogTable() {
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
             `;
-            tbody.innerHTML = logs.map(log => `
+            tbody.innerHTML = logs.map(log => {
+                const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                return `
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
@@ -746,8 +785,10 @@ async function updateLogTable() {
                     <td class="px-4 py-3 text-sm text-gray-900">${log.pm10.toFixed(1)}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
                     <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
+                    <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
         }
 
     } catch (error) {
@@ -816,15 +857,31 @@ async function handleClearLogs() {
 }
 
 /**
- * Handle erase device logs button
+ * Handle disconnect button
  */
-async function handleEraseDeviceLogs() {
+async function handleDisconnect() {
+    if (!isDeviceConnected()) {
+        return;
+    }
+
+    try {
+        await disconnectDevice();
+    } catch (error) {
+        console.error('Disconnect failed:', error);
+        showError('Failed to disconnect: ' + error.message);
+    }
+}
+
+/**
+ * Handle erase device button
+ */
+async function handleEraseDevice() {
     if (!isDeviceConnected()) {
         return;
     }
 
     // Double confirmation for device erase (destructive action)
-    if (!confirm('⚠️ WARNING: This will permanently erase ALL logs from the device!\n\nAre you absolutely sure?')) {
+    if (!confirm('WARNING: This will permanently erase ALL logs from the device!\n\nAre you absolutely sure?')) {
         return;
     }
 
@@ -832,7 +889,8 @@ async function handleEraseDeviceLogs() {
         return;
     }
 
-    const btn = document.getElementById('erase-device-logs-btn');
+    const btn = document.getElementById('erase-device-btn');
+    const originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Erasing...';
 
@@ -842,7 +900,7 @@ async function handleEraseDeviceLogs() {
 
         if (success) {
             showSuccess('Device logs erased successfully');
-            // Update counts to reflect empty device
+            // Update capacity display to reflect empty device
             await updateDeviceLogCount();
         } else {
             showError('Failed to erase device logs');
@@ -853,7 +911,7 @@ async function handleEraseDeviceLogs() {
         showError('Failed to erase logs: ' + error.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Erase Device Logs';
+        btn.textContent = originalText;
     }
 }
 
@@ -866,15 +924,259 @@ function formatTimestamp(timestamp) {
 }
 
 /**
- * Show error message (simple alert for now)
+ * Show error message (console only, no annoying alerts)
  */
 function showError(message) {
-    alert('Error: ' + message);
+    console.error('❌', message);
+    // Could add a toast notification here in the future
 }
 
 /**
- * Show success message (simple alert for now)
+ * Show success message (console only, no annoying alerts)
  */
 function showSuccess(message) {
-    alert(message);
+    console.log('✅', message);
+    // Sync/export success is already obvious from UI updates
+    // No need for annoying alert popups
+}
+
+/**
+ * Calculate temperature scale (uses fixed range 16-27°C for office comfort)
+ * @param {Array<number>} tempValues - Temperature values in °C
+ * @returns {Object} Scale configuration with range and thresholds
+ */
+function getTemperatureScale(tempValues) {
+    if (!tempValues || tempValues.length === 0) {
+        return SPARKLINE_THRESHOLDS.temperature;
+    }
+
+    const dataMin = Math.min(...tempValues);
+    const dataMax = Math.max(...tempValues);
+
+    // Use fixed temperature range from constants (16-27°C)
+    let rangeMin = SPARKLINE_THRESHOLDS.temperature.range.min; // Fixed at 16°C
+    let rangeMax = SPARKLINE_THRESHOLDS.temperature.range.max; // Fixed at 27°C
+
+    // Expand if data exceeds range
+    if (dataMin < rangeMin) rangeMin = Math.floor(dataMin);
+    if (dataMax > rangeMax) rangeMax = Math.ceil(dataMax);
+
+    return {
+        range: { min: rangeMin, max: rangeMax },
+        thresholds: SPARKLINE_THRESHOLDS.temperature.thresholds
+    };
+}
+
+/**
+ * Load sparklines from browser storage (last 12 hours, or recent data if less available)
+ * Called after Refresh or Sync Data to update historical trends
+ */
+async function loadSparklinesFromStorage() {
+    try {
+        // Get logs from last 12 hours
+        const now = Math.floor(Date.now() / 1000);
+        const twelveHoursAgo = now - (12 * 60 * 60); // 43,200 seconds
+
+        let recentLogs = await getLogsByDateRange(twelveHoursAgo, now);
+
+        // If we don't have enough data in 12 hours, fall back to most recent logs
+        if (!recentLogs || recentLogs.length < 2) {
+            recentLogs = await getRecentLogs(10); // Get up to 10 most recent logs
+        }
+
+        if (!recentLogs || recentLogs.length < 2) {
+            // Still not enough data for meaningful sparkline
+            return;
+        }
+
+        // Sort chronologically (oldest first)
+        const logsChronological = recentLogs.sort((a, b) => a.timestamp - b.timestamp);
+
+        // Detect log format from stored data (check if logs have 'lux' field)
+        const hasLuxData = logsChronological.some(log => log.lux !== undefined && log.lux !== null);
+
+        // Extract timestamps and sensor values
+        const timestamps = logsChronological.map(log => log.timestamp);
+        const pm25Values = logsChronological.map(log => log.pm25).filter(v => v !== undefined && v !== null);
+        const pm10Values = logsChronological.map(log => log.pm10).filter(v => v !== undefined && v !== null);
+        const tempValues = logsChronological.map(log => log.temperature).filter(v => v !== undefined && v !== null);
+        const humidityValues = logsChronological.map(log => log.humidity).filter(v => v !== undefined && v !== null);
+
+        // Update sparklines with fixed scales, thresholds, and timestamps
+        const pm25Config = { ...SPARKLINE_THRESHOLDS.pm25, timestamps };
+        const pm10Config = { ...SPARKLINE_THRESHOLDS.pm10, timestamps };
+        const tempConfig = { ...getTemperatureScale(tempValues), timestamps };
+        const humidityConfig = { ...SPARKLINE_THRESHOLDS.humidity, timestamps };
+
+        updateSparkline('pm25-sparkline', pm25Values, pm25Config);
+        updateSparkline('pm10-sparkline', pm10Values, pm10Config);
+        updateSparkline('temp-sparkline', tempValues, tempConfig);
+        updateSparkline('humidity-sparkline', humidityValues, humidityConfig);
+
+        // Update lux sparkline if TSL2591 format (detect from data)
+        if (hasLuxData) {
+            const luxCard = document.getElementById('lux-card');
+            if (luxCard) {
+                luxCard.classList.remove('hidden');
+            }
+            const luxValues = logsChronological.map(log => log.lux).filter(v => v !== undefined && v !== null);
+            const luxConfig = { ...SPARKLINE_THRESHOLDS.lux, timestamps };
+            updateSparkline('lux-sparkline', luxValues, luxConfig);
+        }
+    } catch (error) {
+        console.error('Failed to load sparklines from storage:', error);
+    }
+}
+
+/**
+ * Update sparkline with fixed scale, threshold gridlines, and time axis
+ * @param {string} canvasId - Canvas element ID
+ * @param {Array<number>} dataPoints - Data values (chronological)
+ * @param {Object} config - Scale and threshold configuration
+ * @param {Object} config.range - Fixed y-axis range {min, max}
+ * @param {Array} config.thresholds - Threshold definitions [{label, value, color, name}, ...]
+ * @param {Array<number>} config.timestamps - Unix timestamps for each data point
+ */
+function updateSparkline(canvasId, dataPoints, config = {}) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !dataPoints || dataPoints.length < 2) {
+        return; // Need minimum 2 points for sparkline
+    }
+
+    const { range = {}, thresholds = [] } = config;
+
+    const ctx = canvas.getContext('2d');
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
+
+    // Set canvas size to match actual display size
+    canvas.width = width;
+    canvas.height = height;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Reserve space for threshold labels on right (plot fills left edge)
+    const rightMargin = 30; // Space for threshold labels
+    const plotWidth = width - rightMargin;
+
+    // Determine scale (use fixed range or auto-scale)
+    const dataMin = Math.min(...dataPoints);
+    const dataMax = Math.max(...dataPoints);
+    let min = range.min !== null && range.min !== undefined ? range.min : dataMin;
+    let max = range.max !== null && range.max !== undefined ? range.max : dataMax;
+
+    // Expand range if data exceeds fixed bounds (overflow handling)
+    if (range.min !== null && dataMin < range.min) min = Math.floor(dataMin);
+    if (range.max !== null && dataMax > range.max) max = Math.ceil(dataMax);
+
+    const rangeSpan = max - min || 1; // Avoid division by zero
+
+    // Reserve padding at top and bottom for visual breathing room
+    const topPadding = 10; // 10px padding at top
+    const bottomPadding = 15; // 15px padding at bottom (for time axis)
+    const plotHeight = height - topPadding - bottomPadding;
+
+    // Draw threshold gridlines (full width, behind data)
+    if (thresholds.length > 0) {
+        ctx.save();
+        ctx.lineWidth = 1;
+        ctx.font = '9px system-ui';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        thresholds.forEach(threshold => {
+            if (threshold.value >= min && threshold.value <= max) {
+                // Calculate y position with padding and snap to pixel boundary for crisp rendering
+                let y = topPadding + (plotHeight - ((threshold.value - min) / rangeSpan) * plotHeight);
+                y = Math.round(y) + 0.5; // Align to pixel grid (0.5 offset for 1px lines)
+
+                // Draw gridline (full width from left edge)
+                ctx.strokeStyle = threshold.color + '18'; // 9% opacity (subtle)
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(plotWidth, y);
+                ctx.stroke();
+
+                // Draw tick mark on right edge
+                ctx.strokeStyle = threshold.color + '60'; // 38% opacity
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(plotWidth, y);
+                ctx.lineTo(plotWidth + 6, y);
+                ctx.stroke();
+
+                // Draw threshold label
+                ctx.fillStyle = '#9ca3af'; // gray-400 (subtle)
+                ctx.fillText(threshold.label, width - 2, y);
+            }
+        });
+
+        ctx.restore();
+    }
+
+    // Calculate data points for plotting (edge-to-edge horizontally, with vertical padding)
+    const step = plotWidth / (dataPoints.length - 1);
+    const points = dataPoints.map((value, i) => ({
+        x: i * step,
+        y: topPadding + (plotHeight - ((value - min) / rangeSpan) * plotHeight)
+    }));
+
+    // Draw smooth curve
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+
+    // Use quadratic curves for smoothness
+    for (let i = 1; i < points.length; i++) {
+        const xMid = (points[i - 1].x + points[i].x) / 2;
+        const yMid = (points[i - 1].y + points[i].y) / 2;
+        ctx.quadraticCurveTo(points[i - 1].x, points[i - 1].y, xMid, yMid);
+    }
+
+    // Complete the last segment
+    const lastPoint = points[points.length - 1];
+    ctx.lineTo(lastPoint.x, lastPoint.y);
+
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.7)'; // blue-600 at 70% opacity (increased visibility)
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw time axis (hour markers at bottom)
+    if (config.timestamps && config.timestamps.length > 0) {
+        ctx.save();
+        ctx.font = '9px system-ui';
+        ctx.fillStyle = '#9ca3af'; // gray-400
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        const firstTime = config.timestamps[0];
+        const lastTime = config.timestamps[config.timestamps.length - 1];
+        const timeSpan = lastTime - firstTime;
+
+        // Draw hour markers (every hour)
+        const hourInterval = 60 * 60; // 1 hour in seconds
+        const firstHour = Math.ceil(firstTime / hourInterval) * hourInterval;
+
+        for (let t = firstHour; t <= lastTime; t += hourInterval) {
+            // Calculate x position
+            const ratio = (t - firstTime) / timeSpan;
+            const x = ratio * plotWidth;
+
+            // Draw tick mark
+            ctx.strokeStyle = '#d1d5db'; // gray-300
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, height - 3);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+
+            // Draw hour label (e.g., "9h", "12h")
+            const date = new Date(t * 1000);
+            const hour = date.getHours();
+            ctx.fillText(`${hour}h`, x, height - 4);
+        }
+
+        ctx.restore();
+    }
 }
