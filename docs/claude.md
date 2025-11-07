@@ -40,8 +40,9 @@ docs/
     ├── setup.js           # Test mocks (WebUSB, IndexedDB, DOM)
     ├── protocol.test.js   # Protocol tests (19 tests)
     ├── webusb.test.js     # WebUSB tests (27 tests)
-    ├── storage.test.js    # Storage tests (27 tests)
-    └── export.test.js     # Export tests (30 tests)
+    ├── storage.test.js    # Storage tests (36 tests) - includes duplicate detection
+    ├── export.test.js     # Export tests (30 tests)
+    └── utils.test.js      # Utils tests (23 tests) - NEW
 ```
 
 ⭐ = Core files created during refactoring
@@ -50,12 +51,12 @@ docs/
 
 | Module | Purpose | Key Functions |
 |--------|---------|---------------|
-| **constants.js** | Single source of truth for all configuration | USB constants, buffer layouts, mock data, error messages |
-| **utils.js** | Shared utilities used across modules | Device validation, buffer helpers, download helper, delays |
-| **protocol.js** | Firmware protocol implementation | USB vendor requests, data parsing, mock mode |
+| **constants.js** | Single source of truth for all configuration | USB constants, buffer layouts, mock data, error messages, device capacity |
+| **utils.js** | Shared utilities used across modules | Device validation, buffer helpers, download helper, delays, **duplicate detection** |
+| **protocol.js** | Firmware protocol implementation | USB vendor requests, data parsing, mock mode, erase logs |
 | **webusb.js** | USB device lifecycle management | Connect, disconnect, auto-reconnect, callbacks |
-| **storage.js** | IndexedDB persistence layer | Store/retrieve logs, queries, statistics |
-| **ui.js** | User interface logic | Event handlers, data display, UI updates |
+| **storage.js** | IndexedDB persistence layer | Store/retrieve logs, queries, statistics, **duplicate prevention** |
+| **ui.js** | User interface logic | Event handlers, data display, UI updates, **capacity tracking** |
 | **export.js** | Data export functionality | CSV, JSON, GeoJSON, statistics export |
 
 ### Data Flow
@@ -233,7 +234,7 @@ npm run test:ui       # Interactive UI
 | storage.js | 96.39% |
 | webusb.js | 80.66% |
 
-**Overall**: 67.82% (103 tests passing)
+**Overall**: 67.82% (135 tests passing) - **33 new tests added Nov 7, 2025**
 
 ### Writing Tests
 
@@ -472,6 +473,153 @@ Extracted common patterns:
 ✅ Zero duplicated logic
 ✅ Single source of truth for all configuration
 
+## Recent Features (Nov 7, 2025)
+
+Three major features were added to improve log management and device monitoring:
+
+### 1. Duplicate Detection & Smart Sync
+
+**Problem**: Users could re-download the same logs multiple times, filling up browser storage with duplicates.
+
+**Solution**: Intelligent duplicate detection that works even when device timestamps are incorrect.
+
+#### Implementation
+
+**`utils.js` - `isDuplicateLog()` function:**
+- **Exact match**: timestamp + deviceSerial (instant detection)
+- **Fuzzy match**: ±2 second timestamp tolerance + sensor value comparison
+  - Compares: temperature (±0.1°C), humidity (±0.5%), PM2.5 (±0.5), PM10 (±0.5)
+  - Handles clock drift and timestamp errors
+- Returns `true` if logs are duplicates
+
+**`storage.js` - Enhanced `storeLogs()` function:**
+```javascript
+// Before storing, checks all existing logs for duplicates
+const result = await storeLogs(logs, deviceSerial);
+// Returns: { success, skipped, errors, total }
+```
+
+**`ui.js` - User feedback:**
+```
+"Downloaded 50 logs: 30 new, 20 duplicates skipped"
+```
+
+#### Why It Works
+
+The fuzzy matching handles real-world scenarios:
+1. **Re-downloads**: Exact timestamp match → instant detection
+2. **Clock drift**: ±2s tolerance catches minor time errors
+3. **Wrong timestamps**: Compares actual sensor readings instead
+4. **Different devices**: Always allows same timestamp from different devices
+
+#### Testing
+
+23 comprehensive tests in `utils.test.js` cover:
+- Exact and fuzzy matching
+- Edge cases (missing data, zero values, negative temps)
+- Real-world scenarios (re-downloads, clock drift)
+
+10 integration tests in `storage.test.js` verify:
+- Batch processing with mixed new/duplicate logs
+- Multi-device handling
+- Boundary conditions (±2s vs ±3s)
+
+### 2. Device Capacity Tracking & Erase
+
+**Problem**: No visibility into how full the device storage is, manual erase was risky.
+
+**Solution**: Visual capacity meter with safe erase functionality.
+
+#### Implementation
+
+**`constants.js` - Device capacity:**
+```javascript
+export const DEVICE_CAPACITY = {
+    MAX_LOG_CAPACITY: 2048,      // Maximum log records
+    ERASE_MAGIC_VALUE: 0xDEAD    // Safety parameter for erase
+};
+```
+
+**`ui.js` - Capacity display:**
+- Located in **Device Info box** (top of page)
+- Shows: "512 / 2048 (25.0%)"
+- Progress bar with color coding:
+  - Blue: <50% full
+  - Yellow: 50-75% full
+  - Orange: 75-90% full
+  - Red: >90% full
+- Updates automatically after downloads/erases
+
+**`ui.js` - Erase button:**
+- Moved from Logs section to Device Info box
+- Auto-enables/disables based on log count
+- **Double confirmation** dialog for safety
+- Updates capacity display after erase
+
+**`protocol.js` - `eraseLogs()` function:**
+```javascript
+// Already existed, now properly integrated with UI
+await eraseLogs(device);  // Requires wValue=0xDEAD for safety
+```
+
+#### User Experience
+
+1. Connect device → capacity shows immediately
+2. Download logs → capacity updates
+3. Click "Erase Device Logs" → two confirmation dialogs
+4. After erase → capacity resets to "0 / 2048 (0.0%)"
+
+### 3. Serial Number Column
+
+**Problem**: When viewing logs from multiple devices, couldn't tell which device each log came from.
+
+**Solution**: Added "Serial" column to log table.
+
+#### Implementation
+
+**`index.html` - Table header:**
+```html
+<th>Serial</th>
+```
+
+**`ui.js` - Table rendering:**
+```javascript
+// Both GPS and TSL2591 formats now include:
+<td class="px-4 py-3 text-xs text-gray-600 font-mono">
+    ${log.deviceSerial || '-'}
+</td>
+```
+
+- Displays in monospace font for readability
+- Shows "-" if serial number not available
+- Works for both GPS and TSL2591 log formats
+
+#### Use Cases
+
+- Track logs from multiple test devices
+- Debug device-specific issues
+- Verify data provenance for analysis
+
+### Feature Summary
+
+| Feature | Files Modified | Tests Added | Lines Changed |
+|---------|---------------|-------------|---------------|
+| Duplicate Detection | utils.js, storage.js, ui.js | 23 + 10 = 33 | ~80 |
+| Capacity Tracking | constants.js, ui.js, index.html | 0 (UI logic) | ~60 |
+| Serial Column | index.html, ui.js | 0 (display only) | ~10 |
+
+### Testing Impact
+
+- **Before**: 103 tests
+- **After**: 135 tests (+33 tests, +32% coverage)
+- **All tests passing**: ✅ 135/135
+
+### Commits
+
+1. `eb8b517` - Bug fix: Load log table on page refresh
+2. `b2d7a58` - Features: duplicate detection, capacity tracking, serial column
+3. `4184820` - Tests: comprehensive duplicate detection tests
+
 ## Adding New Features
 
 ### Example: Adding a New Sensor Type
@@ -621,8 +769,13 @@ For questions about the codebase or WebUSB protocol, refer to:
 
 ---
 
-**Last Updated**: 2025-11-06
+**Last Updated**: 2025-11-07
 **Code Quality Grade**: A-
 **Test Coverage**: 67.82%
-**Total Tests**: 103 passing
-**New Features**: TSL2591 light sensor log format support, GET_LOG_TYPE command
+**Total Tests**: 135 passing (+33 new tests)
+**Recent Features**:
+- Duplicate detection with fuzzy matching
+- Device capacity tracking and safe erase
+- Serial number column in log table
+- TSL2591 light sensor log format support
+- GET_LOG_TYPE command
