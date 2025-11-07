@@ -19,6 +19,58 @@ This is a browser-based WebUSB interface for Octanis environmental sensors (STM3
 
 ## Architecture
 
+### UI States
+
+The dashboard has three distinct states that control what content is displayed:
+
+#### 1. Getting Started State (Initial Load)
+**When:** User first visits the page, no device has ever been connected
+**Displayed:**
+- Connect button card with Octanis logo above button (centered)
+- Blue "Getting Started" instructions box
+- NO footer logo
+
+**Elements:**
+- `#connect-section` - shown
+- `#instructions` - shown
+- `#device-info` - hidden
+- `#main-content` - hidden
+- `#footer-logo` - hidden
+
+#### 2. Connected State
+**When:** Device is physically connected via USB and successfully paired
+**Displayed:**
+- Device info card (model image, name, status indicators)
+- Live sensor data with sparklines
+- Measurement history table
+- Footer logo (bottom-right, 30% opacity)
+
+**Elements:**
+- `#connect-section` - hidden
+- `#instructions` - hidden
+- `#device-info` - shown
+- `#main-content` - shown
+- `#footer-logo` - shown
+
+#### 3. Disconnected State
+**When:** Device was connected but user clicked disconnect or device was unplugged
+**Displayed:**
+- Connect button card with logo (same as Getting Started)
+- Blue "Getting Started" instructions
+- Measurement history (if any logs were downloaded)
+- NO footer logo
+
+**Elements:**
+- Same as Getting Started state
+- Note: Previously downloaded data persists in IndexedDB and remains visible
+
+**State Transitions:**
+```
+Getting Started → Connected: Click "Connect Device" and select device
+Connected → Disconnected: Click eject button or device unplugged
+Disconnected → Connected: Click "Connect Device" and select device
+```
+
 ### File Structure
 
 ```

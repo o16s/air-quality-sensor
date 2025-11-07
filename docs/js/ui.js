@@ -55,13 +55,23 @@ let currentLogType = null;  // LOG_TYPE.GPS or LOG_TYPE.TSL2591
 /**
  * Initialize UI and event handlers
  */
-export function initUI() {
+export async function initUI() {
     setupEventHandlers();
-    attemptAutoReconnect();
+    await attemptAutoReconnect();
     updateBrowserLogCount();
     updateLogTable();  // Load existing logs from IndexedDB on page load
     loadSparklinesFromStorage();  // Load sparklines from existing data
     loadLastSyncTime();  // Load last sync time from localStorage
+
+    // Show appropriate section based on connection state
+    if (isDeviceConnected()) {
+        // Device connected - show device info
+        document.getElementById('connect-section').classList.add('hidden');
+        document.getElementById('device-info').classList.remove('hidden');
+    } else {
+        // No device - show connect section
+        document.getElementById('connect-section').classList.remove('hidden');
+    }
 }
 
 /**
@@ -80,8 +90,31 @@ function setupEventHandlers() {
     // Disconnect button (in header)
     document.getElementById('disconnect-btn-header').addEventListener('click', handleDisconnect);
 
-    // Erase device button
+    // Settings button
+    document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
+
+    // Modal close button
+    document.getElementById('close-modal-btn').addEventListener('click', closeSettingsModal);
+
+    // Erase device button (in modal)
     document.getElementById('erase-device-btn').addEventListener('click', handleEraseDevice);
+
+    // Close modal when clicking outside
+    document.getElementById('settings-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'settings-modal') {
+            closeSettingsModal();
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('settings-modal');
+            if (!modal.classList.contains('hidden')) {
+                closeSettingsModal();
+            }
+        }
+    });
 
     // Export button
     document.getElementById('export-csv-btn').addEventListener('click', handleExportCSV);
@@ -141,16 +174,27 @@ async function handleConnect() {
  */
 async function handleDeviceConnected(device) {
     console.log('Device connected:', device);
+    console.log('Hiding connect section, showing device info');
 
-    // Switch header buttons
-    document.getElementById('connect-btn').classList.add('hidden');
-    document.getElementById('sync-data-btn-header').classList.remove('hidden');
-    document.getElementById('disconnect-btn-header').classList.remove('hidden');
+    // Hide connect section, show device info
+    const connectSection = document.getElementById('connect-section');
+    const deviceInfo = document.getElementById('device-info');
 
-    // Show device info
+    console.log('connect-section element:', connectSection);
+    console.log('device-info element:', deviceInfo);
+
+    connectSection.classList.add('hidden');
+    deviceInfo.classList.remove('hidden');
+
+    console.log('connect-section hidden?', connectSection.classList.contains('hidden'));
+    console.log('device-info hidden?', deviceInfo.classList.contains('hidden'));
+
+    // Show main content and hide instructions
     document.getElementById('instructions').classList.add('hidden');
-    document.getElementById('device-info').classList.remove('hidden');
     document.getElementById('main-content').classList.remove('hidden');
+
+    // Show footer logo when connected
+    document.getElementById('footer-logo').classList.remove('hidden');
 
     // Get and display device info
     const info = getDeviceInfo();
@@ -160,11 +204,38 @@ async function handleDeviceConnected(device) {
     // Update connection status
     updateConnectionStatus(true);
 
-    // Get firmware version
+    // Get firmware version and parse model
     try {
-        const version = await getFirmwareVersion(device);
-        document.getElementById('device-firmware').textContent = version;
+        const versionString = await getFirmwareVersion(device);
+
+        // Parse version string: "OAQ-1-2 7088c449-dirty" → model + firmware
+        const parts = versionString.trim().split(' ');
+        const model = parts[0] || '-';
+        const firmware = parts.slice(1).join(' ') || '-';
+
+        // Display model and firmware separately
+        document.getElementById('device-model').textContent = model;
+        document.getElementById('device-firmware').textContent = firmware;
+
+        // Display product image if available
+        if (model !== '-') {
+            const productImage = document.getElementById('product-image');
+            const productImageContainer = document.getElementById('product-image-container');
+
+            productImage.src = `img/${model}.jpg`;
+            productImage.alt = model;
+
+            // Show image container (hide on error)
+            productImage.onload = () => {
+                productImageContainer.classList.remove('hidden');
+            };
+            productImage.onerror = () => {
+                productImageContainer.classList.add('hidden');
+                console.log(`Product image not found: img/${model}.jpg`);
+            };
+        }
     } catch (error) {
+        document.getElementById('device-model').textContent = 'N/A';
         document.getElementById('device-firmware').textContent = 'N/A';
     }
 
@@ -195,6 +266,9 @@ async function handleDeviceConnected(device) {
     // Get device log count
     updateDeviceLogCount();
 
+    // Load sparklines from storage (now that main content is visible)
+    loadSparklinesFromStorage();
+
     // Start auto-refresh
     startAutoRefresh();
 
@@ -203,15 +277,33 @@ async function handleDeviceConnected(device) {
 }
 
 /**
+ * Open settings modal
+ */
+function openSettingsModal() {
+    document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+/**
+ * Close settings modal
+ */
+function closeSettingsModal() {
+    document.getElementById('settings-modal').classList.add('hidden');
+}
+
+/**
  * Handle device disconnected event
  */
 function handleDeviceDisconnected() {
     console.log('Device disconnected');
 
-    // Switch header buttons
-    document.getElementById('connect-btn').classList.remove('hidden');
-    document.getElementById('sync-data-btn-header').classList.add('hidden');
-    document.getElementById('disconnect-btn-header').classList.add('hidden');
+    // Show connect section, hide device info
+    document.getElementById('connect-section').classList.remove('hidden');
+    document.getElementById('device-info').classList.add('hidden');
+
+    // Reset connect button state
+    const connectBtn = document.getElementById('connect-btn');
+    connectBtn.disabled = false;
+    connectBtn.textContent = 'Connect Device';
 
     // Update connection status
     updateConnectionStatus(false);
@@ -220,6 +312,10 @@ function handleDeviceDisconnected() {
     document.getElementById('main-content').classList.add('hidden');
     document.getElementById('instructions').classList.remove('hidden');
     document.getElementById('storage-status-inline').classList.add('hidden');
+
+    // Hide product image and footer logo
+    document.getElementById('product-image-container').classList.add('hidden');
+    document.getElementById('footer-logo').classList.add('hidden');
 
     // Stop auto-refresh
     stopAutoRefresh();
@@ -231,7 +327,7 @@ function handleDeviceDisconnected() {
 function updateConnectionStatus(connected) {
     const statusEl = document.getElementById('connection-status');
     const dot = statusEl.querySelector('.w-2');
-    const text = statusEl.querySelector('span:last-child');
+    const text = statusEl.querySelector('.font-medium');
 
     if (connected) {
         dot.classList.remove('bg-gray-400');
@@ -564,32 +660,42 @@ async function updateDeviceLogCount() {
 function updateDeviceCapacity(count) {
     const maxCapacity = DEVICE_CAPACITY.MAX_LOG_CAPACITY;
     const percent = (count / maxCapacity) * 100;
+    const measurementInterval = DEVICE_CAPACITY.MEASUREMENT_INTERVAL;
 
     // Show storage status in status bar
     const storageStatus = document.getElementById('storage-status-inline');
     storageStatus.classList.remove('hidden');
 
-    // Update percentage display
-    const percentEl = document.getElementById('storage-percent-inline');
-    percentEl.textContent = count > 0 ? `${percent.toFixed(1)}%` : '0%';
+    // Update count display
+    const countEl = document.getElementById('storage-count-inline');
+    const measurementText = count === 1 ? 'measurement' : 'measurements';
+    countEl.textContent = `${count} ${measurementText}`;
 
-    // Calculate and display "Full in X days"
+    // Calculate and display "Memory full in X days"
     const fullDateEl = document.getElementById('storage-full-date');
     if (count > 0 && count < maxCapacity) {
         const remainingLogs = maxCapacity - count;
-        const measurementInterval = DEVICE_CAPACITY.MEASUREMENT_INTERVAL; // 85 seconds
         const secondsUntilFull = remainingLogs * measurementInterval;
         const daysUntilFull = secondsUntilFull / (60 * 60 * 24);
 
+        let fullText;
         if (daysUntilFull < 1) {
             const hoursUntilFull = Math.round(secondsUntilFull / 3600);
-            fullDateEl.textContent = `Full in ${hoursUntilFull}h`;
+            fullText = `Memory full in ${hoursUntilFull}h`;
         } else {
-            fullDateEl.textContent = `Full in ${Math.round(daysUntilFull)}d`;
+            fullText = `Memory full in ${Math.round(daysUntilFull)}d`;
         }
+        fullDateEl.textContent = fullText;
+
+        // Set tooltip with detailed info
+        const intervalMinutes = Math.round(measurementInterval / 60);
+        const tooltip = `Recording every ${intervalMinutes} min • Max ${maxCapacity} measurements • ${percent.toFixed(1)}% used`;
+        fullDateEl.setAttribute('title', tooltip);
+
         fullDateEl.classList.remove('hidden');
     } else if (count >= maxCapacity) {
-        fullDateEl.textContent = 'Full';
+        fullDateEl.textContent = 'Memory full';
+        fullDateEl.setAttribute('title', `Max ${maxCapacity} measurements reached`);
         fullDateEl.classList.remove('hidden');
     } else {
         fullDateEl.classList.add('hidden');
@@ -902,6 +1008,8 @@ async function handleEraseDevice() {
             showSuccess('Device logs erased successfully');
             // Update capacity display to reflect empty device
             await updateDeviceLogCount();
+            // Close modal on success
+            closeSettingsModal();
         } else {
             showError('Failed to erase device logs');
         }

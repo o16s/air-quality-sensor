@@ -25,70 +25,92 @@
     </div>
 
     <div class="container mx-auto px-4 py-8 max-w-6xl">
-        <!-- Header -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <h1 class="text-3xl font-bold text-gray-800">Octanis Sensor Dashboard</h1>
-                <div class="flex items-center gap-3">
-                    <button id="connect-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
-                        Connect Device
-                    </button>
-                    <button id="sync-data-btn-header" class="hidden bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
+        <!-- Device Info -->
+        <div id="device-info" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-start justify-between gap-6">
+                <div class="flex items-start gap-6 flex-1 min-w-0">
+                    <!-- Product Image -->
+                    <div id="product-image-container" class="hidden flex-shrink-0">
+                        <img id="product-image" src="" alt="Product" class="w-28 h-28 object-cover rounded-lg shadow-sm">
+                    </div>
+
+                    <!-- Device Info -->
+                    <div class="flex-1 min-w-0">
+                        <!-- Model & Device Name -->
+                        <div class="mb-4">
+                            <h2 id="device-model" class="text-xl font-semibold text-gray-900">-</h2>
+                            <p id="device-name" class="text-sm text-gray-600 mt-0.5">-</p>
+                        </div>
+
+                        <!-- Status Line -->
+                        <div class="flex items-center gap-6 mb-4 text-sm">
+                            <div id="connection-status" class="flex items-center">
+                                <span class="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
+                                <span class="font-medium">Disconnected</span>
+                            </div>
+                            <div id="battery-status-inline" class="flex items-center hidden">
+                                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <rect x="2" y="7" width="18" height="10" rx="1" stroke-width="2"/>
+                                    <rect id="battery-fill" x="3" y="8" width="0" height="8" fill="currentColor" opacity="0.5"/>
+                                    <path d="M20 10h2v4h-2" stroke-width="2"/>
+                                </svg>
+                                <span id="battery-percent-inline" class="font-medium">--%</span>
+                                <span id="battery-charging-inline" class="ml-1 text-xs text-gray-500 hidden">(charging)</span>
+                            </div>
+                            <div id="storage-status-inline" class="flex items-center hidden">
+                                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                                </svg>
+                                <span id="storage-count-inline" class="font-medium">-- measurements</span>
+                                <span id="storage-full-date" class="ml-2 text-xs text-gray-500 hidden cursor-help" title="">Memory full in --</span>
+                            </div>
+                        </div>
+
+                        <!-- Metadata -->
+                        <div class="space-y-2 text-sm">
+                            <div class="flex">
+                                <span class="text-gray-500 w-16">Serial</span>
+                                <span id="device-serial" class="font-mono text-gray-900">-</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-gray-500 w-16">Format</span>
+                                <span id="log-format" class="text-gray-900">-</span>
+                            </div>
+                            <div class="flex">
+                                <span class="text-gray-500 w-16">Version</span>
+                                <span id="device-firmware" class="font-mono text-gray-900">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Device Actions -->
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button id="sync-data-btn-header" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
                         Sync Data
                     </button>
-                    <button id="disconnect-btn-header" class="hidden border border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800 p-2 rounded-lg transition duration-200" title="Disconnect Device">
+                    <button id="settings-btn" class="border border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800 p-2 rounded-lg transition duration-200" title="Device Settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
+                            <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/>
+                        </svg>
+                    </button>
+                    <button id="disconnect-btn-header" class="border border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800 p-2 rounded-lg transition duration-200" title="Disconnect Device">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M7.27 1.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H1.656C.78 9.5.326 8.455.926 7.816zM14.346 8.5 8 1.731 1.654 8.5zM.5 11.5a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1zm14 0h-13v1h13z"/>
                         </svg>
                     </button>
                 </div>
             </div>
+        </div>
 
-            <!-- Device Info -->
-            <div id="device-info" class="hidden border-t pt-4 mt-4">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                        <span class="text-gray-600">Device:</span>
-                        <span id="device-name" class="ml-2 font-medium">-</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-600">Serial:</span>
-                        <span id="device-serial" class="ml-2 font-mono">-</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-600">Firmware:</span>
-                        <span id="device-firmware" class="ml-2 font-medium">-</span>
-                    </div>
-                    <div>
-                        <span class="text-gray-600">Log Format:</span>
-                        <span id="log-format" class="ml-2 font-medium">-</span>
-                    </div>
-                </div>
-                <div class="mt-3 flex items-center gap-4">
-                    <div class="flex items-center">
-                        <span class="text-gray-600 text-sm">Status:</span>
-                        <span id="connection-status" class="ml-2 flex items-center">
-                            <span class="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
-                            <span class="text-sm">Disconnected</span>
-                        </span>
-                    </div>
-                    <div id="battery-status-inline" class="flex items-center text-sm hidden">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <rect x="2" y="7" width="18" height="10" rx="1" stroke-width="2"/>
-                            <rect id="battery-fill" x="3" y="8" width="0" height="8" fill="currentColor" opacity="0.5"/>
-                            <path d="M20 10h2v4h-2" stroke-width="2"/>
-                        </svg>
-                        <span id="battery-percent-inline" class="font-medium">--%</span>
-                        <span id="battery-charging-inline" class="ml-1 text-xs text-gray-500 hidden">(charging)</span>
-                    </div>
-                    <div id="storage-status-inline" class="flex items-center text-sm hidden">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-                        </svg>
-                        <span id="storage-percent-inline" class="font-medium">--%</span>
-                        <span id="storage-full-date" class="ml-2 text-xs text-gray-500 hidden">Full in --</span>
-                    </div>
-                </div>
+        <!-- Connect Section (shown when no device has been connected yet) -->
+        <div id="connect-section" class="hidden">
+            <div class="bg-white rounded-lg shadow-md p-12 mb-6 text-center">
+                <img src="img/logo.png" alt="Octanis" class="h-12 mx-auto mb-6 opacity-40">
+                <button id="connect-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
+                    Connect Device
+                </button>
             </div>
         </div>
 
@@ -149,14 +171,14 @@
                 </div>
             </div>
 
-            <!-- Logs Section -->
+            <!-- Measurement History Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h2 class="text-xl font-semibold text-gray-800">Browser Storage</h2>
+                        <h2 class="text-xl font-semibold text-gray-800">Measurement History</h2>
                         <div class="flex items-center gap-3 mt-1">
                             <div id="browser-log-count" class="text-sm text-gray-600">
-                                <span class="font-medium">0</span> logs
+                                <span class="font-medium">0</span> measurements stored locally
                             </div>
                             <div id="last-sync-time" class="text-xs text-gray-500">Never synced</div>
                         </div>
@@ -165,11 +187,8 @@
                         <button id="export-csv-btn" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded transition duration-200">
                             Export CSV
                         </button>
-                        <button id="erase-device-btn" class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-4 rounded transition duration-200">
-                            Erase Device
-                        </button>
                         <button id="clear-logs-btn" class="bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded transition duration-200">
-                            Clear Browser
+                            Clear
                         </button>
                     </div>
                 </div>
@@ -211,6 +230,55 @@
             <p class="mt-4 text-sm text-blue-700">
                 <strong>Note:</strong> This interface requires Chrome or Edge browser with WebUSB support.
             </p>
+        </div>
+
+        <!-- Footer Logo (shown when connected) -->
+        <div id="footer-logo" class="hidden flex justify-between items-center pt-8 pb-4">
+            <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                Octanis Instruments GmbH, Switzerland
+            </a>
+            <img src="img/logo.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 class="text-xl font-semibold text-gray-900">Device Settings</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">
+                                <strong>Warning:</strong> Erasing device memory is permanent and cannot be undone.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="erase-device-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200">
+                    Erase Device Memory
+                </button>
+
+                <p class="text-xs text-gray-500 text-center">
+                    This will delete all measurements stored on the device. Your downloaded data in the browser will not be affected.
+                </p>
+            </div>
         </div>
     </div>
 
