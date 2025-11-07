@@ -54,6 +54,7 @@ export function initUI() {
     setupEventHandlers();
     attemptAutoReconnect();
     updateBrowserLogCount();
+    updateLogTable();  // Load existing logs from IndexedDB on page load
 }
 
 /**
