@@ -87,15 +87,23 @@ export async function storeLog(logData, deviceSerial) {
 
 /**
  * Store multiple log records in batch
+ * Automatically skips duplicate records to prevent redundant storage
  */
 export async function storeLogs(logs, deviceSerial) {
     const db = await ensureDB();
 
-    return new Promise((resolve, reject) => {
+    // First, get all existing logs for this device to check for duplicates
+    const existingLogs = await getLogsByDevice(deviceSerial);
+
+    return new Promise(async (resolve, reject) => {
+        // Import isDuplicateLog helper
+        const { isDuplicateLog } = await import('./utils.js');
+
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
 
         let successCount = 0;
+        let skippedCount = 0;
         const errors = [];
 
         logs.forEach((logData, index) => {
@@ -104,6 +112,16 @@ export async function storeLogs(logs, deviceSerial) {
                 deviceSerial: deviceSerial,
                 downloadedAt: Math.floor(Date.now() / 1000)
             };
+
+            // Check if this log is a duplicate
+            const isDuplicate = existingLogs.some(existingLog =>
+                isDuplicateLog(record, existingLog)
+            );
+
+            if (isDuplicate) {
+                skippedCount++;
+                return; // Skip this record
+            }
 
             const request = store.add(record);
 
@@ -119,6 +137,7 @@ export async function storeLogs(logs, deviceSerial) {
         transaction.oncomplete = () => {
             resolve({
                 success: successCount,
+                skipped: skippedCount,
                 errors: errors,
                 total: logs.length
             });

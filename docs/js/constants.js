@@ -35,6 +35,12 @@ export const LOG_TYPE = {
     TSL2591: 1      // TSL2591 light sensor format: lux/ch0/ch1
 };
 
+// Device Capacity
+export const DEVICE_CAPACITY = {
+    MAX_LOG_CAPACITY: 2048,     // Maximum number of log records device can store
+    ERASE_MAGIC_VALUE: 0xDEAD   // Safety value required for ERASE_LOGS command
+};
+
 // Buffer Sizes (in bytes)
 // Updated Nov 4, 2025 - LOG_RECORD increased from 22 to 24 bytes (includes padding)
 // Updated Nov 6, 2025 - STATUS increased from 16 to 20 bytes (added MEASURED_AT field)

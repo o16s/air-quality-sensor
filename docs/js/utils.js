@@ -199,3 +199,42 @@ export function boolToNumber(value) {
 export function numberToBool(value) {
     return value !== 0;
 }
+
+/**
+ * Check if a log record is a duplicate of an existing record
+ * Uses both timestamp + deviceSerial (exact match) AND sensor values (fuzzy match)
+ * to handle cases where timestamps may be incorrect
+ *
+ * @param {Object} newLog - The new log record to check
+ * @param {Object} existingLog - An existing log record to compare against
+ * @returns {boolean} true if records are duplicates
+ */
+export function isDuplicateLog(newLog, existingLog) {
+    // Must be from the same device
+    if (newLog.deviceSerial !== existingLog.deviceSerial) {
+        return false;
+    }
+
+    // Exact timestamp match - definitely a duplicate
+    if (newLog.timestamp === existingLog.timestamp) {
+        return true;
+    }
+
+    // Fuzzy match: Allow ±2 second timestamp tolerance
+    // This handles minor clock drift or timing issues
+    const timeDiff = Math.abs(newLog.timestamp - existingLog.timestamp);
+    if (timeDiff <= 2) {
+        // Check if sensor values match (within reasonable tolerance)
+        const tempMatch = Math.abs(newLog.temperature - existingLog.temperature) < 0.1;
+        const humMatch = Math.abs(newLog.humidity - existingLog.humidity) < 0.5;
+        const pm25Match = Math.abs(newLog.pm25 - existingLog.pm25) < 0.5;
+        const pm10Match = Math.abs(newLog.pm10 - existingLog.pm10) < 0.5;
+
+        // If all core sensor values match, it's a duplicate
+        if (tempMatch && humMatch && pm25Match && pm10Match) {
+            return true;
+        }
+    }
+
+    return false;
+}

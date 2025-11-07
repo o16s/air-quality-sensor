@@ -25,10 +25,11 @@ import {
     getLogType,
     formatGPSFix,
     createMapsURL,
-    setMockMode
+    setMockMode,
+    eraseLogs
 } from './protocol.js';
 
-import { LOG_TYPE } from './constants.js';
+import { LOG_TYPE, DEVICE_CAPACITY } from './constants.js';
 
 import {
     getAllLogs,
@@ -79,6 +80,9 @@ function setupEventHandlers() {
 
     // Clear logs button
     document.getElementById('clear-logs-btn').addEventListener('click', handleClearLogs);
+
+    // Erase device logs button
+    document.getElementById('erase-device-logs-btn').addEventListener('click', handleEraseDeviceLogs);
 
     // WebUSB connection callbacks
     onConnect(handleDeviceConnected);
@@ -536,10 +540,46 @@ async function updateDeviceLogCount() {
         const device = getDevice();
         const count = await getLogCount(device);
         document.getElementById('device-log-count').textContent = count.toLocaleString();
+
+        // Also update device capacity display
+        updateDeviceCapacity(count);
     } catch (error) {
         console.error('Failed to get log count:', error);
         document.getElementById('device-log-count').textContent = 'N/A';
+        updateDeviceCapacity(0);
     }
+}
+
+/**
+ * Update device storage capacity display
+ * @param {number} count - Current number of logs on device
+ */
+function updateDeviceCapacity(count) {
+    const maxCapacity = DEVICE_CAPACITY.MAX_LOG_CAPACITY;
+    const percent = (count / maxCapacity) * 100;
+
+    // Update text
+    document.getElementById('device-capacity-text').textContent = `${count} / ${maxCapacity} (${percent.toFixed(1)}%)`;
+
+    // Update progress bar
+    const bar = document.getElementById('device-capacity-bar');
+    bar.style.width = `${percent}%`;
+
+    // Change color based on capacity
+    bar.classList.remove('bg-blue-600', 'bg-yellow-500', 'bg-orange-500', 'bg-red-600');
+    if (percent < 50) {
+        bar.classList.add('bg-blue-600');
+    } else if (percent < 75) {
+        bar.classList.add('bg-yellow-500');
+    } else if (percent < 90) {
+        bar.classList.add('bg-orange-500');
+    } else {
+        bar.classList.add('bg-red-600');
+    }
+
+    // Enable/disable erase button
+    const eraseBtn = document.getElementById('erase-device-logs-btn');
+    eraseBtn.disabled = count === 0 || !isDeviceConnected();
 }
 
 /**
@@ -593,9 +633,15 @@ async function handleDownloadLogs() {
         if (logs.length > 0) {
             // Add logType to each log record before storing
             const logsWithType = logs.map(log => ({ ...log, logType }));
-            await storeLogs(logsWithType, info.serialNumber);
+            const storeResult = await storeLogs(logsWithType, info.serialNumber);
             const formatName = logType === LOG_TYPE.TSL2591 ? 'TSL2591' : 'GPS';
-            showSuccess(`Downloaded and stored ${logs.length} logs (${formatName} format)`);
+
+            // Report results with duplicate information
+            if (storeResult.skipped > 0) {
+                showSuccess(`Downloaded ${logs.length} logs (${formatName} format): ${storeResult.success} new, ${storeResult.skipped} duplicates skipped`);
+            } else {
+                showSuccess(`Downloaded and stored ${storeResult.success} logs (${formatName} format)`);
+            }
         } else {
             showSuccess('No new logs to download');
         }
@@ -627,7 +673,7 @@ async function updateLogTable() {
         const thead = document.querySelector('#log-table-body').closest('table').querySelector('thead tr');
 
         if (logs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
             return;
         }
 
@@ -647,6 +693,7 @@ async function updateLogTable() {
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CH1</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overflow</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
             `;
             tbody.innerHTML = logs.map(log => `
                 <tr class="hover:bg-gray-50">
@@ -660,6 +707,7 @@ async function updateLogTable() {
                     <td class="px-4 py-3 text-sm text-gray-600">${log.tslCH1}</td>
                     <td class="px-4 py-3 text-sm ${log.overflow ? 'text-red-600 font-semibold' : 'text-green-600'}">${log.overflow ? '⚠️ SAT' : 'OK'}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
+                    <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
                 </tr>
             `).join('');
         } else {
@@ -671,6 +719,7 @@ async function updateLogTable() {
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
             `;
             tbody.innerHTML = logs.map(log => `
                 <tr class="hover:bg-gray-50">
@@ -680,6 +729,7 @@ async function updateLogTable() {
                     <td class="px-4 py-3 text-sm text-gray-900">${log.pm25.toFixed(1)}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.pm10.toFixed(1)}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
+                    <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
                 </tr>
             `).join('');
         }
@@ -746,6 +796,48 @@ async function handleClearLogs() {
     } catch (error) {
         console.error('Clear failed:', error);
         showError('Failed to clear logs: ' + error.message);
+    }
+}
+
+/**
+ * Handle erase device logs button
+ */
+async function handleEraseDeviceLogs() {
+    if (!isDeviceConnected()) {
+        return;
+    }
+
+    // Double confirmation for device erase (destructive action)
+    if (!confirm('⚠️ WARNING: This will permanently erase ALL logs from the device!\n\nAre you absolutely sure?')) {
+        return;
+    }
+
+    if (!confirm('This action CANNOT be undone. Erase all device logs?')) {
+        return;
+    }
+
+    const btn = document.getElementById('erase-device-logs-btn');
+    btn.disabled = true;
+    btn.textContent = 'Erasing...';
+
+    try {
+        const device = getDevice();
+        const success = await eraseLogs(device);
+
+        if (success) {
+            showSuccess('Device logs erased successfully');
+            // Update counts to reflect empty device
+            await updateDeviceLogCount();
+        } else {
+            showError('Failed to erase device logs');
+        }
+
+    } catch (error) {
+        console.error('Erase failed:', error);
+        showError('Failed to erase logs: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Erase Device Logs';
     }
 }
 
