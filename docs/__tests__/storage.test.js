@@ -313,3 +313,204 @@ describe('Storage - Data Persistence', () => {
     expect(logs[0].temperature).toBe(99.9);
   });
 });
+
+describe('Storage - Duplicate Detection', () => {
+  beforeEach(async () => {
+    await clearAllLogs();
+  });
+
+  it('should skip exact duplicate logs (same timestamp and device)', async () => {
+    const log1 = createMockLog({
+      timestamp: 1699000000,
+      temperature: 23.5,
+      humidity: 45.6,
+      pm25: 12.5,
+      pm10: 18.3
+    });
+
+    // Store first log
+    await storeLogs([log1], 'TEST-DEVICE-001');
+
+    // Try to store exact duplicate
+    const result = await storeLogs([log1], 'TEST-DEVICE-001');
+
+    expect(result.success).toBe(0);
+    expect(result.skipped).toBe(1);
+    expect(result.total).toBe(1);
+
+    // Verify only one log in database
+    const allLogs = await getAllLogs();
+    expect(allLogs).toHaveLength(1);
+  });
+
+  it('should skip fuzzy duplicate logs (±2s timestamp, matching values)', async () => {
+    const log1 = createMockLog({
+      timestamp: 1699000000,
+      temperature: 23.5,
+      humidity: 45.6,
+      pm25: 12.5,
+      pm10: 18.3
+    });
+
+    const log2 = createMockLog({
+      timestamp: 1699000001,  // 1 second later
+      temperature: 23.5,
+      humidity: 45.6,
+      pm25: 12.5,
+      pm10: 18.3
+    });
+
+    // Store first log
+    await storeLogs([log1], 'TEST-DEVICE-001');
+
+    // Try to store fuzzy duplicate
+    const result = await storeLogs([log2], 'TEST-DEVICE-001');
+
+    expect(result.success).toBe(0);
+    expect(result.skipped).toBe(1);
+
+    // Verify only one log in database
+    const allLogs = await getAllLogs();
+    expect(allLogs).toHaveLength(1);
+  });
+
+  it('should store logs with different sensor values (not duplicates)', async () => {
+    const log1 = createMockLog({
+      timestamp: 1699000000,
+      temperature: 23.5,
+      pm25: 12.5
+    });
+
+    const log2 = createMockLog({
+      timestamp: 1699000001,
+      temperature: 23.5,
+      pm25: 20.0  // Different PM2.5
+    });
+
+    await storeLogs([log1], 'TEST-DEVICE-001');
+    const result = await storeLogs([log2], 'TEST-DEVICE-001');
+
+    expect(result.success).toBe(1);
+    expect(result.skipped).toBe(0);
+
+    const allLogs = await getAllLogs();
+    expect(allLogs).toHaveLength(2);
+  });
+
+  it('should handle batch with mix of new and duplicate logs', async () => {
+    // Store initial logs
+    const initialLogs = [
+      createMockLog({ timestamp: 1699000000 }),
+      createMockLog({ timestamp: 1699000100 })
+    ];
+    await storeLogs(initialLogs, 'TEST-DEVICE-001');
+
+    // Try to store batch with 1 duplicate and 2 new
+    const batchLogs = [
+      createMockLog({ timestamp: 1699000000 }),  // Duplicate
+      createMockLog({ timestamp: 1699000200 }),  // New
+      createMockLog({ timestamp: 1699000300 })   // New
+    ];
+
+    const result = await storeLogs(batchLogs, 'TEST-DEVICE-001');
+
+    expect(result.success).toBe(2);
+    expect(result.skipped).toBe(1);
+    expect(result.total).toBe(3);
+
+    const allLogs = await getAllLogs();
+    expect(allLogs).toHaveLength(4);  // 2 initial + 2 new
+  });
+
+  it('should allow same timestamp for different devices', async () => {
+    const log1 = createMockLog({ timestamp: 1699000000 });
+    const log2 = createMockLog({ timestamp: 1699000000 });
+
+    await storeLogs([log1], 'DEVICE-001');
+    const result = await storeLogs([log2], 'DEVICE-002');
+
+    expect(result.success).toBe(1);
+    expect(result.skipped).toBe(0);
+
+    const allLogs = await getAllLogs();
+    expect(allLogs).toHaveLength(2);
+  });
+
+  it('should skip all logs if all are duplicates', async () => {
+    const logs = [
+      createMockLog({ timestamp: 1699000000 }),
+      createMockLog({ timestamp: 1699000100 }),
+      createMockLog({ timestamp: 1699000200 })
+    ];
+
+    // Store first time
+    await storeLogs(logs, 'TEST-DEVICE-001');
+
+    // Try to store same logs again
+    const result = await storeLogs(logs, 'TEST-DEVICE-001');
+
+    expect(result.success).toBe(0);
+    expect(result.skipped).toBe(3);
+    expect(result.total).toBe(3);
+
+    const allLogs = await getAllLogs();
+    expect(allLogs).toHaveLength(3);  // Still only original 3
+  });
+
+  it('should handle empty logs array', async () => {
+    const result = await storeLogs([], 'TEST-DEVICE-001');
+
+    expect(result.success).toBe(0);
+    expect(result.skipped).toBe(0);
+    expect(result.total).toBe(0);
+  });
+
+  it('should detect duplicate with timestamp drift within tolerance', async () => {
+    const log1 = createMockLog({
+      timestamp: 1699000000,
+      temperature: 23.5,
+      humidity: 45.0,
+      pm25: 12.0,
+      pm10: 18.0
+    });
+
+    // Same values, 2 seconds later (edge of tolerance)
+    const log2 = createMockLog({
+      timestamp: 1699000002,
+      temperature: 23.5,
+      humidity: 45.0,
+      pm25: 12.0,
+      pm10: 18.0
+    });
+
+    await storeLogs([log1], 'TEST-DEVICE-001');
+    const result = await storeLogs([log2], 'TEST-DEVICE-001');
+
+    expect(result.skipped).toBe(1);
+
+    const allLogs = await getAllLogs();
+    expect(allLogs).toHaveLength(1);
+  });
+
+  it('should NOT detect duplicate with 3 second timestamp difference', async () => {
+    const log1 = createMockLog({
+      timestamp: 1699000000,
+      temperature: 23.5
+    });
+
+    // Same values, 3 seconds later (outside tolerance)
+    const log2 = createMockLog({
+      timestamp: 1699000003,
+      temperature: 23.5
+    });
+
+    await storeLogs([log1], 'TEST-DEVICE-001');
+    const result = await storeLogs([log2], 'TEST-DEVICE-001');
+
+    expect(result.success).toBe(1);
+    expect(result.skipped).toBe(0);
+
+    const allLogs = await getAllLogs();
+    expect(allLogs).toHaveLength(2);
+  });
+});
