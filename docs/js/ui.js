@@ -558,8 +558,16 @@ function updateDeviceCapacity(count) {
     const maxCapacity = DEVICE_CAPACITY.MAX_LOG_CAPACITY;
     const percent = (count / maxCapacity) * 100;
 
-    // Update text
-    document.getElementById('device-capacity-text').textContent = `${count} / ${maxCapacity} (${percent.toFixed(1)}%)`;
+    // Update main count display (e.g., "152 / 2048")
+    document.getElementById('device-log-count').textContent = count > 0
+        ? `${count} / ${maxCapacity}`
+        : '-';
+
+    // Update percentage
+    const percentEl = document.getElementById('device-capacity-percent');
+    if (percentEl) {
+        percentEl.textContent = count > 0 ? `${percent.toFixed(1)}%` : '0%';
+    }
 
     // Update progress bar
     const bar = document.getElementById('device-capacity-bar');
@@ -605,13 +613,13 @@ async function handleDownloadLogs() {
     isDownloading = true;
 
     const btn = document.getElementById('download-logs-btn');
-    const progressBar = document.getElementById('download-progress-bar');
-    const progressFill = document.getElementById('progress-bar-fill');
-    const progressText = document.getElementById('progress-text');
+    const syncProgress = document.getElementById('sync-progress');
+    const syncProgressBar = document.getElementById('sync-progress-bar');
+    const syncProgressText = document.getElementById('sync-progress-text');
 
     btn.disabled = true;
-    btn.textContent = 'Downloading...';
-    progressBar.classList.remove('hidden');
+    btn.textContent = 'Syncing...';
+    syncProgress.classList.remove('hidden');
 
     try {
         const device = getDevice();
@@ -619,9 +627,8 @@ async function handleDownloadLogs() {
 
         const result = await downloadAllLogs(device, (current, total) => {
             const percent = (current / total) * 100;
-            progressFill.style.width = `${percent}%`;
-            progressText.textContent = `Downloading ${current} of ${total} records...`;
-            document.getElementById('download-progress').textContent = `${current}/${total}`;
+            syncProgressBar.style.width = `${percent}%`;
+            syncProgressText.textContent = `Syncing ${current} of ${total} records...`;
         });
 
         const { logType, logs } = result;
@@ -646,9 +653,10 @@ async function handleDownloadLogs() {
             showSuccess('No new logs to download');
         }
 
-        // Update counts
+        // Update counts and last sync time
         await updateBrowserLogCount();
         await updateLogTable();
+        updateLastSyncTime();
 
     } catch (error) {
         console.error('Download failed:', error);
@@ -656,11 +664,19 @@ async function handleDownloadLogs() {
     } finally {
         isDownloading = false;
         btn.disabled = false;
-        btn.textContent = 'Download All Logs';
-        progressBar.classList.add('hidden');
-        progressFill.style.width = '0%';
-        document.getElementById('download-progress').textContent = '-';
+        btn.textContent = 'Sync Data';
+        syncProgress.classList.add('hidden');
+        syncProgressBar.style.width = '0%';
     }
+}
+
+/**
+ * Update last sync time display
+ */
+function updateLastSyncTime() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('last-sync-time').textContent = `Last synced: ${timeString}`;
 }
 
 /**
