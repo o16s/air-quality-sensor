@@ -57,40 +57,53 @@ export const BUFFER_SIZES = {
     PRINT_BUFFER: 64        // Debug print buffer
 };
 
+// Battery Encoding Constants (Nov 7, 2025)
+export const BATTERY_ENCODING = {
+    VOLTAGE_MIN_MV: 3000,      // Minimum voltage (3.0V)
+    VOLTAGE_MAX_MV: 5540,      // Maximum voltage (5.54V)
+    VOLTAGE_STEP_MV: 20,       // Voltage precision (20mV steps)
+    CHARGING_BIT: 7,           // Bit position for charging flag
+    VOLTAGE_MASK: 0x7F,        // Mask for voltage bits (bits 6-0)
+    CHARGING_MASK: 0x80        // Mask for charging bit (bit 7)
+};
+
 // Status Buffer Layout - GPS Format (24 bytes)
 // Updated Nov 4, 2025 - Humidity changed from milli-percent (÷1000) to centi-percent (÷100)
 // Updated Nov 6, 2025 - Added MEASURED_AT field, TIMESTAMP renamed to CURRENT_TIME, expanded to 24 bytes
+// Updated Nov 7, 2025 - Battery changed to packed voltage+charging (bit7:charging, bits6-0:voltage)
 export const STATUS_LAYOUT = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
     PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
-    BATTERY: { offset: 8, type: 'Uint8', scale: 1 },            // 0-100%
-    CHARGING: { offset: 9, type: 'Uint8', scale: 1 },           // 0 or 1
+    BATTERY: { offset: 8, type: 'Uint8', scale: 1 },            // [bit7:charging][bits6-0:voltage]
+    RESERVED1: { offset: 9, type: 'Uint8', scale: 1 },          // Reserved
     GPS_FIX: { offset: 10, type: 'Uint8', scale: 1 },           // 0-2
     DEVICE_FLAGS: { offset: 11, type: 'Uint8', scale: 1 },      // Bit 0: GPS enabled
-    RESERVED: { offset: 12, type: 'Uint32', scale: 1 },         // Reserved (4 bytes)
+    RESERVED2: { offset: 12, type: 'Uint32', scale: 1 },        // Reserved (4 bytes)
     CURRENT_TIME: { offset: 16, type: 'Uint32', scale: 1 },     // Current device time (GPS/RTC/Uptime)
     MEASURED_AT: { offset: 20, type: 'Uint32', scale: 1 }       // When sensor data was captured
 };
 
 // Status Buffer Layout - TSL2591 Format (24 bytes)
 // Added Nov 6, 2025 - For TSL2591 light sensor builds
+// Updated Nov 7, 2025 - Battery changed to packed voltage+charging (bit7:charging, bits6-0:voltage)
 export const STATUS_LAYOUT_TSL = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
     PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
-    BATTERY: { offset: 8, type: 'Uint8', scale: 1 },            // 0-100%
-    CHARGING: { offset: 9, type: 'Uint8', scale: 1 },           // 0 or 1
+    BATTERY: { offset: 8, type: 'Uint8', scale: 1 },            // [bit7:charging][bits6-0:voltage]
+    RESERVED1: { offset: 9, type: 'Uint8', scale: 1 },          // Reserved
     LUX: { offset: 10, type: 'Float32', scale: 1 },             // lux as float32 (NO SCALING!)
-    RESERVED: { offset: 14, type: 'Uint16', scale: 1 },         // Reserved (2 bytes)
+    RESERVED2: { offset: 14, type: 'Uint16', scale: 1 },        // Reserved (2 bytes)
     CURRENT_TIME: { offset: 16, type: 'Uint32', scale: 1 },     // Current device time (GPS/RTC/Uptime)
     MEASURED_AT: { offset: 20, type: 'Uint32', scale: 1 }       // When sensor data was captured
 };
 
 // Log Record Buffer Layout - GPS Format (24 bytes)
 // Updated Nov 4, 2025 - Added 2-byte padding, timestamp moved to offset 20
+// Updated Nov 7, 2025 - Battery changed to packed voltage+charging (bit7:charging, bits6-0:voltage)
 export const LOG_LAYOUT = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
@@ -99,13 +112,14 @@ export const LOG_LAYOUT = {
     LATITUDE: { offset: 8, type: 'Int32', scale: 1e7 },         // degrees × 10⁷
     LONGITUDE: { offset: 12, type: 'Int32', scale: 1e7 },       // degrees × 10⁷
     GPS_FIX: { offset: 16, type: 'Uint8', scale: 1 },           // 0-2
-    BATTERY: { offset: 17, type: 'Uint8', scale: 1 },           // 0-100%
+    BATTERY: { offset: 17, type: 'Uint8', scale: 1 },           // [bit7:charging][bits6-0:voltage]
     PADDING: { offset: 18, type: 'Uint16', scale: 1 },          // Compiler alignment padding
     TIMESTAMP: { offset: 20, type: 'Uint32', scale: 1 }         // Unix epoch
 };
 
 // Log Record Buffer Layout - TSL2591 Light Sensor Format (24 bytes)
 // Added Nov 6, 2025 - Alternative format for light sensor builds
+// Updated Nov 7, 2025 - Battery changed to packed voltage+charging (bit7:charging, bits6-0:voltage)
 export const LOG_LAYOUT_TSL = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
@@ -115,7 +129,7 @@ export const LOG_LAYOUT_TSL = {
     TSL_CH1: { offset: 10, type: 'Uint16', scale: 1 },          // IR spectrum raw count (0-65535)
     LUX: { offset: 12, type: 'Uint16', scale: 10 },             // lux × 10 (deci-lux)
     OVERFLOW: { offset: 14, type: 'Uint8', scale: 1 },          // 0=valid, 1=saturated
-    BATTERY: { offset: 15, type: 'Uint8', scale: 1 },           // 0-100%
+    BATTERY: { offset: 15, type: 'Uint8', scale: 1 },           // [bit7:charging][bits6-0:voltage]
     RESERVED1: { offset: 16, type: 'Uint16', scale: 1 },        // Reserved for future use
     RESERVED2: { offset: 18, type: 'Uint16', scale: 1 },        // Reserved for future use
     TIMESTAMP: { offset: 20, type: 'Uint32', scale: 1 }         // Unix epoch
@@ -128,7 +142,7 @@ export const MOCK_DATA = {
     HUMIDITY_PERCENT: 45.6,
     PM25_UG_M3: 12.5,
     PM10_UG_M3: 18.3,
-    BATTERY_PERCENT: 85,
+    BATTERY_VOLTAGE_MV: 4100,   // 4.1V (typical LiPo full charge)
     IS_CHARGING: true,
     GPS_FIX_QUALITY: 1,         // 1 = GPS fix
 
@@ -141,8 +155,9 @@ export const MOCK_DATA = {
     PM25_MAX_UG_M3: 20.0,
     PM10_MIN_UG_M3: 10.0,
     PM10_MAX_UG_M3: 30.0,
-    BATTERY_MIN_PERCENT: 60,
-    BATTERY_MAX_PERCENT: 100,
+    BATTERY_MIN_MV: 3300,       // Minimum battery voltage (3.3V - LiPo cutoff = 0%)
+    BATTERY_MAX_MV: 4150,       // Maximum battery voltage (4.15V - LiPo full = 100%, matches firmware)
+
 
     // GPS mock coordinates (Zurich, Switzerland area)
     GPS_LAT: 47.1234567,

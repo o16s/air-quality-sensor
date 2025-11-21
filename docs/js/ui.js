@@ -71,6 +71,9 @@ export async function initUI() {
     } else {
         // No device - show connect section
         document.getElementById('connect-section').classList.remove('hidden');
+
+        // Show measurement history if available, otherwise show instructions
+        await showAppropriateDisconnectedContent();
     }
 }
 
@@ -192,6 +195,7 @@ async function handleDeviceConnected(device) {
     // Show main content and hide instructions
     document.getElementById('instructions').classList.add('hidden');
     document.getElementById('main-content').classList.remove('hidden');
+    document.getElementById('live-data-section').classList.remove('hidden');
 
     // Show footer logo when connected
     document.getElementById('footer-logo').classList.remove('hidden');
@@ -277,6 +281,30 @@ async function handleDeviceConnected(device) {
 }
 
 /**
+ * Show appropriate content when disconnected (instructions or measurement history)
+ */
+async function showAppropriateDisconnectedContent() {
+    try {
+        const logCount = await getStorageLogCount();
+
+        if (logCount > 0) {
+            // Have data - show measurement history (but not live data)
+            document.getElementById('instructions').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+            document.getElementById('live-data-section').classList.add('hidden');
+        } else {
+            // No data - show getting started instructions
+            document.getElementById('instructions').classList.remove('hidden');
+            document.getElementById('main-content').classList.add('hidden');
+        }
+    } catch (error) {
+        // Error checking logs - default to showing instructions
+        document.getElementById('instructions').classList.remove('hidden');
+        document.getElementById('main-content').classList.add('hidden');
+    }
+}
+
+/**
  * Open settings modal
  */
 function openSettingsModal() {
@@ -293,7 +321,7 @@ function closeSettingsModal() {
 /**
  * Handle device disconnected event
  */
-function handleDeviceDisconnected() {
+async function handleDeviceDisconnected() {
     console.log('Device disconnected');
 
     // Show connect section, hide device info
@@ -308,9 +336,10 @@ function handleDeviceDisconnected() {
     // Update connection status
     updateConnectionStatus(false);
 
-    // Hide main content and status indicators
-    document.getElementById('main-content').classList.add('hidden');
-    document.getElementById('instructions').classList.remove('hidden');
+    // Show measurement history if available, otherwise show instructions
+    await showAppropriateDisconnectedContent();
+
+    // Hide status indicators
     document.getElementById('storage-status-inline').classList.add('hidden');
 
     // Hide product image and footer logo
@@ -364,8 +393,8 @@ async function updateLiveData() {
         updatePMValue('pm25-value', status.pm25);
         updatePMValue('pm10-value', status.pm10);
 
-        // Update battery
-        updateBattery(status.battery, status.charging);
+        // Update battery (now uses voltage instead of percentage)
+        updateBattery(status.batteryVoltage, status.charging);
 
         // Update Lux for TSL2591 format
         // Sparklines are NOT updated here - they update only on Refresh or Sync
@@ -373,18 +402,17 @@ async function updateLiveData() {
             updateLux(status.lux);
         }
 
-        // Update measurement age
+        // Update PM measurement age
         const ageSeconds = status.currentTime - status.measuredAt;
-        if (ageSeconds < 60) {
-            document.getElementById('measured-age').textContent = `${ageSeconds}s ago`;
+        if (ageSeconds < 5) {
+            document.getElementById('measured-age').textContent = 'fresh';
+        } else if (ageSeconds < 60) {
+            document.getElementById('measured-age').textContent = `${ageSeconds}s old`;
         } else if (ageSeconds < 3600) {
-            document.getElementById('measured-age').textContent = `${Math.floor(ageSeconds / 60)}m ago`;
+            document.getElementById('measured-age').textContent = `${Math.floor(ageSeconds / 60)}m old`;
         } else {
-            document.getElementById('measured-age').textContent = `${Math.floor(ageSeconds / 3600)}h ago`;
+            document.getElementById('measured-age').textContent = `${Math.floor(ageSeconds / 3600)}h old`;
         }
-
-        // Update timestamp
-        document.getElementById('last-update').textContent = 'Just now';
 
     } catch (error) {
         console.error('Failed to update live data:', error);
@@ -398,7 +426,6 @@ async function updateLiveData() {
         document.getElementById('battery-level').textContent = 'N/A';
         document.getElementById('battery-charging').textContent = 'N/A';
         document.getElementById('measured-age').textContent = '--';
-        document.getElementById('last-update').textContent = 'Never';
     }
 }
 
@@ -427,17 +454,43 @@ function updatePMValue(elementId, value) {
 }
 
 /**
- * Update battery display (inline status bar)
+ * Format battery voltage for display with charging icon
+ * @param {number} voltageMv - Battery voltage in millivolts
+ * @param {boolean} charging - Whether battery is charging
+ * @returns {string} Formatted HTML string with voltage and charging icon
  */
-function updateBattery(level, charging) {
+function formatBatteryVoltage(voltageMv, charging) {
+    const voltage = (voltageMv / 1000).toFixed(2);
+    const chargingIcon = charging ? '<svg class="w-3 h-3 inline ml-1 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>' : '';
+    return `${voltage}V${chargingIcon}`;
+}
+
+/**
+ * Update battery display (inline status bar)
+ * Now uses battery voltage (mV) instead of percentage
+ */
+function updateBattery(voltageMv, charging) {
     const batteryStatus = document.getElementById('battery-status-inline');
     const batteryPercent = document.getElementById('battery-percent-inline');
     const batteryCharging = document.getElementById('battery-charging-inline');
     const batteryFill = document.getElementById('battery-fill');
 
-    // Show battery status
+    // Convert voltage to percentage (LiPo battery curve approximation)
+    // 3.3V = 0%, 4.15V = 100% (matches firmware calculation)
+    let level;
+    if (voltageMv <= 3300) {
+        level = 0;
+    } else if (voltageMv >= 4150) {
+        level = 100;
+    } else {
+        // Linear approximation between 3.3V and 4.15V
+        level = Math.round(((voltageMv - 3300) / (4150 - 3300)) * 100);
+    }
+
+    // Show battery status with voltage in tooltip
     batteryStatus.classList.remove('hidden');
     batteryPercent.textContent = `${level}%`;
+    batteryPercent.setAttribute('title', `${(voltageMv / 1000).toFixed(2)}V`);
 
     // Update charging indicator
     if (charging) {
@@ -846,6 +899,7 @@ async function updateLogTable() {
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CH1</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overflow</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Charging</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
             `;
@@ -862,7 +916,8 @@ async function updateLogTable() {
                     <td class="px-4 py-3 text-sm text-gray-600">${log.tslCH0}</td>
                     <td class="px-4 py-3 text-sm text-gray-600">${log.tslCH1}</td>
                     <td class="px-4 py-3 text-sm ${log.overflow ? 'text-red-600 font-semibold' : 'text-green-600'}">${log.overflow ? '⚠️ SAT' : 'OK'}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${(log.batteryVoltage / 1000).toFixed(2)}V</td>
+                    <td class="px-4 py-3 text-sm ${log.charging ? 'text-green-600' : 'text-gray-400'}">${log.charging ? '⚡' : '—'}</td>
                     <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
                     <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
                 </tr>
@@ -877,6 +932,7 @@ async function updateLogTable() {
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Charging</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
             `;
@@ -889,7 +945,8 @@ async function updateLogTable() {
                     <td class="px-4 py-3 text-sm text-gray-900">${log.humidity.toFixed(1)}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.pm25.toFixed(1)}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">${log.pm10.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.battery}%</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${(log.batteryVoltage / 1000).toFixed(2)}V</td>
+                    <td class="px-4 py-3 text-sm ${log.charging ? 'text-green-600' : 'text-gray-400'}">${log.charging ? '⚡' : '—'}</td>
                     <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
                     <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
                 </tr>
