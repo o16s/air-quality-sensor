@@ -117,12 +117,12 @@
         <!-- Main Content -->
         <div id="main-content" class="hidden">
             <!-- Live Data Dashboard -->
-            <div class="mb-6">
+            <div id="live-data-section" class="mb-6">
                 <!-- Sensor Readings -->
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center justify-between">
                         Live Sensor Data
-                        <button id="refresh-btn" class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition duration-200">
+                        <button id="refresh-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200">
                             Measure Now
                         </button>
                     </h2>
@@ -164,9 +164,8 @@
                             </div>
                         </div>
                     </div>
-                    <div class="mt-4 text-xs text-gray-500 space-y-1">
-                        <div>Last updated: <span id="last-update">Never</span></div>
-                        <div>Measured: <span id="measured-age">--</span></div>
+                    <div class="mt-4 text-xs text-gray-500">
+                        <div>PM data: <span id="measured-age">--</span></div>
                     </div>
                 </div>
             </div>
@@ -183,11 +182,11 @@
                             <div id="last-sync-time" class="text-xs text-gray-500">Never synced</div>
                         </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button id="export-csv-btn" class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded transition duration-200">
+                    <div class="flex gap-4 items-center">
+                        <button id="export-csv-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200">
                             Export CSV
                         </button>
-                        <button id="clear-logs-btn" class="bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded transition duration-200">
+                        <button id="clear-logs-btn" class="text-gray-500 hover:text-red-600 hover:underline text-sm font-medium transition duration-200">
                             Clear
                         </button>
                     </div>

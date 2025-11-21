@@ -409,6 +409,23 @@ Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
 - `CURRENT_TIME` is the device's current time (from GPS/RTC/Uptime), while `MEASURED_AT` is when the sensor data was actually captured. The difference shows measurement age (e.g., "32s ago").
 - GPS vs TSL format is compile-time determined. Use `GET_LOG_TYPE` to detect at runtime.
 
+### Battery Encoding & Percentage Calculation
+
+**Updated Nov 20, 2025** - Web dashboard now matches firmware percentage calculation
+
+**Packed Format** (1 byte in GET_STATUS and all log formats):
+- Bit 7: Charging flag (0=not charging, 1=charging)
+- Bits 6-0: Voltage encoding (0-127 steps)
+- Formula: `voltage_mv = (byte & 0x7F) * 20 + 3000`
+
+**Percentage Calculation** (aligned with firmware):
+- **3300mV = 0%** (LiPo cutoff voltage)
+- **4150mV = 100%** (LiPo fully charged)
+- Linear interpolation between 3300-4150mV
+- Formula: `percentage = (voltage_mv - 3300) * 100 / (4150 - 3300)`
+
+**Implementation**: See `decodeBatteryByte()` in `utils.js` and `updateBattery()` in `ui.js`
+
 ## Mock Mode (Testing Without Hardware)
 
 ### How Mock Mode Works

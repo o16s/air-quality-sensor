@@ -32,7 +32,8 @@ export function exportToCSV(logs) {
             'TSL CH0',
             'TSL CH1',
             'Overflow',
-            'Battery (%)',
+            'Battery (V)',
+            'Charging',
             'Device Serial',
             'Downloaded At'
         ]
@@ -47,7 +48,8 @@ export function exportToCSV(logs) {
             'Latitude',
             'Longitude',
             'GPS Fix',
-            'Battery (%)',
+            'Battery (V)',
+            'Charging',
             'Device Serial',
             'Downloaded At'
         ];
@@ -72,7 +74,8 @@ export function exportToCSV(logs) {
                 log.tslCH0 || '',
                 log.tslCH1 || '',
                 log.overflow || '0',
-                log.battery || '',
+                log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
+                log.charging ? '1' : '0',
                 log.deviceSerial || '',
                 downloadDate ? downloadDate.toISOString() : ''
             ]
@@ -87,7 +90,8 @@ export function exportToCSV(logs) {
                 log.lat?.toFixed(7) || '',
                 log.lon?.toFixed(7) || '',
                 formatGPSFix(log.fix),
-                log.battery || '',
+                log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
+                log.charging ? '1' : '0',
                 log.deviceSerial || '',
                 downloadDate ? downloadDate.toISOString() : ''
             ];
@@ -153,8 +157,9 @@ export function exportToJSON(logs) {
                 fix: formatGPSFix(log.fix)
             },
             battery: {
-                level: log.battery,
-                unit: '%'
+                voltage: log.batteryVoltage,
+                voltageUnit: 'mV',
+                charging: log.charging
             },
             device: {
                 serial: log.deviceSerial

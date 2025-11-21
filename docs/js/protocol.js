@@ -27,7 +27,9 @@ import {
     getCurrentTimestamp,
     boolToNumber,
     formatGPSFix,
-    createMapsURL
+    createMapsURL,
+    encodeBatteryByte,
+    decodeBatteryByte
 } from './utils.js';
 
 // Mock mode for testing without hardware
@@ -94,11 +96,12 @@ function generateMockStatus() {
     setBufferValue(view, STATUS_LAYOUT.HUMIDITY, MOCK_DATA.HUMIDITY_PERCENT);
     setBufferValue(view, STATUS_LAYOUT.PM25, MOCK_DATA.PM25_UG_M3);
     setBufferValue(view, STATUS_LAYOUT.PM10, MOCK_DATA.PM10_UG_M3);
-    setBufferValue(view, STATUS_LAYOUT.BATTERY, MOCK_DATA.BATTERY_PERCENT);
-    setBufferValue(view, STATUS_LAYOUT.CHARGING, boolToNumber(MOCK_DATA.IS_CHARGING));
+    const batteryByte = encodeBatteryByte(MOCK_DATA.BATTERY_VOLTAGE_MV, MOCK_DATA.IS_CHARGING);
+    setBufferValue(view, STATUS_LAYOUT.BATTERY, batteryByte);
+    setBufferValue(view, STATUS_LAYOUT.RESERVED1, 0);
     setBufferValue(view, STATUS_LAYOUT.GPS_FIX, MOCK_DATA.GPS_FIX_QUALITY);
     setBufferValue(view, STATUS_LAYOUT.DEVICE_FLAGS, 0x01);  // Bit 0: GPS enabled
-    setBufferValue(view, STATUS_LAYOUT.RESERVED, 0);
+    setBufferValue(view, STATUS_LAYOUT.RESERVED2, 0);
     setBufferValue(view, STATUS_LAYOUT.CURRENT_TIME, now);
     setBufferValue(view, STATUS_LAYOUT.MEASURED_AT, measuredAt);
 
@@ -119,10 +122,11 @@ function generateMockStatusTSL() {
     setBufferValue(view, STATUS_LAYOUT_TSL.HUMIDITY, MOCK_DATA.HUMIDITY_PERCENT);
     setBufferValue(view, STATUS_LAYOUT_TSL.PM25, MOCK_DATA.PM25_UG_M3);
     setBufferValue(view, STATUS_LAYOUT_TSL.PM10, MOCK_DATA.PM10_UG_M3);
-    setBufferValue(view, STATUS_LAYOUT_TSL.BATTERY, MOCK_DATA.BATTERY_PERCENT);
-    setBufferValue(view, STATUS_LAYOUT_TSL.CHARGING, boolToNumber(MOCK_DATA.IS_CHARGING));
+    const batteryByteTSL = encodeBatteryByte(MOCK_DATA.BATTERY_VOLTAGE_MV, MOCK_DATA.IS_CHARGING);
+    setBufferValue(view, STATUS_LAYOUT_TSL.BATTERY, batteryByteTSL);
+    setBufferValue(view, STATUS_LAYOUT_TSL.RESERVED1, 0);
     setBufferValue(view, STATUS_LAYOUT_TSL.LUX, MOCK_DATA.TSL_LUX);
-    setBufferValue(view, STATUS_LAYOUT_TSL.RESERVED, 0);
+    setBufferValue(view, STATUS_LAYOUT_TSL.RESERVED2, 0);
     setBufferValue(view, STATUS_LAYOUT_TSL.CURRENT_TIME, now);
     setBufferValue(view, STATUS_LAYOUT_TSL.MEASURED_AT, measuredAt);
 
@@ -143,7 +147,9 @@ function generateMockLogItem(index) {
     const humidity = MOCK_DATA.HUMIDITY_MIN_PERCENT + Math.random() * (MOCK_DATA.HUMIDITY_MAX_PERCENT - MOCK_DATA.HUMIDITY_MIN_PERCENT);
     const pm25 = MOCK_DATA.PM25_MIN_UG_M3 + Math.random() * (MOCK_DATA.PM25_MAX_UG_M3 - MOCK_DATA.PM25_MIN_UG_M3);
     const pm10 = MOCK_DATA.PM10_MIN_UG_M3 + Math.random() * (MOCK_DATA.PM10_MAX_UG_M3 - MOCK_DATA.PM10_MIN_UG_M3);
-    const battery = MOCK_DATA.BATTERY_MIN_PERCENT + Math.random() * (MOCK_DATA.BATTERY_MAX_PERCENT - MOCK_DATA.BATTERY_MIN_PERCENT);
+    const batteryMv = Math.floor(MOCK_DATA.BATTERY_MIN_MV + Math.random() * (MOCK_DATA.BATTERY_MAX_MV - MOCK_DATA.BATTERY_MIN_MV));
+    const isCharging = Math.random() > 0.5;  // Random charging state
+    const batteryByte = encodeBatteryByte(batteryMv, isCharging);
 
     setBufferValue(view, LOG_LAYOUT.TEMPERATURE, temperature);
     setBufferValue(view, LOG_LAYOUT.HUMIDITY, humidity);
@@ -152,8 +158,8 @@ function generateMockLogItem(index) {
     setBufferValue(view, LOG_LAYOUT.LATITUDE, MOCK_DATA.GPS_LAT);
     setBufferValue(view, LOG_LAYOUT.LONGITUDE, MOCK_DATA.GPS_LON);
     setBufferValue(view, LOG_LAYOUT.GPS_FIX, MOCK_DATA.GPS_FIX_QUALITY);
-    setBufferValue(view, LOG_LAYOUT.BATTERY, battery);
-    setBufferValue(view, LOG_LAYOUT.PADDING, 0);  // Compiler alignment padding
+    setBufferValue(view, LOG_LAYOUT.BATTERY, batteryByte);
+    setBufferValue(view, LOG_LAYOUT.PADDING, 0xA5A5);  // Compiler alignment padding
     setBufferValue(view, LOG_LAYOUT.TIMESTAMP, baseTime);
 
     return new Uint8Array(buffer);
@@ -173,7 +179,9 @@ function generateMockLogItemTSL(index) {
     const humidity = MOCK_DATA.HUMIDITY_MIN_PERCENT + Math.random() * (MOCK_DATA.HUMIDITY_MAX_PERCENT - MOCK_DATA.HUMIDITY_MIN_PERCENT);
     const pm25 = MOCK_DATA.PM25_MIN_UG_M3 + Math.random() * (MOCK_DATA.PM25_MAX_UG_M3 - MOCK_DATA.PM25_MIN_UG_M3);
     const pm10 = MOCK_DATA.PM10_MIN_UG_M3 + Math.random() * (MOCK_DATA.PM10_MAX_UG_M3 - MOCK_DATA.PM10_MIN_UG_M3);
-    const battery = MOCK_DATA.BATTERY_MIN_PERCENT + Math.random() * (MOCK_DATA.BATTERY_MAX_PERCENT - MOCK_DATA.BATTERY_MIN_PERCENT);
+    const batteryMv = Math.floor(MOCK_DATA.BATTERY_MIN_MV + Math.random() * (MOCK_DATA.BATTERY_MAX_MV - MOCK_DATA.BATTERY_MIN_MV));
+    const isCharging = Math.random() > 0.5;  // Random charging state
+    const batteryByte = encodeBatteryByte(batteryMv, isCharging);
     const lux = MOCK_DATA.TSL_LUX_MIN + Math.random() * (MOCK_DATA.TSL_LUX_MAX - MOCK_DATA.TSL_LUX_MIN);
     const ch0 = Math.floor(MOCK_DATA.TSL_CH0_MIN + Math.random() * (MOCK_DATA.TSL_CH0_MAX - MOCK_DATA.TSL_CH0_MIN));
     const ch1 = Math.floor(MOCK_DATA.TSL_CH1_MIN + Math.random() * (MOCK_DATA.TSL_CH1_MAX - MOCK_DATA.TSL_CH1_MIN));
@@ -186,7 +194,7 @@ function generateMockLogItemTSL(index) {
     setBufferValue(view, LOG_LAYOUT_TSL.TSL_CH1, ch1);
     setBufferValue(view, LOG_LAYOUT_TSL.LUX, lux);
     setBufferValue(view, LOG_LAYOUT_TSL.OVERFLOW, MOCK_DATA.TSL_OVERFLOW);
-    setBufferValue(view, LOG_LAYOUT_TSL.BATTERY, battery);
+    setBufferValue(view, LOG_LAYOUT_TSL.BATTERY, batteryByte);
     setBufferValue(view, LOG_LAYOUT_TSL.RESERVED1, 0);
     setBufferValue(view, LOG_LAYOUT_TSL.RESERVED2, 0);
     setBufferValue(view, LOG_LAYOUT_TSL.TIMESTAMP, baseTime);
@@ -241,14 +249,19 @@ function parseStatusData(data) {
     const view = new DataView(data.buffer);
 
     const currentTime = getBufferValue(view, STATUS_LAYOUT.CURRENT_TIME);
+    const batteryByte = getBufferValue(view, STATUS_LAYOUT.BATTERY);
+    const battery = decodeBatteryByte(batteryByte);
+
+    const temperature = getBufferValue(view, STATUS_LAYOUT.TEMPERATURE);
+    console.log(`[Status Parse] Temperature: ${temperature}°C (raw: ${view.getInt16(0, true)})`);
 
     return {
-        temperature: getBufferValue(view, STATUS_LAYOUT.TEMPERATURE),
+        temperature: temperature,
         humidity: getBufferValue(view, STATUS_LAYOUT.HUMIDITY),
         pm25: getBufferValue(view, STATUS_LAYOUT.PM25),
         pm10: getBufferValue(view, STATUS_LAYOUT.PM10),
-        battery: getBufferValue(view, STATUS_LAYOUT.BATTERY),
-        charging: getBufferValue(view, STATUS_LAYOUT.CHARGING) === 1,
+        batteryVoltage: battery.voltageMv,
+        charging: battery.isCharging,
         gpsFix: getBufferValue(view, STATUS_LAYOUT.GPS_FIX),
         currentTime: currentTime,
         measuredAt: getBufferValue(view, STATUS_LAYOUT.MEASURED_AT),
@@ -264,14 +277,16 @@ function parseStatusDataTSL(data) {
 
     const currentTime = getBufferValue(view, STATUS_LAYOUT_TSL.CURRENT_TIME);
     const measuredAt = getBufferValue(view, STATUS_LAYOUT_TSL.MEASURED_AT);
+    const batteryByte = getBufferValue(view, STATUS_LAYOUT_TSL.BATTERY);
+    const battery = decodeBatteryByte(batteryByte);
 
     return {
         temperature: getBufferValue(view, STATUS_LAYOUT_TSL.TEMPERATURE),
         humidity: getBufferValue(view, STATUS_LAYOUT_TSL.HUMIDITY),
         pm25: getBufferValue(view, STATUS_LAYOUT_TSL.PM25),
         pm10: getBufferValue(view, STATUS_LAYOUT_TSL.PM10),
-        battery: getBufferValue(view, STATUS_LAYOUT_TSL.BATTERY),
-        charging: getBufferValue(view, STATUS_LAYOUT_TSL.CHARGING) === 1,
+        batteryVoltage: battery.voltageMv,
+        charging: battery.isCharging,
         lux: getBufferValue(view, STATUS_LAYOUT_TSL.LUX),  // Float32, no scaling
         currentTime: currentTime,
         measuredAt: measuredAt,
@@ -342,6 +357,9 @@ export async function readLogRecord(device, index, logType = null) {
 function parseLogItem(data) {
     const view = new DataView(data.buffer);
 
+    const batteryByte = getBufferValue(view, LOG_LAYOUT.BATTERY);
+    const battery = decodeBatteryByte(batteryByte);
+
     return {
         temperature: getBufferValue(view, LOG_LAYOUT.TEMPERATURE),
         humidity: getBufferValue(view, LOG_LAYOUT.HUMIDITY),
@@ -350,7 +368,8 @@ function parseLogItem(data) {
         lat: getBufferValue(view, LOG_LAYOUT.LATITUDE),
         lon: getBufferValue(view, LOG_LAYOUT.LONGITUDE),
         fix: getBufferValue(view, LOG_LAYOUT.GPS_FIX),
-        battery: getBufferValue(view, LOG_LAYOUT.BATTERY),
+        batteryVoltage: battery.voltageMv,
+        charging: battery.isCharging,
         timestamp: getBufferValue(view, LOG_LAYOUT.TIMESTAMP)
     };
 }
@@ -361,6 +380,9 @@ function parseLogItem(data) {
 function parseLogItemTSL(data) {
     const view = new DataView(data.buffer);
 
+    const batteryByte = getBufferValue(view, LOG_LAYOUT_TSL.BATTERY);
+    const battery = decodeBatteryByte(batteryByte);
+
     return {
         temperature: getBufferValue(view, LOG_LAYOUT_TSL.TEMPERATURE),
         humidity: getBufferValue(view, LOG_LAYOUT_TSL.HUMIDITY),
@@ -370,7 +392,8 @@ function parseLogItemTSL(data) {
         tslCH1: getBufferValue(view, LOG_LAYOUT_TSL.TSL_CH1),
         lux: getBufferValue(view, LOG_LAYOUT_TSL.LUX),
         overflow: getBufferValue(view, LOG_LAYOUT_TSL.OVERFLOW),
-        battery: getBufferValue(view, LOG_LAYOUT_TSL.BATTERY),
+        batteryVoltage: battery.voltageMv,
+        charging: battery.isCharging,
         timestamp: getBufferValue(view, LOG_LAYOUT_TSL.TIMESTAMP)
     };
 }

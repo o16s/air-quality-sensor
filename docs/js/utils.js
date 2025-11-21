@@ -3,7 +3,7 @@
  * Common helpers used across multiple modules
  */
 
-import { ERRORS } from './constants.js';
+import { ERRORS, BATTERY_ENCODING } from './constants.js';
 
 /**
  * Validate that a device is connected and ready
@@ -198,6 +198,45 @@ export function boolToNumber(value) {
  */
 export function numberToBool(value) {
     return value !== 0;
+}
+
+/**
+ * Decode battery byte into voltage and charging state
+ * Battery encoding: bit 7 = charging, bits 6-0 = voltage steps
+ * @param {number} batteryByte - Packed battery byte from firmware
+ * @returns {{voltageMv: number, isCharging: boolean}} Decoded battery state
+ */
+export function decodeBatteryByte(batteryByte) {
+    const voltageBits = batteryByte & 0x7F;  // Mask off bit 7
+    const voltageMv = voltageBits * 20 + 3000;  // Scale: 3000-5540 mV
+    const isCharging = ((batteryByte >> 7) & 0x01) === 1;
+
+    console.log(`[Battery Decode] Byte: 0x${batteryByte.toString(16).padStart(2, '0')} (${batteryByte}) → Voltage: ${voltageMv}mV, Charging: ${isCharging}`);
+
+    return {
+        voltageMv,
+        isCharging
+    };
+}
+
+/**
+ * Encode voltage and charging state into battery byte
+ * Used for mock data generation
+ * @param {number} voltageMv - Battery voltage in millivolts (3000-5540)
+ * @param {boolean} isCharging - Charging state
+ * @returns {number} Packed battery byte
+ */
+export function encodeBatteryByte(voltageMv, isCharging) {
+    // Clamp voltage to valid range
+    let vbat = voltageMv;
+    if (vbat < 3000) vbat = 3000;
+    if (vbat > 5540) vbat = 5540;
+
+    // Encode: voltage in bits 6-0, charging in bit 7
+    const voltageBits = Math.floor((vbat - 3000) / 20);
+    const chargingBit = isCharging ? 1 : 0;
+
+    return voltageBits | (chargingBit << 7);
 }
 
 /**
