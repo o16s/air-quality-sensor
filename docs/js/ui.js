@@ -513,6 +513,16 @@ function updateBattery(voltageMv, charging) {
     } else {
         batteryContainer.classList.add('text-red-600');
     }
+
+    // Show/hide low battery warning (< 2%)
+    const batteryWarning = document.getElementById('battery-warning');
+    if (batteryWarning) {
+        if (level < 2) {
+            batteryWarning.classList.remove('hidden');
+        } else {
+            batteryWarning.classList.add('hidden');
+        }
+    }
 }
 
 /**

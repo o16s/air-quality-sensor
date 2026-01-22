@@ -37,9 +37,9 @@ export const LOG_TYPE = {
 
 // Device Capacity
 export const DEVICE_CAPACITY = {
-    MAX_LOG_CAPACITY: 2048,         // Maximum number of log records device can store
+    MAX_LOG_CAPACITY: 4680,         // Maximum number of log records device can store
     ERASE_MAGIC_VALUE: 0xDEAD,      // Safety value required for ERASE_LOGS command
-    MEASUREMENT_INTERVAL: 85        // Seconds between log records (85s = ~1.4 minutes)
+    MEASUREMENT_INTERVAL: 180       // Seconds between log records (180s = 3 minutes, 20 logs/hour)
 };
 
 // Buffer Sizes (in bytes)
@@ -72,7 +72,7 @@ export const BATTERY_ENCODING = {
 // Updated Nov 6, 2025 - Added MEASURED_AT field, TIMESTAMP renamed to CURRENT_TIME, expanded to 24 bytes
 // Updated Nov 7, 2025 - Battery changed to packed voltage+charging (bit7:charging, bits6-0:voltage)
 export const STATUS_LAYOUT = {
-    TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },      // °C × 100 (centi-degrees)
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
     PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
@@ -89,7 +89,7 @@ export const STATUS_LAYOUT = {
 // Added Nov 6, 2025 - For TSL2591 light sensor builds
 // Updated Nov 7, 2025 - Battery changed to packed voltage+charging (bit7:charging, bits6-0:voltage)
 export const STATUS_LAYOUT_TSL = {
-    TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },      // °C × 100 (centi-degrees)
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
     PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
@@ -105,7 +105,7 @@ export const STATUS_LAYOUT_TSL = {
 // Updated Nov 4, 2025 - Added 2-byte padding, timestamp moved to offset 20
 // Updated Nov 7, 2025 - Battery changed to packed voltage+charging (bit7:charging, bits6-0:voltage)
 export const LOG_LAYOUT = {
-    TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },      // °C × 100 (centi-degrees)
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
     PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10
@@ -121,7 +121,7 @@ export const LOG_LAYOUT = {
 // Added Nov 6, 2025 - Alternative format for light sensor builds
 // Updated Nov 7, 2025 - Battery changed to packed voltage+charging (bit7:charging, bits6-0:voltage)
 export const LOG_LAYOUT_TSL = {
-    TEMPERATURE: { offset: 0, type: 'Int16', scale: 1000 },     // °C × 1000
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },      // °C × 100 (centi-degrees)
     HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
     PM25: { offset: 4, type: 'Uint16', scale: 10 },             // μg/m³ × 10
     PM10: { offset: 6, type: 'Uint16', scale: 10 },             // μg/m³ × 10

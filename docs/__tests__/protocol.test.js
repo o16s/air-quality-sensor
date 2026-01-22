@@ -29,8 +29,8 @@ describe('Protocol - Mock Mode', () => {
     expect(status.humidity).toBeTypeOf('number');
     expect(status.pm25).toBeTypeOf('number');
     expect(status.pm10).toBeTypeOf('number');
-    expect(status.battery).toBeGreaterThanOrEqual(0);
-    expect(status.battery).toBeLessThanOrEqual(100);
+    expect(status.batteryVoltage).toBeGreaterThanOrEqual(3000);
+    expect(status.batteryVoltage).toBeLessThanOrEqual(5540);
     expect(status.charging).toBeTypeOf('boolean');
     expect(status.gpsFix).toBeGreaterThanOrEqual(0);
     expect(status.gpsFix).toBeLessThanOrEqual(2);
@@ -72,7 +72,7 @@ describe('Protocol - Mock Mode', () => {
     expect(log.lat).toBeTypeOf('number');
     expect(log.lon).toBeTypeOf('number');
     expect(log.fix).toBeGreaterThanOrEqual(0);
-    expect(log.battery).toBeGreaterThanOrEqual(0);
+    expect(log.batteryVoltage).toBeGreaterThanOrEqual(3000);
     expect(log.timestamp).toBeTypeOf('number');
   });
 
@@ -112,7 +112,7 @@ describe('Protocol - Data Parsing', () => {
     expect(status).toHaveProperty('humidity');
     expect(status).toHaveProperty('pm25');
     expect(status).toHaveProperty('pm10');
-    expect(status).toHaveProperty('battery');
+    expect(status).toHaveProperty('batteryVoltage');
     expect(status).toHaveProperty('charging');
     expect(status).toHaveProperty('gpsFix');
     expect(status).toHaveProperty('timestamp');
@@ -131,7 +131,7 @@ describe('Protocol - Data Parsing', () => {
     expect(log).toHaveProperty('lat');
     expect(log).toHaveProperty('lon');
     expect(log).toHaveProperty('fix');
-    expect(log).toHaveProperty('battery');
+    expect(log).toHaveProperty('batteryVoltage');
     expect(log).toHaveProperty('timestamp');
   });
 

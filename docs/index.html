@@ -104,6 +104,22 @@
             </div>
         </div>
 
+        <!-- Low Battery Warning -->
+        <div id="battery-warning" class="hidden bg-red-50 border-l-4 border-red-400 p-4 mb-6 rounded">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-red-700">
+                        <strong>Low Battery:</strong> Please charge the device for 30 minutes before data transfer will work properly.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Connect Section (shown when no device has been connected yet) -->
         <div id="connect-section" class="hidden">
             <div class="bg-white rounded-lg shadow-md p-12 mb-6 text-center">
@@ -277,6 +293,37 @@
                 <p class="text-xs text-gray-500 text-center">
                     This will delete all measurements stored on the device. Your downloaded data in the browser will not be affected.
                 </p>
+
+                <!-- Sensor Datasheets Section -->
+                <div class="border-t pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-3">Sensor Datasheets</h4>
+                    <div class="space-y-2 text-sm">
+                        <a href="https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf"
+                           target="_blank" rel="noopener"
+                           class="flex items-center text-blue-600 hover:text-blue-800 hover:underline">
+                            <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                            SHT3x - Temperature &amp; Humidity
+                        </a>
+                        <a href="https://cdn.sparkfun.com/assets/2/d/2/a/6/Sensirion_SPS30_Particulate_Matter_Sensor_v0.9_D1__1_.pdf"
+                           target="_blank" rel="noopener"
+                           class="flex items-center text-blue-600 hover:text-blue-800 hover:underline">
+                            <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                            SPS30 - Particulate Matter (PM2.5, PM10)
+                        </a>
+                        <a href="https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/1169/TSL2560%2C61.pdf"
+                           target="_blank" rel="noopener"
+                           class="flex items-center text-blue-600 hover:text-blue-800 hover:underline">
+                            <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                            TSL2591 - Light Sensor (Lux)
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
