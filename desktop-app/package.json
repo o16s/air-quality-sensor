@@ -1,0 +1,22 @@
+{
+  "name": "octanis-sensor-dashboard",
+  "version": "0.0.1",
+  "description": "Desktop app for Octanis environmental sensors",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "author": "Octanis Instruments GmbH",
+  "license": "MIT",
+  "devDependencies": {
+    "@electron-forge/cli": "^7.6.0",
+    "@electron-forge/maker-deb": "^7.6.0",
+    "@electron-forge/maker-dmg": "^7.6.0",
+    "@electron-forge/maker-squirrel": "^7.6.0",
+    "@electron-forge/maker-zip": "^7.6.0",
+    "dotenv": "^17.2.3",
+    "electron": "40.0.0"
+  }
+}
