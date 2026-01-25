@@ -30,9 +30,14 @@ module.exports = {
   rebuildConfig: {},
   makers: [
     {
-      name: '@electron-forge/maker-squirrel',
+      name: '@electron-forge/maker-wix',
       config: {
-        name: 'octanis-sensor-dashboard'
+        name: 'Octanis Sensor Dashboard',
+        manufacturer: 'Octanis Instruments GmbH',
+        shortcutFolderName: 'Octanis',
+        ui: {
+          chooseDirectory: true
+        }
       }
     },
     {

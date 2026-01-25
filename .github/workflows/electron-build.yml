@@ -56,6 +56,13 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
+      # Windows: Install WiX Toolset for MSI packaging
+      - name: Install WiX Toolset
+        if: matrix.os == 'windows-latest'
+        run: |
+          dotnet tool install --global wix --version 4.0.5
+          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Append
+
       # Linux: Install dependencies for deb packaging
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
@@ -78,6 +85,6 @@ jobs:
           path: |
             desktop-app/out/make/**/*.dmg
             desktop-app/out/make/**/*.zip
-            desktop-app/out/make/**/*.exe
+            desktop-app/out/make/**/*.msi
             desktop-app/out/make/**/*.deb
           if-no-files-found: warn
