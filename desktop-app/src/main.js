@@ -1,3 +1,6 @@
+// Handle Squirrel events (Windows installer shortcuts)
+if (require('electron-squirrel-startup')) require('electron').app.quit();
+
 const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 
