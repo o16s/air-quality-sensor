@@ -197,6 +197,46 @@
                 </div>
             </div>
 
+            <!-- Events Detected Section -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Events Detected</h2>
+                        <p class="text-xs text-gray-500 mt-1">Air quality anomalies and threshold violations</p>
+                    </div>
+                    <select id="events-time-filter" class="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="24h">Last 24 hours</option>
+                        <option value="7d" selected>Last 7 days</option>
+                        <option value="30d">Last 30 days</option>
+                        <option value="all">All time</option>
+                    </select>
+                </div>
+                <div id="events-timeline">
+                    <p class="text-sm text-gray-500 text-center py-4">No data available</p>
+                </div>
+            </div>
+
+            <!-- Heatmap Section -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Activity Heatmap</h2>
+                        <p class="text-xs text-gray-500 mt-1">Hourly averages (7am-7pm, last 14 days)</p>
+                    </div>
+                    <select id="heatmap-metric" class="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="pm25" selected>PM2.5</option>
+                        <option value="pm10">PM10</option>
+                        <option value="co2">CO2</option>
+                    </select>
+                </div>
+                <div id="heatmap-container" class="overflow-x-auto">
+                    <p class="text-sm text-gray-500 text-center py-4">No data available</p>
+                </div>
+                <div id="heatmap-legend" class="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500">
+                    <!-- Legend populated by renderHeatmapLegend() -->
+                </div>
+            </div>
+
             <!-- Measurement History Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex items-center justify-between mb-4">
@@ -353,6 +393,16 @@
                             TSL2591 - Light Sensor (Lux)
                         </a>
                     </div>
+                </div>
+
+                <!-- Event Detection Thresholds (dynamically rendered from constants.js) -->
+                <div class="border-t pt-4 mt-4">
+                    <h4 class="text-sm font-medium text-gray-700 mb-3">Event Detection Thresholds</h4>
+                    <p class="text-xs text-gray-500 mb-3">Values that trigger events in the timeline (based on WHO/EPA guidelines)</p>
+                    <div id="threshold-table">
+                        <!-- Populated by renderThresholdTable() in ui.js -->
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Yellow events require 5+ min duration. Anomaly spikes (z-score) also detected.</p>
                 </div>
             </div>
         </div>

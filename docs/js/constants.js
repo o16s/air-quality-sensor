@@ -227,21 +227,86 @@ export const CSV_HEADERS = {
     CO2: 'Timestamp,Temperature_C,Humidity_Pct,CO2_ppm,Pressure_hPa,GasRes_Ohm,Lux,Battery_Pct'
 };
 
-// Air Quality Index (AQI) Thresholds for PM2.5 (μg/m³)
-export const AQI_THRESHOLDS = {
-    GOOD: 12.0,
-    MODERATE: 35.4,
-    UNHEALTHY_SENSITIVE: 55.4,
-    UNHEALTHY: 150.4,
-    VERY_UNHEALTHY: 250.4
+/**
+ * Air Quality Thresholds (Single Source of Truth)
+ * Based on WHO/EPA guidelines
+ * Used by: events.js, heatmap.js, sparklines, settings display
+ */
+export const AIR_QUALITY_THRESHOLDS = {
+    pm25: {
+        label: 'PM2.5',
+        unit: 'μg/m³',
+        levels: {
+            good:   { max: 12,  color: '#10b981', label: 'Good' },
+            yellow: { max: 35,  color: '#f59e0b', label: 'Moderate' },
+            orange: { max: 55,  color: '#f97316', label: 'Unhealthy (Sensitive)' },
+            red:    { max: Infinity, color: '#ef4444', label: 'Unhealthy' }
+        }
+    },
+    pm10: {
+        label: 'PM10',
+        unit: 'μg/m³',
+        levels: {
+            good:   { max: 50,  color: '#10b981', label: 'Good' },
+            yellow: { max: 150, color: '#f59e0b', label: 'Moderate' },
+            orange: { max: 250, color: '#f97316', label: 'Unhealthy (Sensitive)' },
+            red:    { max: Infinity, color: '#ef4444', label: 'Unhealthy' }
+        }
+    },
+    co2: {
+        label: 'CO₂',
+        unit: 'ppm',
+        levels: {
+            good:   { max: 1000, color: '#10b981', label: 'Good' },
+            yellow: { max: 1500, color: '#f59e0b', label: 'Moderate' },
+            orange: { max: 2000, color: '#f97316', label: 'Poor' },
+            red:    { max: Infinity, color: '#ef4444', label: 'Unhealthy' }
+        }
+    }
 };
 
+/**
+ * Get threshold value for a metric and severity level
+ */
+export function getThresholdValue(metric, severity) {
+    return AIR_QUALITY_THRESHOLDS[metric]?.levels[severity]?.max;
+}
+
+/**
+ * Get color for a metric value based on thresholds
+ */
+export function getColorForValue(metric, value) {
+    const config = AIR_QUALITY_THRESHOLDS[metric];
+    if (!config || value == null) return '#9ca3af'; // gray
+
+    const levels = config.levels;
+    if (value < levels.good.max) return levels.good.color;
+    if (value < levels.yellow.max) return levels.yellow.color;
+    if (value < levels.orange.max) return levels.orange.color;
+    return levels.red.color;
+}
+
+/**
+ * Get severity level name for a metric value
+ */
+export function getSeverityForValue(metric, value) {
+    const config = AIR_QUALITY_THRESHOLDS[metric];
+    if (!config || value == null) return null;
+
+    const levels = config.levels;
+    if (value < levels.good.max) return 'good';
+    if (value < levels.yellow.max) return 'yellow';
+    if (value < levels.orange.max) return 'orange';
+    return 'red';
+}
+
+// Legacy - keep for backward compatibility, will be removed
 // CO2 Air Quality Thresholds (ppm)
 export const CO2_THRESHOLDS = {
-    GOOD: 800,          // < 800 ppm = green (excellent)
-    MODERATE: 1000,     // 800-1000 ppm = yellow (acceptable)
-    POOR: 1500,         // 1000-1500 ppm = orange (poor)
-    VERY_POOR: 1500     // > 1500 ppm = red (unhealthy)
+    GOOD: 1000,
+    MODERATE: 1500,
+    POOR: 2000,
+    VERY_POOR: 2000
 };
 
 // Error Messages

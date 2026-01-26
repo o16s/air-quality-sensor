@@ -28,7 +28,7 @@ import {
     eraseLogs
 } from './protocol.js';
 
-import { LOG_TYPE, DEVICE_CAPACITY, SPARKLINE_THRESHOLDS, CO2_THRESHOLDS } from './constants.js';
+import { LOG_TYPE, DEVICE_CAPACITY, SPARKLINE_THRESHOLDS, CO2_THRESHOLDS, AIR_QUALITY_THRESHOLDS } from './constants.js';
 
 import {
     getAllLogs,
@@ -43,6 +43,10 @@ import {
 
 import { exportToCSV, exportToJSON } from './export.js';
 
+import { detectEvents, formatEventDuration, formatEventTimeRange } from './events.js';
+
+import { generateHeatmapData, formatHeatmapTooltip } from './heatmap.js';
+
 import { TIME_SYNC } from './constants.js';
 
 // UI state
@@ -50,6 +54,8 @@ let autoRefreshInterval = null;
 let isDownloading = false;
 let currentLogType = null;  // LOG_TYPE.GPS, LOG_TYPE.TSL2591, or LOG_TYPE.CO2
 let currentDeviceFilter = null;  // Current device filter selection (null = all devices)
+let currentEventsTimeFilter = '7d';  // Events time filter: '24h', '7d', '30d', 'all'
+let currentHeatmapMetric = 'pm25';  // Heatmap metric: 'pm25', 'pm10', 'co2'
 
 /**
  * Widget Configuration per Log Type
@@ -224,6 +230,8 @@ export async function initUI() {
     updateLogTable();
     loadSparklinesFromStorage();
     loadLastSyncTime();
+    renderThresholdTable();
+    updateHeatmap(null, currentHeatmapMetric);
 
     // Show appropriate section based on connection state
     if (isDeviceConnected()) {
@@ -287,6 +295,19 @@ function setupEventHandlers() {
     document.getElementById('device-filter').addEventListener('change', (e) => {
         currentDeviceFilter = e.target.value || null;
         updateLogTable(currentDeviceFilter);
+        updateHeatmap(currentDeviceFilter, currentHeatmapMetric);
+    });
+
+    // Events time filter dropdown
+    document.getElementById('events-time-filter').addEventListener('change', (e) => {
+        currentEventsTimeFilter = e.target.value;
+        updateEventsTimeline(currentDeviceFilter);
+    });
+
+    // Heatmap metric dropdown
+    document.getElementById('heatmap-metric').addEventListener('change', (e) => {
+        currentHeatmapMetric = e.target.value;
+        updateHeatmap(currentDeviceFilter, currentHeatmapMetric);
     });
 
     // WebUSB connection callbacks
@@ -1166,6 +1187,9 @@ async function updateLogTable(deviceSerial = null) {
             }
         }
 
+        // Update events timeline (needs all logs, not just 50)
+        await updateEventsTimeline(deviceSerial);
+
     } catch (error) {
         console.error('Failed to update log table:', error);
     }
@@ -1343,6 +1367,273 @@ async function handleExportJSON() {
         console.error('Export failed:', error);
         showError('Export failed: ' + error.message);
     }
+}
+
+/**
+ * Update events timeline with detected anomalies and threshold violations
+ */
+async function updateEventsTimeline(deviceSerial = null) {
+    const container = document.getElementById('events-timeline');
+    if (!container) return;
+
+    try {
+        // Get all logs for event detection (not limited to 50)
+        const logs = deviceSerial
+            ? await getLogsByDevice(deviceSerial)
+            : await getAllLogs();
+
+        if (logs.length < 10) {
+            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Not enough data for event detection</p>';
+            return;
+        }
+
+        const events = detectEvents(logs);
+
+        if (events.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No significant events detected</p>';
+            return;
+        }
+
+        // Filter events by time based on dropdown selection
+        const filteredEvents = filterEventsByTime(events, currentEventsTimeFilter);
+
+        if (filteredEvents.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No events in selected time period</p>';
+            return;
+        }
+
+        container.innerHTML = filteredEvents.map(renderEventCard).join('');
+
+    } catch (error) {
+        console.error('Failed to update events timeline:', error);
+        container.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error detecting events</p>';
+    }
+}
+
+/**
+ * Filter events by time period
+ */
+function filterEventsByTime(events, timeFilter) {
+    if (timeFilter === 'all') return events;
+
+    const now = Math.floor(Date.now() / 1000);
+    const cutoffs = {
+        '24h': now - 24 * 60 * 60,
+        '7d': now - 7 * 24 * 60 * 60,
+        '30d': now - 30 * 24 * 60 * 60
+    };
+
+    const cutoff = cutoffs[timeFilter] || 0;
+    return events.filter(e => e.startTime >= cutoff);
+}
+
+/**
+ * Render a single event card
+ */
+function renderEventCard(event) {
+    const severityColors = {
+        yellow: 'border-yellow-400',
+        orange: 'border-orange-500',
+        red: 'border-red-500'
+    };
+
+    // Default to orange for anomaly-only events
+    const borderColor = event.severity
+        ? severityColors[event.severity]
+        : 'border-orange-400';
+
+    const peakColor = event.severity === 'red' ? 'text-red-600' : 'text-orange-600';
+
+    const timeRange = formatEventTimeRange(event.startTime, event.endTime);
+    const duration = formatEventDuration(event.duration);
+
+    // Format peak value
+    const peakValue = event.metric === 'co2'
+        ? Math.round(event.peak)
+        : event.peak.toFixed(1);
+
+    // Format baseline value with unit
+    const baselineValue = event.baseline !== undefined
+        ? (event.metric === 'co2' ? Math.round(event.baseline) : event.baseline.toFixed(1))
+        : null;
+
+    // Detection method badge
+    const methodBadge = event.detectionMethod === 'anomaly'
+        ? `<span class="text-xs text-gray-400">Z: ${event.maxZScore?.toFixed(1) || '?'}σ</span>`
+        : `<span class="text-xs text-gray-400">${event.severity} threshold</span>`;
+
+    // Combustion indicator (PM2.5 + PM10 correlated)
+    const combustionBadge = event.combustionLikely
+        ? `<span class="inline-flex items-center ml-2 text-xs text-orange-600 cursor-help" title="PM2.5 and PM10 spiked together - indicates combustion source (smoking, cooking, exhaust)">
+            <svg class="w-4 h-4 mr-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" />
+            </svg>
+            combustion
+          </span>`
+        : '';
+
+    return `
+        <div class="border-l-4 ${borderColor} bg-gray-50 p-3 mb-2 rounded-r">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="text-sm font-medium text-gray-900">${timeRange}</div>
+                    <div class="text-sm mt-1">
+                        <span class="text-gray-600">Peak ${getMetricLabel(event.metric)}:</span>
+                        <span class="${peakColor} font-semibold">${peakValue} ${event.unit}</span>
+                        ${baselineValue !== null ? `<span class="text-gray-400 text-xs ml-1 cursor-help border-b border-dotted border-gray-400" title="Baseline = median of all readings for this metric">(baseline: ${baselineValue} ${event.unit})</span>` : ''}
+                    </div>
+                    <div class="mt-1 flex items-center">${methodBadge}${combustionBadge}</div>
+                </div>
+                <div class="text-sm text-gray-500 whitespace-nowrap">${duration}</div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Get display label for metric
+ */
+function getMetricLabel(metric) {
+    const labels = { pm25: 'PM2.5', pm10: 'PM10', co2: 'CO₂' };
+    return labels[metric] || metric;
+}
+
+/**
+ * Render threshold table in Settings modal from AIR_QUALITY_THRESHOLDS
+ */
+function renderThresholdTable() {
+    const container = document.getElementById('threshold-table');
+    if (!container) return;
+
+    const metrics = ['pm25', 'pm10', 'co2'];
+
+    const html = `
+        <table class="w-full text-xs">
+            <thead>
+                <tr class="text-left text-gray-500">
+                    <th class="pb-2">Metric</th>
+                    <th class="pb-2 text-yellow-600">Yellow</th>
+                    <th class="pb-2 text-orange-600">Orange</th>
+                    <th class="pb-2 text-red-600">Red</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-700">
+                ${metrics.map(metric => {
+                    const config = AIR_QUALITY_THRESHOLDS[metric];
+                    const levels = config.levels;
+                    return `
+                        <tr>
+                            <td class="py-1">${config.label}</td>
+                            <td class="py-1 text-yellow-600">&ge;${levels.good.max} ${config.unit}</td>
+                            <td class="py-1 text-orange-600">&ge;${levels.yellow.max}</td>
+                            <td class="py-1 text-red-600">&ge;${levels.orange.max}</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
+}
+
+/**
+ * Update heatmap with data for selected device and metric
+ */
+async function updateHeatmap(deviceSerial = null, metric = 'pm25') {
+    const container = document.getElementById('heatmap-container');
+    if (!container) return;
+
+    try {
+        const logs = deviceSerial
+            ? await getLogsByDevice(deviceSerial)
+            : await getAllLogs();
+
+        if (logs.length < 10) {
+            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Not enough data for heatmap</p>';
+            renderHeatmapLegend(metric);
+            return;
+        }
+
+        const data = generateHeatmapData(logs, metric, { days: 14 });
+        renderHeatmap(data);
+        renderHeatmapLegend(metric);
+
+    } catch (error) {
+        console.error('Failed to update heatmap:', error);
+        container.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error generating heatmap</p>';
+    }
+}
+
+/**
+ * Render heatmap grid
+ */
+function renderHeatmap(data) {
+    const container = document.getElementById('heatmap-container');
+    if (!container || !data.grid.length) return;
+
+    const { grid, dayLabels, hourLabels, unit } = data;
+
+    // Build HTML table
+    let html = '<table class="text-xs">';
+
+    // Header row with day labels
+    html += '<thead><tr><th class="pr-2"></th>';
+    for (const day of dayLabels) {
+        html += `<th class="px-0.5 pb-1 font-normal text-gray-400 text-center" style="min-width: 28px;">${day.label.split(' ')[0]}</th>`;
+    }
+    html += '</tr></thead>';
+
+    // Data rows
+    html += '<tbody>';
+    for (let r = 0; r < grid.length; r++) {
+        const row = grid[r];
+        const hourLabel = hourLabels[r].label;
+
+        html += `<tr><td class="pr-2 text-right text-gray-400 whitespace-nowrap">${hourLabel}</td>`;
+
+        for (const cell of row) {
+            const tooltip = formatHeatmapTooltip(cell, unit, dayLabels, hourLabels);
+            html += `<td class="px-0.5 py-0.5">
+                <div class="w-5 h-5 rounded-sm cursor-help"
+                     style="background-color: ${cell.color};"
+                     title="${tooltip}">
+                </div>
+            </td>`;
+        }
+
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+
+    container.innerHTML = html;
+}
+
+/**
+ * Render heatmap legend
+ */
+function renderHeatmapLegend(metric) {
+    const legendContainer = document.getElementById('heatmap-legend');
+    if (!legendContainer) return;
+
+    const config = AIR_QUALITY_THRESHOLDS[metric];
+    if (!config) return;
+
+    const levels = config.levels;
+
+    legendContainer.innerHTML = `
+        <span class="text-gray-400">Less</span>
+        <div class="flex items-center gap-1">
+            <div class="w-3 h-3 rounded-sm" style="background-color: #f3f4f6;" title="No data"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.good.color};" title="Good (<${levels.good.max})"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.yellow.color};" title="Moderate (${levels.good.max}-${levels.yellow.max})"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.orange.color};" title="Poor (${levels.yellow.max}-${levels.orange.max})"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.red.color};" title="Unhealthy (>${levels.orange.max})"></div>
+        </div>
+        <span class="text-gray-400">More</span>
+        <span class="ml-4 text-gray-400">${config.unit}</span>
+    `;
 }
 
 /**
