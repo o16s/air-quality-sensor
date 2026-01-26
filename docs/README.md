@@ -1,4 +1,4 @@
-# Octanis Sensor Dashboard
+# Octanis ICS
 
 A browser-based interface for Octanis environmental sensor devices using the WebUSB API.
 

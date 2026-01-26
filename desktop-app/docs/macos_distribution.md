@@ -60,10 +60,10 @@ This will:
 
 ```bash
 # Check signature
-codesign -dv --verbose=4 "out/Octanis Sensor Dashboard-darwin-arm64/Octanis Sensor Dashboard.app"
+codesign -dv --verbose=4 "out/Octanis ICS-darwin-arm64/Octanis ICS.app"
 
 # Check notarization
-spctl -a -vv "out/Octanis Sensor Dashboard-darwin-arm64/Octanis Sensor Dashboard.app"
+spctl -a -vv "out/Octanis ICS-darwin-arm64/Octanis ICS.app"
 ```
 
 Expected output:

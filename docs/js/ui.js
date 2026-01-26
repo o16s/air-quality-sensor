@@ -36,7 +36,9 @@ import {
     storeLogs,
     clearAllLogs,
     getRecentLogs,
-    getLogsByDateRange
+    getLogsByDateRange,
+    getLogsByDevice,
+    getDatabaseStats
 } from './storage.js';
 
 import { exportToCSV, exportToJSON } from './export.js';
@@ -141,6 +143,63 @@ function configureWidgetsForLogType(logType) {
     console.log(`Widgets configured for log type: ${logType === LOG_TYPE.CO2 ? 'CO2' : logType === LOG_TYPE.TSL2591 ? 'TSL2591' : 'GPS'}`);
 }
 
+/**
+ * Update device filter dropdown with unique devices from storage
+ * Marks the currently connected device if any
+ */
+async function updateDeviceFilter() {
+    try {
+        const stats = await getDatabaseStats();
+        const select = document.getElementById('device-filter');
+
+        if (!select) return;
+
+        // Get currently connected device serial (if any)
+        let connectedSerial = null;
+        if (isDeviceConnected()) {
+            const info = getDeviceInfo();
+            connectedSerial = info?.serialNumber;
+        }
+
+        // Preserve current selection
+        const currentValue = select.value;
+
+        // Clear existing options and add "All Devices"
+        select.innerHTML = '<option value="">All Devices</option>';
+
+        // Add each unique device, marking connected one
+        for (const serial of stats.devices) {
+            const option = document.createElement('option');
+            option.value = serial;
+            if (serial === connectedSerial) {
+                option.textContent = `${serial} (connected)`;
+            } else {
+                option.textContent = serial;
+            }
+            select.appendChild(option);
+        }
+
+        // Restore selection if still valid
+        if (currentValue && stats.devices.includes(currentValue)) {
+            select.value = currentValue;
+        }
+    } catch (error) {
+        console.error('Failed to update device filter:', error);
+    }
+}
+
+/**
+ * Get log type label for display
+ */
+function getLogTypeLabel(logType) {
+    switch (logType) {
+        case LOG_TYPE.GPS: return 'GPS';
+        case LOG_TYPE.TSL2591: return 'TSL';
+        case LOG_TYPE.CO2: return 'CO2';
+        default: return '—';
+    }
+}
+
 // Environment detection (set once at module load)
 const runningInElectron = navigator.userAgent.toLowerCase().includes('electron');
 
@@ -160,6 +219,7 @@ export async function initUI() {
     setupEventHandlers();
     await attemptAutoReconnect();
     updateBrowserLogCount();
+    await updateDeviceFilter();
     updateLogTable();
     loadSparklinesFromStorage();
     loadLastSyncTime();
@@ -221,6 +281,12 @@ function setupEventHandlers() {
 
     // Clear logs button
     document.getElementById('clear-logs-btn').addEventListener('click', handleClearLogs);
+
+    // Device filter dropdown
+    document.getElementById('device-filter').addEventListener('change', (e) => {
+        const deviceSerial = e.target.value || null;
+        updateLogTable(deviceSerial);
+    });
 
     // WebUSB connection callbacks
     onConnect(handleDeviceConnected);
@@ -379,6 +445,9 @@ async function handleDeviceConnected(device) {
     // Load sparklines from storage (now that main content is visible)
     loadSparklinesFromStorage();
 
+    // Update device filter to show connected indicator
+    await updateDeviceFilter();
+
     // Start auto-refresh
     startAutoRefresh();
 
@@ -461,6 +530,9 @@ async function handleDeviceDisconnected() {
     // Hide product image and footer logo
     document.getElementById('product-image-container').classList.add('hidden');
     document.getElementById('footer-logo').classList.add('hidden');
+
+    // Update device filter to remove connected indicator
+    await updateDeviceFilter();
 
     // Stop auto-refresh
     stopAutoRefresh();
@@ -1002,6 +1074,7 @@ async function handleDownloadLogs() {
 
         // Update counts, table, and sparklines
         await updateBrowserLogCount();
+        await updateDeviceFilter();
         await updateLogTable();
         await loadSparklinesFromStorage();
         updateLastSyncTime();
@@ -1040,124 +1113,181 @@ function loadLastSyncTime() {
 }
 
 /**
- * Update log table with recent logs
+ * Update log table with logs, optionally filtered by device
+ * @param {string|null} deviceSerial - Filter by device serial, or null for all devices
  */
-async function updateLogTable() {
+async function updateLogTable(deviceSerial = null) {
     try {
-        const logs = await getRecentLogs(20);
+        // Fetch logs based on filter
+        let logs;
+        if (deviceSerial) {
+            logs = await getLogsByDevice(deviceSerial);
+            // Sort by timestamp DESC and limit
+            logs.sort((a, b) => b.timestamp - a.timestamp);
+            logs = logs.slice(0, 50);
+        } else {
+            logs = await getRecentLogs(50);
+        }
+
         const tbody = document.getElementById('log-table-body');
         const thead = document.querySelector('#log-table-body').closest('table').querySelector('thead tr');
 
         if (logs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
+            thead.innerHTML = `
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
+            `;
+            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
             return;
         }
 
-        // Detect log format from first log
-        const isCO2 = logs[0].hasOwnProperty('co2');
-        const isTSL = logs[0].hasOwnProperty('lux') && !isCO2;
+        // Determine if we have mixed log types
+        const logTypes = new Set(logs.map(l => l.logType).filter(t => t !== undefined));
+        const isMixed = logTypes.size > 1;
+        const showCommon = deviceSerial === null || isMixed;
 
-        // Update table headers based on format
-        if (isCO2) {
-            thead.innerHTML = `
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CO2 (ppm)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pressure (hPa)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lux</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Charging</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
-            `;
-            tbody.innerHTML = logs.map(log => {
-                const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-                return `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.humidity.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm ${getCO2ColorClass(log.co2)}">${Math.round(log.co2)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.pressure ? log.pressure.toFixed(1) : '-'}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.lux ? log.lux.toFixed(1) : '-'}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${(log.batteryVoltage / 1000).toFixed(2)}V</td>
-                    <td class="px-4 py-3 text-sm ${log.charging ? 'text-green-600' : 'text-gray-400'}">${log.charging ? '⚡' : '—'}</td>
-                    <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
-                    <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
-                </tr>
-            `;
-            }).join('');
-        } else if (isTSL) {
-            thead.innerHTML = `
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lux</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CH0</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CH1</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overflow</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Charging</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
-            `;
-            tbody.innerHTML = logs.map(log => {
-                const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-                return `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.humidity.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.pm25.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.pm10.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.lux.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">${log.tslCH0}</td>
-                    <td class="px-4 py-3 text-sm text-gray-600">${log.tslCH1}</td>
-                    <td class="px-4 py-3 text-sm ${log.overflow ? 'text-red-600 font-semibold' : 'text-green-600'}">${log.overflow ? '⚠️ SAT' : 'OK'}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${(log.batteryVoltage / 1000).toFixed(2)}V</td>
-                    <td class="px-4 py-3 text-sm ${log.charging ? 'text-green-600' : 'text-gray-400'}">${log.charging ? '⚡' : '—'}</td>
-                    <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
-                    <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
-                </tr>
-            `;
-            }).join('');
+        if (showCommon) {
+            // Common columns for "All Devices" or mixed types
+            renderCommonTable(thead, tbody, logs);
         } else {
-            // GPS format
-            thead.innerHTML = `
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Charging</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
-            `;
-            tbody.innerHTML = logs.map(log => {
-                const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
-                return `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.humidity.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.pm25.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${log.pm10.toFixed(1)}</td>
-                    <td class="px-4 py-3 text-sm text-gray-900">${(log.batteryVoltage / 1000).toFixed(2)}V</td>
-                    <td class="px-4 py-3 text-sm ${log.charging ? 'text-green-600' : 'text-gray-400'}">${log.charging ? '⚡' : '—'}</td>
-                    <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
-                    <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
-                </tr>
-            `;
-            }).join('');
+            // Type-specific columns for single device
+            const logType = logs[0]?.logType;
+            if (logType === LOG_TYPE.CO2) {
+                renderCO2Table(thead, tbody, logs);
+            } else if (logType === LOG_TYPE.TSL2591) {
+                renderTSLTable(thead, tbody, logs);
+            } else {
+                renderGPSTable(thead, tbody, logs);
+            }
         }
 
     } catch (error) {
         console.error('Failed to update log table:', error);
     }
+}
+
+/**
+ * Render table with common columns (for "All Devices" or mixed types)
+ */
+function renderCommonTable(thead, tbody, logs) {
+    thead.innerHTML = `
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
+    `;
+    tbody.innerHTML = logs.map(log => {
+        const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+        return `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.temperature?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.humidity?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(2) + 'V' : '-'}</td>
+            <td class="px-4 py-3 text-xs text-gray-600">${getLogTypeLabel(log.logType)}</td>
+            <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
+        </tr>
+    `;
+    }).join('');
+}
+
+/**
+ * Render table with CO2-specific columns
+ */
+function renderCO2Table(thead, tbody, logs) {
+    thead.innerHTML = `
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CO2 (ppm)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pressure (hPa)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lux</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
+    `;
+    tbody.innerHTML = logs.map(log => {
+        const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+        return `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.temperature?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.humidity?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm ${getCO2ColorClass(log.co2)}">${log.co2 != null ? Math.round(log.co2) : '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.pressure?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.lux?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(2) + 'V' : '-'}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
+        </tr>
+    `;
+    }).join('');
+}
+
+/**
+ * Render table with TSL2591-specific columns
+ */
+function renderTSLTable(thead, tbody, logs) {
+    thead.innerHTML = `
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lux</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
+    `;
+    tbody.innerHTML = logs.map(log => {
+        const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+        return `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.temperature?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.humidity?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.pm25?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.pm10?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.lux?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(2) + 'V' : '-'}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
+        </tr>
+    `;
+    }).join('');
+}
+
+/**
+ * Render table with GPS-specific columns
+ */
+function renderGPSTable(thead, tbody, logs) {
+    thead.innerHTML = `
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
+    `;
+    tbody.innerHTML = logs.map(log => {
+        const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+        return `
+        <tr class="hover:bg-gray-50">
+            <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.temperature?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.humidity?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.pm25?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.pm10?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(2) + 'V' : '-'}</td>
+            <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
+        </tr>
+    `;
+    }).join('');
 }
 
 /**
@@ -1211,6 +1341,7 @@ async function handleClearLogs() {
     try {
         await clearAllLogs();
         await updateBrowserLogCount();
+        await updateDeviceFilter();
         await updateLogTable();
         showSuccess('All logs cleared from browser storage');
 

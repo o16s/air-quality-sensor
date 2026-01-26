@@ -1,5 +1,5 @@
 {
-  "name": "octanis-sensor-dashboard",
+  "name": "octanis-ics",
   "version": "1.0.0",
   "description": "WebUSB interface for Octanis environmental sensors",
   "type": "module",
