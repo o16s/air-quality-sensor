@@ -16,7 +16,8 @@ describe('Heatmap - Data Generation', () => {
         it('should return grid with all empty cells for no data', () => {
             const result = generateHeatmapData([], 'pm25');
             // Grid is still generated, but all cells should have count = 0
-            expect(result.grid.length).toBe(12); // 12 hours (7am-6pm)
+            expect(result.grid.length).toBe(14); // 14 rows (days)
+            expect(result.grid[0].length).toBe(24); // 24 columns (hours)
             const totalCount = result.grid.flat().reduce((sum, cell) => sum + cell.count, 0);
             expect(totalCount).toBe(0);
         });
@@ -34,13 +35,13 @@ describe('Heatmap - Data Generation', () => {
 
             const result = generateHeatmapData(logs, 'pm25', { days: 7 });
 
-            // Should have 12 rows (7am-6pm = hours 7-18)
-            expect(result.hourLabels.length).toBe(12);
-            expect(result.grid.length).toBe(12);
-
-            // Should have 7 columns (days)
+            // Should have 7 rows (days)
             expect(result.dayLabels.length).toBe(7);
-            expect(result.grid[0].length).toBe(7);
+            expect(result.grid.length).toBe(7);
+
+            // Should have 24 columns (hours)
+            expect(result.hourLabels.length).toBe(24);
+            expect(result.grid[0].length).toBe(24);
         });
 
         it('should include metric info', () => {
@@ -68,14 +69,14 @@ describe('Heatmap - Data Generation', () => {
 
             const result = generateHeatmapData(logs, 'pm25', { days: 1 });
 
-            // Find the noon cell
-            const noonRow = result.grid.find((_, i) => result.hourLabels[i].hour === 12);
-            if (noonRow) {
-                const todayCell = noonRow[noonRow.length - 1]; // last column is today
-                if (todayCell.count > 0) {
-                    expect(todayCell.value).toBe(20); // (10+20+30)/3 = 20
-                    expect(todayCell.count).toBe(3);
-                }
+            // Grid: rows = days, columns = hours
+            // With 1 day, grid[0] is today, and hour 12 is column index 12
+            const todayRow = result.grid[0];
+            const noonCell = todayRow[12]; // column 12 = noon
+
+            if (noonCell && noonCell.count > 0) {
+                expect(noonCell.value).toBe(20); // (10+20+30)/3 = 20
+                expect(noonCell.count).toBe(3);
             }
         });
 
@@ -109,25 +110,28 @@ describe('Heatmap - Data Generation', () => {
             if (highCell) expect(highCell.color).toBe('#ef4444'); // red
         });
 
-        it('should filter out non-office hours', () => {
+        it('should include all 24 hours', () => {
             const now = new Date();
-            now.setHours(3, 0, 0, 0); // 3am - outside office hours
+            now.setHours(3, 0, 0, 0); // 3am
             const timestamp = Math.floor(now.getTime() / 1000);
 
             const logs = [{ timestamp, pm25: 50 }];
             const result = generateHeatmapData(logs, 'pm25', { days: 1 });
 
-            // All cells should be empty since 3am is outside 7am-7pm
-            const totalCount = result.grid.flat().reduce((sum, cell) => sum + cell.count, 0);
-            expect(totalCount).toBe(0);
+            // 3am should be included (column index 3)
+            const todayRow = result.grid[0];
+            const cell3am = todayRow[3];
+
+            expect(cell3am.count).toBe(1);
+            expect(cell3am.value).toBe(50);
         });
     });
 });
 
 describe('Heatmap - Formatting', () => {
     describe('formatHeatmapTooltip', () => {
-        const dayLabels = [{ key: '2024-01-25', label: 'Thu 25' }];
-        const hourLabels = [{ hour: 10, label: '10am' }];
+        const dayLabels = [{ key: '2024-01-25', label: '25.1.' }];
+        const hourLabels = [{ hour: 10, label: '10' }];
 
         it('should format tooltip with value', () => {
             const cell = { value: 25.5, count: 5, day: '2024-01-25', hour: 10 };

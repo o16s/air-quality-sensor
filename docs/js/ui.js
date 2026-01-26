@@ -214,6 +214,42 @@ const runningInElectron = navigator.userAgent.toLowerCase().includes('electron')
 // This ensures sparklines show historical data, not just live readings
 
 /**
+ * Initialize sidebar navigation
+ * Sets up click handlers for page switching
+ */
+function initSidebar() {
+    const navItems = document.querySelectorAll('[data-page]');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = item.dataset.page;
+            switchPage(pageId);
+        });
+    });
+}
+
+/**
+ * Switch to a different page
+ * @param {string} pageId - The page to switch to (overview, history, report, help)
+ */
+function switchPage(pageId) {
+    // Update nav items
+    document.querySelectorAll('.nav-item').forEach(nav => {
+        nav.classList.remove('active');
+    });
+    const activeNav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
+    if (activeNav) activeNav.classList.add('active');
+
+    // Update pages
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    const activePage = document.getElementById(`page-${pageId}`);
+    if (activePage) activePage.classList.add('active');
+}
+
+/**
  * Initialize UI and event handlers
  */
 export async function initUI() {
@@ -223,6 +259,7 @@ export async function initUI() {
         document.getElementById('electron-connect-hint').classList.remove('hidden');
     }
 
+    initSidebar();
     setupEventHandlers();
     await attemptAutoReconnect();
     updateBrowserLogCount();
@@ -1568,45 +1605,43 @@ async function updateHeatmap(deviceSerial = null, metric = 'pm25') {
 
 /**
  * Render heatmap grid
+ * Grid: rows = days, columns = hours
+ * Uses CSS grid to fill container width with square cells
  */
 function renderHeatmap(data) {
     const container = document.getElementById('heatmap-container');
     if (!container || !data.grid.length) return;
 
     const { grid, dayLabels, hourLabels, unit } = data;
+    const numCols = hourLabels.length; // 24
 
-    // Build HTML table
-    let html = '<table class="text-xs">';
+    // CSS grid: date label column (auto) + 24 equal columns for hours
+    let html = `<div class="heatmap-grid text-xs" style="display: grid; grid-template-columns: auto repeat(${numCols}, 1fr); gap: 2px; align-items: center;">`;
 
-    // Header row with day labels
-    html += '<thead><tr><th class="pr-2"></th>';
-    for (const day of dayLabels) {
-        html += `<th class="px-0.5 pb-1 font-normal text-gray-400 text-center" style="min-width: 28px;">${day.label.split(' ')[0]}</th>`;
+    // Header row: empty cell + hour labels
+    html += '<div></div>'; // Empty corner
+    for (const hour of hourLabels) {
+        html += `<div class="text-center text-gray-400 text-[10px]">${hour.label}</div>`;
     }
-    html += '</tr></thead>';
 
-    // Data rows
-    html += '<tbody>';
+    // Data rows (one per day)
     for (let r = 0; r < grid.length; r++) {
         const row = grid[r];
-        const hourLabel = hourLabels[r].label;
+        const dayLabel = dayLabels[r].label;
 
-        html += `<tr><td class="pr-2 text-right text-gray-400 whitespace-nowrap">${hourLabel}</td>`;
+        // Date label
+        html += `<div class="text-right text-gray-400 pr-2 whitespace-nowrap">${dayLabel}</div>`;
 
+        // Hour cells
         for (const cell of row) {
             const tooltip = formatHeatmapTooltip(cell, unit, dayLabels, hourLabels);
-            html += `<td class="px-0.5 py-0.5">
-                <div class="w-5 h-5 rounded-sm cursor-help"
-                     style="background-color: ${cell.color};"
-                     title="${tooltip}">
-                </div>
-            </td>`;
+            html += `<div class="rounded-sm cursor-help"
+                         style="background-color: ${cell.color}; aspect-ratio: 1;"
+                         title="${tooltip}"></div>`;
         }
-
-        html += '</tr>';
     }
-    html += '</tbody></table>';
 
+    html += '</div>';
     container.innerHTML = html;
 }
 

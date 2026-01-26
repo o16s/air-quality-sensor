@@ -6,6 +6,16 @@
 import { AIR_QUALITY_THRESHOLDS, getColorForValue } from './constants.js';
 
 /**
+ * Format date as YYYY-MM-DD using local time (not UTC)
+ */
+function formatLocalDate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+/**
  * Generate heatmap data from logs
  * @param {Array} logs - Array of log records
  * @param {string} metric - Metric to visualize ('pm25', 'pm10', 'co2')
@@ -14,8 +24,8 @@ import { AIR_QUALITY_THRESHOLDS, getColorForValue } from './constants.js';
  */
 export function generateHeatmapData(logs, metric, options = {}) {
     const {
-        startHour = 7,      // 7am
-        endHour = 19,       // 7pm (exclusive, so last row is 6pm)
+        startHour = 0,      // Midnight
+        endHour = 24,       // Full 24 hours
         days = 14           // Last 14 days
     } = options;
 
@@ -49,10 +59,7 @@ export function generateHeatmapData(logs, metric, options = {}) {
         const date = new Date(log.timestamp * 1000);
         const hour = date.getHours();
 
-        // Only include office hours
-        if (hour < startHour || hour >= endHour) continue;
-
-        const dayKey = date.toISOString().split('T')[0];  // YYYY-MM-DD
+        const dayKey = formatLocalDate(date);  // YYYY-MM-DD
         const key = `${dayKey}_${hour}`;
 
         if (!buckets[key]) {
@@ -62,34 +69,32 @@ export function generateHeatmapData(logs, metric, options = {}) {
         buckets[key].count++;
     }
 
-    // Generate day labels (columns)
+    // Generate day labels (rows - dates as short form "23.1.")
     const dayLabels = [];
     for (let d = 0; d < days; d++) {
         const date = new Date(startDate);
         date.setDate(date.getDate() + d);
         dayLabels.push({
-            key: date.toISOString().split('T')[0],
-            label: date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }),
+            key: formatLocalDate(date),
+            label: `${date.getDate()}.${date.getMonth() + 1}.`,
             date
         });
     }
 
-    // Generate hour labels (rows)
+    // Generate hour labels (columns - 24h format)
     const hourLabels = [];
     for (let h = startHour; h < endHour; h++) {
-        const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-        const ampm = h >= 12 ? 'pm' : 'am';
         hourLabels.push({
             hour: h,
-            label: `${hour12}${ampm}`
+            label: `${h}`
         });
     }
 
-    // Build grid: rows = hours, columns = days
+    // Build grid: rows = days, columns = hours
     const grid = [];
-    for (let h = startHour; h < endHour; h++) {
+    for (const day of dayLabels) {
         const row = [];
-        for (const day of dayLabels) {
+        for (let h = startHour; h < endHour; h++) {
             const key = `${day.key}_${h}`;
             const bucket = buckets[key];
 

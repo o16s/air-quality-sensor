@@ -3,6 +3,144 @@
  * Supplements Tailwind CSS with custom styling
  */
 
+/* Sidebar */
+.sidebar {
+    width: 72px;
+    background: #1a1a1a;
+    border-right: 1px solid #2a2a2a;
+}
+
+.sidebar-logo {
+    width: 40px;
+    height: 40px;
+    background: #3b82f6;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sidebar-logo:hover {
+    background: #2563eb;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 8px;
+    flex: 1;
+}
+
+.nav-item {
+    width: 56px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 0;
+    transition: all 0.2s;
+    text-decoration: none;
+    margin: 0 auto;
+}
+
+.nav-item:hover {
+    background: #2a2a2a;
+    color: #bbb;
+}
+
+.nav-item.active {
+    background: #2a2a2a;
+    color: #3b82f6;
+}
+
+.nav-item svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+}
+
+.nav-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+}
+
+.sidebar-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 8px;
+    border-top: 1px solid #2a2a2a;
+    padding-top: 12px;
+    margin-top: auto;
+}
+
+/* Page Header */
+.page-header {
+    padding: 24px 32px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 4px 0;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* Page System */
+.page {
+    display: none;
+}
+
+.page.active {
+    display: block;
+}
+
+.page-content {
+    padding: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Widget Headers - consistent styling for dashboard sections */
+.widget-header {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.widget-subtitle {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
 /* Sensor Cards */
 .sensor-card {
     padding: 1rem;

@@ -8,6 +8,40 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
+    <!-- Sidebar Navigation -->
+    <nav id="sidebar" class="sidebar fixed left-0 top-0 h-screen flex flex-col z-50">
+        <!-- Logo -->
+        <div class="flex items-center justify-center py-5">
+            <a href="#overview" data-page="overview" class="sidebar-logo" title="ICS (Indoor Climate Sensing by Octanis Instruments GmbH)">ICS</a>
+        </div>
+
+        <!-- Navigation -->
+        <div class="sidebar-nav">
+            <a href="#overview" data-page="overview" class="nav-item active" title="Overview">
+                <svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <span class="nav-label">Overview</span>
+            </a>
+            <a href="#history" data-page="history" class="nav-item" title="History">
+                <svg viewBox="0 0 24 24"><path d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="nav-label">History</span>
+            </a>
+            <a href="#report" data-page="report" class="nav-item" title="Report">
+                <svg viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span class="nav-label">Report</span>
+            </a>
+        </div>
+
+        <!-- Bottom Section -->
+        <div class="sidebar-bottom">
+            <a href="#help" data-page="help" class="nav-item" title="Help">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 17l0 .01" /><path d="M12 13.5a1.5 1.5 0 0 1 1 -1.5a2.6 2.6 0 1 0 -3 -4" /></svg>
+                <span class="nav-label">Help</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="app-content" class="ml-[72px]">
     <!-- Browser Compatibility Warning -->
     <div id="browser-warning" class="hidden bg-yellow-50 border-l-4 border-yellow-400 p-4">
         <div class="flex">
@@ -24,7 +58,9 @@
         </div>
     </div>
 
-    <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- Page: Overview -->
+    <div id="page-overview" class="page active">
+        <div class="page-content">
         <!-- Device Info -->
         <div id="device-info" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
             <div class="flex items-start justify-between gap-6">
@@ -86,7 +122,7 @@
 
                 <!-- Device Actions -->
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <button id="sync-data-btn-header" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                    <button id="sync-data-btn-header" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
                         Sync Data
                     </button>
                     <button id="settings-btn" class="border border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800 p-2 rounded-lg transition duration-200" title="Device Settings">
@@ -124,7 +160,7 @@
         <div id="connect-section" class="hidden">
             <div class="bg-white rounded-lg shadow-md p-12 mb-6 text-center">
                 <img src="img/logo.png" alt="Octanis" class="h-12 mx-auto mb-6 opacity-40">
-                <button id="connect-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
+                <button id="connect-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
                     Connect Device
                 </button>
                 <p id="electron-connect-hint" class="hidden text-gray-600 mt-4">
@@ -139,12 +175,15 @@
             <div id="live-data-section" class="mb-6">
                 <!-- Sensor Readings -->
                 <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center justify-between">
-                        Live Sensor Data
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="widget-header">Live Sensor Data</h2>
+                            <p class="widget-subtitle">Current readings from connected device</p>
+                        </div>
                         <button id="refresh-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200">
                             Measure Now
                         </button>
-                    </h2>
+                    </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div class="sensor-card relative overflow-hidden">
                             <canvas id="pm25-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
@@ -201,8 +240,8 @@
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Events Detected</h2>
-                        <p class="text-xs text-gray-500 mt-1">Air quality anomalies and threshold violations</p>
+                        <h2 class="widget-header">Events Detected</h2>
+                        <p class="widget-subtitle">Air quality anomalies and threshold violations</p>
                     </div>
                     <select id="events-time-filter" class="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="24h">Last 24 hours</option>
@@ -220,8 +259,8 @@
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">Activity Heatmap</h2>
-                        <p class="text-xs text-gray-500 mt-1">Hourly averages (7am-7pm, last 14 days)</p>
+                        <h2 class="widget-header">Activity Heatmap</h2>
+                        <p class="widget-subtitle">Hourly averages (last 14 days)</p>
                     </div>
                     <select id="heatmap-metric" class="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="pm25" selected>PM2.5</option>
@@ -236,12 +275,53 @@
                     <!-- Legend populated by renderHeatmapLegend() -->
                 </div>
             </div>
+        </div>
 
+        <!-- Instructions for Browser (shown when not connected) -->
+        <div id="instructions" class="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
+            <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
+            <ol class="list-decimal list-inside space-y-2 text-blue-800">
+                <li>Connect your Octanis Sensor via USB</li>
+                <li>Click the "Connect Device" button above</li>
+                <li>Select your device from the browser dialog</li>
+                <li>View live sensor data and download historical logs</li>
+            </ol>
+            <p class="mt-4 text-sm text-blue-700">
+                <strong>Note:</strong> This interface requires Chrome or Edge browser with WebUSB support.
+            </p>
+        </div>
+
+        <!-- Instructions for Electron (hidden by default) -->
+        <div id="instructions-electron" class="hidden bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
+            <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
+            <ol class="list-decimal list-inside space-y-2 text-blue-800">
+                <li>Connect your Octanis Sensor via USB</li>
+                <li>The app will detect and connect automatically</li>
+                <li>View live sensor data and download historical logs</li>
+            </ol>
+        </div>
+
+        <!-- Footer Logo (shown when connected) -->
+        <div id="footer-logo" class="hidden flex justify-between items-center pt-8 pb-4">
+            <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                Octanis Instruments GmbH, Switzerland
+            </a>
+            <img src="img/logo.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
+        </div>
+        </div>
+    </div>
+
+    <!-- Page: History -->
+    <div id="page-history" class="page">
+        <header class="page-header">
+            <h1 class="page-title">Measurement History</h1>
+            <p class="page-subtitle">Browse and export stored sensor data</p>
+        </header>
+        <div class="page-content">
             <!-- Measurement History Section -->
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h2 class="text-xl font-semibold text-gray-800">Measurement History</h2>
                         <div class="flex items-center gap-3 mt-1">
                             <div id="browser-log-count" class="text-sm text-gray-600">
                                 <span class="font-medium">0</span> measurements stored locally
@@ -292,39 +372,8 @@
                 </div>
             </div>
         </div>
-
-        <!-- Instructions for Browser (shown when not connected) -->
-        <div id="instructions" class="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
-            <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
-            <ol class="list-decimal list-inside space-y-2 text-blue-800">
-                <li>Connect your Octanis Sensor via USB</li>
-                <li>Click the "Connect Device" button above</li>
-                <li>Select your device from the browser dialog</li>
-                <li>View live sensor data and download historical logs</li>
-            </ol>
-            <p class="mt-4 text-sm text-blue-700">
-                <strong>Note:</strong> This interface requires Chrome or Edge browser with WebUSB support.
-            </p>
-        </div>
-
-        <!-- Instructions for Electron (hidden by default) -->
-        <div id="instructions-electron" class="hidden bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
-            <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
-            <ol class="list-decimal list-inside space-y-2 text-blue-800">
-                <li>Connect your Octanis Sensor via USB</li>
-                <li>The app will detect and connect automatically</li>
-                <li>View live sensor data and download historical logs</li>
-            </ol>
-        </div>
-
-        <!-- Footer Logo (shown when connected) -->
-        <div id="footer-logo" class="hidden flex justify-between items-center pt-8 pb-4">
-            <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200">
-                Octanis Instruments GmbH, Switzerland
-            </a>
-            <img src="img/logo.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
-        </div>
     </div>
+    </main>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
