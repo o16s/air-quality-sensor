@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Octanis ICS</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -307,13 +308,6 @@
             </ol>
         </div>
 
-        <!-- Footer Logo (shown when connected) -->
-        <div id="footer-logo" class="hidden flex justify-between items-center pt-8 pb-4">
-            <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200">
-                Octanis Instruments GmbH, Switzerland
-            </a>
-            <img src="img/logo.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
-        </div>
         </div>
     </div>
 
@@ -377,6 +371,128 @@
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Page: Report -->
+    <div id="page-report" class="page">
+        <header class="page-header">
+            <h1 class="page-title">Report Generator</h1>
+            <p class="page-subtitle">Export air quality audits as professional PDF documents</p>
+        </header>
+        <div class="page-content">
+            <div class="flex gap-6">
+                <!-- Config Panel (Left) -->
+                <div class="w-96 flex-shrink-0 bg-white rounded-lg shadow-md p-6 max-h-[calc(100vh-180px)] overflow-y-auto">
+                    <!-- Organization -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Organization</label>
+                        <input type="text" id="report-org" value="Octanis Instrumente GmbH" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Report Title -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Report Title</label>
+                        <input type="text" id="report-title" value="Indoor Air Quality Audit" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Location -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Location</label>
+                        <input type="text" id="report-location" value="" placeholder="Office A, Building B, Zurich" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Device Selection (Checkboxes) -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Data Sources</label>
+                        <div id="report-device-list" class="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded p-2">
+                            <p class="text-sm text-gray-400">Loading devices...</p>
+                        </div>
+                    </div>
+
+                    <!-- Date Range -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Measurement Period</label>
+                        <div class="flex gap-2">
+                            <input type="date" id="report-date-start" class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="self-center text-gray-500">to</span>
+                            <input type="date" id="report-date-end" class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Computed Statistics (read-only display) -->
+                    <div class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Computed Statistics</label>
+                        <div id="report-computed-stats" class="text-sm text-gray-700 space-y-1">
+                            <p class="text-gray-400">Select devices and date range to compute</p>
+                        </div>
+                    </div>
+
+                    <!-- Event Statistics (read-only display) -->
+                    <div class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Event Statistics</label>
+                        <div id="report-event-stats" class="text-sm text-gray-700 space-y-1">
+                            <p class="text-gray-400">Computed from selected data</p>
+                        </div>
+                    </div>
+
+                    <!-- GI 2.0 Compliance (auto-computed with override) -->
+                    <div class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">GI 2.0 Compliance</label>
+                        <div id="report-gi2-status" class="text-sm font-medium mb-2">
+                            <span class="text-gray-400">--</span>
+                        </div>
+                        <select id="report-gi2-override" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="auto">Auto-compute from data</option>
+                            <option value="pass">Override: Compliant</option>
+                            <option value="warning">Override: Warning</option>
+                            <option value="fail">Override: Not Compliant</option>
+                        </select>
+                    </div>
+
+                    <!-- Findings JSON -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Findings (JSON)</label>
+                        <textarea id="report-findings" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder='["Finding 1", "Finding 2"]'>["High CO2 events 14:00-17:00 daily", "Weekend air quality remains optimal"]</textarea>
+                    </div>
+
+                    <!-- Recommendations JSON -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recommendations (JSON)</label>
+                        <textarea id="report-recommendations" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder='["Recommendation 1", "Recommendation 2"]'>["Install CO2-driven ventilation control", "Re-test after 4 weeks"]</textarea>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-2">
+                        <button id="generate-pdf-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition">
+                            Generate PDF Report
+                        </button>
+                        <button id="reset-report-btn" class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition">
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview Panel (Right) -->
+                <div class="flex-1 bg-gray-100 rounded-lg p-4 overflow-auto max-h-[calc(100vh-180px)]">
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">A4 Report Preview</p>
+                    <div id="report-preview" class="mx-auto shadow-lg" style="width: 794px;">
+                        <div class="bg-white p-8 min-h-[400px] flex items-center justify-center text-gray-400">
+                            <p>Configure report settings to see preview</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Logo (shown when connected) -->
+    <div id="footer-logo" class="hidden px-6 py-4">
+        <div class="flex justify-between items-center">
+            <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200">
+                Octanis Instruments GmbH, Switzerland
+            </a>
+            <img src="img/logo.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
         </div>
     </div>
     </main>

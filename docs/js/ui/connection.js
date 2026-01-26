@@ -194,11 +194,17 @@ export async function showAppropriateDisconnectedContent() {
         if (hasLogs) {
             // Hide live data section when disconnected
             document.getElementById('live-data-section').classList.add('hidden');
+            // Show footer when we have data
+            document.getElementById('footer-logo').classList.remove('hidden');
+        } else {
+            // Hide footer when no data
+            document.getElementById('footer-logo').classList.add('hidden');
         }
     } catch (error) {
         // Error checking logs - default to showing instructions
         instructions.classList.remove('hidden');
         document.getElementById('main-content').classList.add('hidden');
+        document.getElementById('footer-logo').classList.add('hidden');
     }
 }
 
@@ -232,8 +238,7 @@ export async function handleDeviceDisconnected() {
     document.getElementById('storage-status-inline').classList.add('hidden');
     document.getElementById('battery-status-inline').classList.add('hidden');
 
-    // Hide footer logo
-    document.getElementById('footer-logo').classList.add('hidden');
+    // Footer visibility is handled by showAppropriateDisconnectedContent
 
     // Update device filter to remove connected indicator
     await updateDeviceFilter();
