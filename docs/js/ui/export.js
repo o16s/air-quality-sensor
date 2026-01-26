@@ -3,6 +3,7 @@
  * Handles CSV and JSON export functions
  */
 
+import { i18n } from '../i18n.js';
 import { getAllLogs, getLogsByDevice, getAllDeviceMetadata } from '../storage.js';
 import { exportToCSV, exportToJSON } from '../export.js';
 import * as state from './state.js';
@@ -19,7 +20,7 @@ export async function handleExportCSV() {
             ? await getLogsByDevice(currentDeviceFilter)
             : await getAllLogs();
         if (logs.length === 0) {
-            showError('No logs to export');
+            showError(i18n.t('export_noLogs'));
             return;
         }
 
@@ -35,11 +36,11 @@ export async function handleExportCSV() {
 
         exportToCSV(logs, deviceMetadataMap);
         const filterMsg = currentDeviceFilter ? ` for ${currentDeviceFilter}` : '';
-        showSuccess(`Exported ${logs.length} logs${filterMsg} to CSV`);
+        showSuccess(i18n.t('export_success', { count: logs.length, filter: filterMsg, format: 'CSV' }));
 
     } catch (error) {
         console.error('Export failed:', error);
-        showError('Export failed: ' + error.message);
+        showError(i18n.t('export_failed', { message: error.message }));
     }
 }
 
@@ -54,7 +55,7 @@ export async function handleExportJSON() {
             ? await getLogsByDevice(currentDeviceFilter)
             : await getAllLogs();
         if (logs.length === 0) {
-            showError('No logs to export');
+            showError(i18n.t('export_noLogs'));
             return;
         }
 
@@ -70,10 +71,10 @@ export async function handleExportJSON() {
 
         exportToJSON(logs, deviceMetadataMap);
         const filterMsg = currentDeviceFilter ? ` for ${currentDeviceFilter}` : '';
-        showSuccess(`Exported ${logs.length} logs${filterMsg} to JSON`);
+        showSuccess(i18n.t('export_success', { count: logs.length, filter: filterMsg, format: 'JSON' }));
 
     } catch (error) {
         console.error('Export failed:', error);
-        showError('Export failed: ' + error.message);
+        showError(i18n.t('export_failed', { message: error.message }));
     }
 }

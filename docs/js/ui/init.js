@@ -3,6 +3,7 @@
  * Handles initialization, widget configuration, and page switching
  */
 
+import { i18n } from '../i18n.js';
 import { autoReconnect, isDeviceConnected, onConnect, onDisconnect, getDevice } from '../webusb.js';
 import { getDatabaseStats, clearAllLogs } from '../storage.js';
 import { eraseLogs } from '../protocol.js';
@@ -50,7 +51,7 @@ import { updateEventsTimeline } from './eventsUI.js';
  * Handle clear logs button - clears all logs from browser storage
  */
 async function handleClearLogs() {
-    if (!confirm('Are you sure you want to clear all logs from browser storage? This cannot be undone.')) {
+    if (!confirm(i18n.t('clear_confirm'))) {
         return;
     }
 
@@ -59,10 +60,10 @@ async function handleClearLogs() {
         await updateBrowserLogCount();
         await updateDeviceFilter();
         await updateLogTable();
-        showSuccess('All logs cleared from browser storage');
+        showSuccess(i18n.t('clear_success'));
     } catch (error) {
         console.error('Clear failed:', error);
-        showError('Failed to clear logs: ' + error.message);
+        showError(i18n.t('clear_failed', { message: error.message }));
     }
 }
 
@@ -75,35 +76,35 @@ async function handleEraseDevice() {
     }
 
     // Double confirmation for device erase (destructive action)
-    if (!confirm('WARNING: This will permanently erase ALL logs from the device!\n\nAre you absolutely sure?')) {
+    if (!confirm(i18n.t('erase_confirm1'))) {
         return;
     }
 
-    if (!confirm('This action CANNOT be undone. Erase all device logs?')) {
+    if (!confirm(i18n.t('erase_confirm2'))) {
         return;
     }
 
     const btn = document.getElementById('erase-device-btn');
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Erasing...';
+    btn.textContent = i18n.t('settings_erasing');
 
     try {
         const device = getDevice();
         const success = await eraseLogs(device);
 
         if (success) {
-            showSuccess('Device logs erased successfully');
+            showSuccess(i18n.t('erase_success'));
             // Update capacity display to reflect empty device
             await updateDeviceLogCount();
             // Close modal on success
             closeSettingsModal();
         } else {
-            showError('Failed to erase device logs');
+            showError(i18n.t('erase_failed'));
         }
     } catch (error) {
         console.error('Erase failed:', error);
-        showError('Failed to erase logs: ' + error.message);
+        showError(i18n.t('clear_failed', { message: error.message }));
     } finally {
         btn.disabled = false;
         btn.textContent = originalText;
@@ -368,12 +369,25 @@ function setupEventHandlers() {
 
     // Report page event handlers
     setupReportEventHandlers();
+
+    // Language switcher
+    const langSwitcher = document.getElementById('language-switcher');
+    if (langSwitcher) {
+        // Set current language in dropdown
+        langSwitcher.value = i18n.getLanguage();
+        langSwitcher.addEventListener('change', (e) => {
+            i18n.setLanguage(e.target.value);
+        });
+    }
 }
 
 /**
  * Initialize UI and event handlers
  */
 export async function initUI() {
+    // Translate static page content
+    i18n.translatePage();
+
     // Apply Electron-specific UI adjustments once at startup
     if (isRunningInElectron()) {
         document.getElementById('connect-btn').style.display = 'none';

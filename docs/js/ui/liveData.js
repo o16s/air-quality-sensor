@@ -3,6 +3,7 @@
  * Handles live sensor value display updates
  */
 
+import { i18n } from '../i18n.js';
 import { isDeviceConnected, getDevice } from '../webusb.js';
 import { getDeviceStatus, formatGPSFix, createMapsURL } from '../protocol.js';
 import { LOG_TYPE, CO2_THRESHOLDS, TIME_SYNC } from '../constants.js';
@@ -51,18 +52,18 @@ export async function updateLiveData() {
         // Update PM measurement age
         const ageSeconds = status.currentTime - status.measuredAt;
         if (ageSeconds < 5) {
-            document.getElementById('measured-age').textContent = 'fresh';
+            document.getElementById('measured-age').textContent = i18n.t('time_fresh');
         } else if (ageSeconds < 60) {
-            document.getElementById('measured-age').textContent = `${ageSeconds}s old`;
+            document.getElementById('measured-age').textContent = i18n.t('time_secondsOld', { seconds: ageSeconds });
         } else if (ageSeconds < 3600) {
-            document.getElementById('measured-age').textContent = `${Math.floor(ageSeconds / 60)}m old`;
+            document.getElementById('measured-age').textContent = i18n.t('time_minutesOld', { minutes: Math.floor(ageSeconds / 60) });
         } else {
-            document.getElementById('measured-age').textContent = `${Math.floor(ageSeconds / 3600)}h old`;
+            document.getElementById('measured-age').textContent = i18n.t('time_hoursOld', { hours: Math.floor(ageSeconds / 3600) });
         }
 
     } catch (error) {
         console.error('Failed to update live data:', error);
-        showError('Failed to read sensor data: ' + error.message);
+        showError(i18n.t('sensor_readFailed', { message: error.message }));
 
         // Set all sensor values to N/A when data is unavailable
         document.getElementById('temp-value').textContent = 'N/A';

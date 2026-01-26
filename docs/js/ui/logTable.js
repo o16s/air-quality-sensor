@@ -3,6 +3,7 @@
  * Handles measurement history table rendering
  */
 
+import { i18n } from '../i18n.js';
 import {
     getRecentLogs,
     getLogsByDevice,
@@ -20,9 +21,9 @@ import { updateEventsTimeline } from './eventsUI.js';
  */
 export function getLogTypeLabel(logType) {
     switch (logType) {
-        case LOG_TYPE.GPS: return 'GPS';
-        case LOG_TYPE.TSL2591: return 'TSL';
-        case LOG_TYPE.CO2: return 'CO2';
+        case LOG_TYPE.GPS: return i18n.t('logType_gps');
+        case LOG_TYPE.TSL2591: return i18n.t('logType_tsl');
+        case LOG_TYPE.CO2: return i18n.t('logType_co2');
         default: return '—';
     }
 }
@@ -65,14 +66,14 @@ export async function updateLogTable(deviceSerial = null) {
 
         if (logs.length === 0) {
             thead.innerHTML = `
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${i18n.t('table_timestamp')}</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${i18n.t('table_temp')}</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${i18n.t('table_humidity')}</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${i18n.t('table_battery')}</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${i18n.t('table_serial')}</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">${i18n.t('table_syncedOn')}</th>
             `;
-            tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">${i18n.t('history_noLogs')}</td></tr>`;
             return;
         }
 

@@ -18,25 +18,25 @@
 
         <!-- Navigation -->
         <div class="sidebar-nav">
-            <a href="#overview" data-page="overview" class="nav-item active" title="Overview">
+            <a href="#overview" data-page="overview" class="nav-item active" data-i18n-title="nav_overview">
                 <svg viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                <span class="nav-label">Overview</span>
+                <span class="nav-label" data-i18n="nav_overview">Overview</span>
             </a>
-            <a href="#history" data-page="history" class="nav-item" title="History">
+            <a href="#history" data-page="history" class="nav-item" data-i18n-title="nav_history">
                 <svg viewBox="0 0 24 24"><path d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span class="nav-label">History</span>
+                <span class="nav-label" data-i18n="nav_history">History</span>
             </a>
-            <a href="#report" data-page="report" class="nav-item" title="Report">
+            <a href="#report" data-page="report" class="nav-item" data-i18n-title="nav_report">
                 <svg viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                <span class="nav-label">Report</span>
+                <span class="nav-label" data-i18n="nav_report">Report</span>
             </a>
         </div>
 
         <!-- Bottom Section -->
         <div class="sidebar-bottom">
-            <a href="#help" data-page="help" class="nav-item" title="Help">
+            <a href="#help" data-page="help" class="nav-item" data-i18n-title="nav_help">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 17l0 .01" /><path d="M12 13.5a1.5 1.5 0 0 1 1 -1.5a2.6 2.6 0 1 0 -3 -4" /></svg>
-                <span class="nav-label">Help</span>
+                <span class="nav-label" data-i18n="nav_help">Help</span>
             </a>
         </div>
     </nav>
@@ -52,8 +52,8 @@
                 </svg>
             </div>
             <div class="ml-3">
-                <p class="text-sm text-yellow-700">
-                    WebUSB is not supported in your browser. Please use <strong>Chrome</strong> or <strong>Edge</strong>.
+                <p class="text-sm text-yellow-700" data-i18n="warning_webusb">
+                    WebUSB is not supported in your browser. Please use Chrome or Edge.
                 </p>
             </div>
         </div>
@@ -70,7 +70,7 @@
                     <button id="device-switcher-btn" class="flex items-center gap-3 px-2 py-1 hover:bg-gray-50 rounded-lg transition">
                         <img id="switcher-device-icon" src="" class="w-10 h-10 rounded-lg object-cover" alt="" onerror="this.style.display='none'">
                         <div class="flex items-center gap-2">
-                            <span id="switcher-device-name" class="text-sm font-semibold text-gray-900">Select Device</span>
+                            <span id="switcher-device-name" class="text-sm font-semibold text-gray-900" data-i18n="device_selectDevice">Select Device</span>
                             <span id="switcher-status-dot" class="w-2 h-2 rounded-full bg-gray-400"></span>
                             <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -88,7 +88,7 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                                 </svg>
-                                Connect new device
+                                <span data-i18n="device_connectNew">Connect new device</span>
                             </button>
                         </div>
                     </div>
@@ -104,7 +104,7 @@
                             <path d="M20 10h2v4h-2" stroke-width="2"/>
                         </svg>
                         <span id="battery-percent-inline" class="font-medium">--%</span>
-                        <span id="battery-charging-inline" class="ml-1 text-xs text-gray-500 hidden">(charging)</span>
+                        <span id="battery-charging-inline" class="ml-1 text-xs text-gray-500 hidden" data-i18n="battery_charging">(charging)</span>
                     </div>
                     <!-- Storage -->
                     <div id="storage-status-inline" class="flex items-center hidden">
@@ -120,16 +120,16 @@
 
                 <!-- Right: Actions -->
                 <div class="flex items-center gap-2">
-                    <button id="sync-data-btn-header" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1.5 px-3 rounded-lg transition duration-200">
+                    <button id="sync-data-btn-header" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1.5 px-3 rounded-lg transition duration-200" data-i18n="action_syncData">
                         Sync Data
                     </button>
-                    <button id="settings-btn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200" title="Device Settings">
+                    <button id="settings-btn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200" data-i18n-title="device_settings">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
                             <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/>
                         </svg>
                     </button>
-                    <button id="disconnect-btn-header" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200" title="Disconnect Device">
+                    <button id="disconnect-btn-header" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200" data-i18n-title="device_disconnect">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M7.27 1.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H1.656C.78 9.5.326 8.455.926 7.816zM14.346 8.5 8 1.731 1.654 8.5zM.5 11.5a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1zm14 0h-13v1h13z"/>
                         </svg>
@@ -157,7 +157,7 @@
                 </div>
                 <div class="ml-3">
                     <p class="text-sm text-red-700">
-                        <strong>Low Battery:</strong> Please charge the device for 30 minutes before data transfer will work properly.
+                        <strong data-i18n="warning_lowBattery">Low Battery:</strong> <span data-i18n="warning_lowBatteryMsg">Please charge the device for 30 minutes before data transfer will work properly.</span>
                     </p>
                 </div>
             </div>
@@ -167,10 +167,10 @@
         <div id="connect-section" class="hidden">
             <div class="bg-white rounded-lg shadow-md p-12 mb-6 text-center">
                 <img src="img/logo.png" alt="Octanis" class="h-12 mx-auto mb-6 opacity-40">
-                <button id="connect-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
+                <button id="connect-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-200" data-i18n="action_connect">
                     Connect Device
                 </button>
-                <p id="electron-connect-hint" class="hidden text-gray-600 mt-4">
+                <p id="electron-connect-hint" class="hidden text-gray-600 mt-4" data-i18n="connect_hint_electron">
                     Plug in your Octanis sensor via USB to connect automatically.
                 </p>
             </div>
@@ -184,10 +184,10 @@
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex items-center justify-between mb-4">
                         <div>
-                            <h2 class="widget-header">Live Sensor Data</h2>
-                            <p class="widget-subtitle">Current readings from connected device</p>
+                            <h2 class="widget-header" data-i18n="live_title">Live Sensor Data</h2>
+                            <p class="widget-subtitle" data-i18n="live_subtitle">Current readings from connected device</p>
                         </div>
-                        <button id="refresh-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200">
+                        <button id="refresh-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200" data-i18n="action_measureNow">
                             Measure Now
                         </button>
                     </div>
@@ -195,28 +195,28 @@
                         <div class="sensor-card relative overflow-hidden">
                             <canvas id="pm25-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
                             <div class="relative z-10">
-                                <div class="text-gray-600 text-sm mb-1">PM2.5</div>
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_pm25">PM2.5</div>
                                 <div id="pm25-value" class="text-2xl font-bold">--</div>
                             </div>
                         </div>
                         <div class="sensor-card relative overflow-hidden">
                             <canvas id="pm10-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
                             <div class="relative z-10">
-                                <div class="text-gray-600 text-sm mb-1">PM10</div>
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_pm10">PM10</div>
                                 <div id="pm10-value" class="text-2xl font-bold">--</div>
                             </div>
                         </div>
                         <div class="sensor-card relative overflow-hidden">
                             <canvas id="temp-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
                             <div class="relative z-10">
-                                <div class="text-gray-600 text-sm mb-1">Temperature</div>
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_temperature">Temperature</div>
                                 <div id="temp-value" class="text-2xl font-bold text-gray-800">--</div>
                             </div>
                         </div>
                         <div class="sensor-card relative overflow-hidden">
                             <canvas id="humidity-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
                             <div class="relative z-10">
-                                <div class="text-gray-600 text-sm mb-1">Humidity</div>
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_humidity">Humidity</div>
                                 <div id="humidity-value" class="text-2xl font-bold text-gray-800">--</div>
                             </div>
                         </div>
@@ -224,7 +224,7 @@
                         <div id="lux-card" class="sensor-card relative overflow-hidden hidden">
                             <canvas id="lux-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
                             <div class="relative z-10">
-                                <div class="text-gray-600 text-sm mb-1">Light</div>
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_light">Light</div>
                                 <div id="lux-value" class="text-2xl font-bold text-gray-800">-- lux</div>
                             </div>
                         </div>
@@ -232,13 +232,13 @@
                         <div id="co2-card" class="sensor-card relative overflow-hidden hidden">
                             <canvas id="co2-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
                             <div class="relative z-10">
-                                <div class="text-gray-600 text-sm mb-1">CO2</div>
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_co2">CO2</div>
                                 <div id="co2-value" class="text-2xl font-bold text-gray-800">-- ppm</div>
                             </div>
                         </div>
                     </div>
                     <div class="mt-4 text-xs text-gray-500">
-                        <div>Sensor data: <span id="measured-age">--</span></div>
+                        <div><span data-i18n="live_sensorData">Sensor data</span>: <span id="measured-age">--</span></div>
                     </div>
                 </div>
             </div>
@@ -247,14 +247,14 @@
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <h2 class="widget-header">Events Detected</h2>
-                        <p class="widget-subtitle">Air quality anomalies and threshold violations</p>
+                        <h2 class="widget-header" data-i18n="events_title">Events Detected</h2>
+                        <p class="widget-subtitle" data-i18n="events_subtitle">Air quality anomalies and threshold violations</p>
                     </div>
                     <select id="events-time-filter" class="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="24h">Last 24 hours</option>
-                        <option value="7d" selected>Last 7 days</option>
-                        <option value="30d">Last 30 days</option>
-                        <option value="all">All time</option>
+                        <option value="24h" data-i18n="events_filter_24h">Last 24 hours</option>
+                        <option value="7d" selected data-i18n="events_filter_7d">Last 7 days</option>
+                        <option value="30d" data-i18n="events_filter_30d">Last 30 days</option>
+                        <option value="all" data-i18n="events_filter_all">All time</option>
                     </select>
                 </div>
                 <div id="events-timeline">
@@ -266,8 +266,8 @@
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <h2 class="widget-header">Activity Heatmap</h2>
-                        <p class="widget-subtitle">Hourly averages (last 14 days)</p>
+                        <h2 class="widget-header" data-i18n="heatmap_title">Activity Heatmap</h2>
+                        <p class="widget-subtitle" data-i18n="heatmap_subtitle">Hourly averages (last 14 days)</p>
                     </div>
                     <select id="heatmap-metric" class="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="pm25" selected>PM2.5</option>
@@ -286,25 +286,25 @@
 
         <!-- Instructions for Browser (shown when not connected) -->
         <div id="instructions" class="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
-            <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
+            <h2 class="text-lg font-semibold text-blue-900 mb-2" data-i18n="connect_gettingStarted">Getting Started</h2>
             <ol class="list-decimal list-inside space-y-2 text-blue-800">
-                <li>Connect your Octanis Sensor via USB</li>
-                <li>Click the "Connect Device" button above</li>
-                <li>Select your device from the browser dialog</li>
-                <li>View live sensor data and download historical logs</li>
+                <li data-i18n="connect_step1">Connect your Octanis Sensor via USB</li>
+                <li data-i18n="connect_step2">Click the "Connect Device" button above</li>
+                <li data-i18n="connect_step3">Select your device from the browser dialog</li>
+                <li data-i18n="connect_step4">View live sensor data and download historical logs</li>
             </ol>
             <p class="mt-4 text-sm text-blue-700">
-                <strong>Note:</strong> This interface requires Chrome or Edge browser with WebUSB support.
+                <strong>Note:</strong> <span data-i18n="connect_note">This interface requires Chrome or Edge browser with WebUSB support.</span>
             </p>
         </div>
 
         <!-- Instructions for Electron (hidden by default) -->
         <div id="instructions-electron" class="hidden bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
-            <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
+            <h2 class="text-lg font-semibold text-blue-900 mb-2" data-i18n="connect_gettingStarted">Getting Started</h2>
             <ol class="list-decimal list-inside space-y-2 text-blue-800">
-                <li>Connect your Octanis Sensor via USB</li>
-                <li>The app will detect and connect automatically</li>
-                <li>View live sensor data and download historical logs</li>
+                <li data-i18n="connect_step1">Connect your Octanis Sensor via USB</li>
+                <li data-i18n="connect_step2_electron">The app will detect and connect automatically</li>
+                <li data-i18n="connect_step3_electron">View live sensor data and download historical logs</li>
             </ol>
         </div>
 
@@ -314,8 +314,8 @@
     <!-- Page: History -->
     <div id="page-history" class="page">
         <header class="page-header">
-            <h1 class="page-title">Measurement History</h1>
-            <p class="page-subtitle">Browse and export stored sensor data</p>
+            <h1 class="page-title" data-i18n="page_history_title">Measurement History</h1>
+            <p class="page-subtitle" data-i18n="page_history_subtitle">Browse and export stored sensor data</p>
         </header>
         <div class="page-content">
             <!-- Measurement History Section -->
@@ -326,14 +326,14 @@
                             <div id="browser-log-count" class="text-sm text-gray-600">
                                 <span class="font-medium">0</span> measurements stored locally
                             </div>
-                            <div id="last-sync-time" class="text-xs text-gray-500">Never synced</div>
+                            <div id="last-sync-time" class="text-xs text-gray-500" data-i18n="time_neverSynced">Never synced</div>
                         </div>
                     </div>
                     <div class="flex gap-4 items-center">
-                        <button id="export-csv-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200">
+                        <button id="export-csv-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200" data-i18n="action_exportCSV">
                             Export CSV
                         </button>
-                        <button id="clear-logs-btn" class="text-gray-500 hover:text-red-600 hover:underline text-sm font-medium transition duration-200">
+                        <button id="clear-logs-btn" class="text-gray-500 hover:text-red-600 hover:underline text-sm font-medium transition duration-200" data-i18n="action_clear">
                             Clear
                         </button>
                     </div>
@@ -341,9 +341,9 @@
 
                 <!-- Device Filter -->
                 <div class="flex items-center gap-4 mb-4">
-                    <label for="device-filter" class="text-sm text-gray-600">Device:</label>
+                    <label for="device-filter" class="text-sm text-gray-600" data-i18n="history_deviceFilter">Device:</label>
                     <select id="device-filter" class="border border-gray-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">All Devices</option>
+                        <option value="" data-i18n="history_allDevices">All Devices</option>
                         <!-- Populated dynamically from IndexedDB -->
                     </select>
                 </div>
@@ -377,8 +377,8 @@
     <!-- Page: Report -->
     <div id="page-report" class="page">
         <header class="page-header">
-            <h1 class="page-title">Report Generator</h1>
-            <p class="page-subtitle">Export air quality audits as professional PDF documents</p>
+            <h1 class="page-title" data-i18n="page_report_title">Report Generator</h1>
+            <p class="page-subtitle" data-i18n="page_report_subtitle">Export air quality audits as professional PDF documents</p>
         </header>
         <div class="page-content">
             <div class="flex gap-6">
@@ -386,88 +386,88 @@
                 <div class="w-96 flex-shrink-0 bg-white rounded-lg shadow-md p-6 max-h-[calc(100vh-180px)] overflow-y-auto">
                     <!-- Organization -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Organization</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="report_organization">Organization</label>
                         <input type="text" id="report-org" value="Octanis Instrumente GmbH" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
                     <!-- Report Title -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Report Title</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="report_title">Report Title</label>
                         <input type="text" id="report-title" value="Indoor Air Quality Audit" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
                     <!-- Location -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Location</label>
-                        <input type="text" id="report-location" value="" placeholder="Office A, Building B, Zurich" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="report_location">Location</label>
+                        <input type="text" id="report-location" value="" data-i18n-placeholder="report_locationPlaceholder" placeholder="Office A, Building B, Zurich" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
                     <!-- Device Selection (Checkboxes) -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Data Sources</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2" data-i18n="report_dataSources">Data Sources</label>
                         <div id="report-device-list" class="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded p-2">
-                            <p class="text-sm text-gray-400">Loading devices...</p>
+                            <p class="text-sm text-gray-400" data-i18n="report_loadingDevices">Loading devices...</p>
                         </div>
                     </div>
 
                     <!-- Date Range -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Measurement Period</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="report_measurementPeriod">Measurement Period</label>
                         <div class="flex gap-2">
                             <input type="date" id="report-date-start" class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <span class="self-center text-gray-500">to</span>
+                            <span class="self-center text-gray-500" data-i18n="report_to">to</span>
                             <input type="date" id="report-date-end" class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
 
                     <!-- Computed Statistics (read-only display) -->
                     <div class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Computed Statistics</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2" data-i18n="report_computedStats">Computed Statistics</label>
                         <div id="report-computed-stats" class="text-sm text-gray-700 space-y-1">
-                            <p class="text-gray-400">Select devices and date range to compute</p>
+                            <p class="text-gray-400" data-i18n="report_selectDevice">Select devices and date range to compute</p>
                         </div>
                     </div>
 
                     <!-- Event Statistics (read-only display) -->
                     <div class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Event Statistics</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2" data-i18n="report_eventStats">Event Statistics</label>
                         <div id="report-event-stats" class="text-sm text-gray-700 space-y-1">
-                            <p class="text-gray-400">Computed from selected data</p>
+                            <p class="text-gray-400" data-i18n="report_eventStatsHint">Computed from selected data</p>
                         </div>
                     </div>
 
                     <!-- GI 2.0 Compliance (auto-computed with override) -->
                     <div class="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">GI 2.0 Compliance</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2" data-i18n="report_gi2Compliance">GI 2.0 Compliance</label>
                         <div id="report-gi2-status" class="text-sm font-medium mb-2">
                             <span class="text-gray-400">--</span>
                         </div>
                         <select id="report-gi2-override" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="auto">Auto-compute from data</option>
-                            <option value="pass">Override: Compliant</option>
-                            <option value="warning">Override: Warning</option>
-                            <option value="fail">Override: Not Compliant</option>
+                            <option value="auto" data-i18n="report_gi2Auto">Auto-compute from data</option>
+                            <option value="pass" data-i18n="report_gi2OverridePass">Override: Compliant</option>
+                            <option value="warning" data-i18n="report_gi2OverrideWarning">Override: Warning</option>
+                            <option value="fail" data-i18n="report_gi2OverrideFail">Override: Not Compliant</option>
                         </select>
                     </div>
 
                     <!-- Findings JSON -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Findings (JSON)</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="report_findings">Findings (JSON)</label>
                         <textarea id="report-findings" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder='["Finding 1", "Finding 2"]'>["High CO2 events 14:00-17:00 daily", "Weekend air quality remains optimal"]</textarea>
                     </div>
 
                     <!-- Recommendations JSON -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recommendations (JSON)</label>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="report_recommendations">Recommendations (JSON)</label>
                         <textarea id="report-recommendations" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder='["Recommendation 1", "Recommendation 2"]'>["Install CO2-driven ventilation control", "Re-test after 4 weeks"]</textarea>
                     </div>
 
                     <!-- Action Buttons -->
                     <div class="space-y-2">
-                        <button id="generate-pdf-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition">
+                        <button id="generate-pdf-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition" data-i18n="action_generatePDF">
                             Generate PDF Report
                         </button>
-                        <button id="reset-report-btn" class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition">
+                        <button id="reset-report-btn" class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition" data-i18n="action_reset">
                             Reset
                         </button>
                     </div>
@@ -475,10 +475,10 @@
 
                 <!-- Preview Panel (Right) -->
                 <div class="flex-1 bg-gray-100 rounded-lg p-4 overflow-auto max-h-[calc(100vh-180px)]">
-                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">A4 Report Preview</p>
+                    <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4" data-i18n="report_previewTitle">A4 Report Preview</p>
                     <div id="report-preview" class="mx-auto shadow-lg" style="width: 794px;">
                         <div class="bg-white p-8 min-h-[400px] flex items-center justify-center text-gray-400">
-                            <p>Configure report settings to see preview</p>
+                            <p data-i18n="report_configureHint">Configure report settings to see preview</p>
                         </div>
                     </div>
                 </div>
@@ -489,9 +489,15 @@
     <!-- Footer Logo (shown when connected) -->
     <div id="footer-logo" class="hidden px-6 py-4">
         <div class="flex justify-between items-center">
-            <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200">
-                Octanis Instruments GmbH, Switzerland
-            </a>
+            <div class="flex items-center gap-4">
+                <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200" data-i18n="footer_company">
+                    Octanis Instruments GmbH, Switzerland
+                </a>
+                <select id="language-switcher" class="text-xs text-gray-500 bg-transparent border border-gray-300 rounded px-2 py-1 cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="en">English</option>
+                    <option value="de">Deutsch</option>
+                </select>
+            </div>
             <img src="img/logo.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
         </div>
     </div>
@@ -502,7 +508,7 @@
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <!-- Modal Header -->
             <div class="flex items-center justify-between p-6 border-b">
-                <h3 class="text-xl font-semibold text-gray-900">Device Settings</h3>
+                <h3 class="text-xl font-semibold text-gray-900" data-i18n="settings_title">Device Settings</h3>
                 <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 transition">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -521,23 +527,23 @@
                         </div>
                         <div class="ml-3">
                             <p class="text-sm text-yellow-700">
-                                <strong>Warning:</strong> Erasing device memory is permanent and cannot be undone.
+                                <strong>Warning:</strong> <span data-i18n="settings_eraseWarning">Erasing device memory is permanent and cannot be undone.</span>
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <button id="erase-device-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200">
+                <button id="erase-device-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200" data-i18n="settings_eraseButton">
                     Erase Device Memory
                 </button>
 
-                <p class="text-xs text-gray-500 text-center">
+                <p class="text-xs text-gray-500 text-center" data-i18n="settings_eraseNote">
                     This will delete all measurements stored on the device. Your downloaded data in the browser will not be affected.
                 </p>
 
                 <!-- Sensor Datasheets Section -->
                 <div class="border-t pt-4 mt-4">
-                    <h4 class="text-sm font-medium text-gray-700 mb-3">Sensor Datasheets</h4>
+                    <h4 class="text-sm font-medium text-gray-700 mb-3" data-i18n="settings_datasheets">Sensor Datasheets</h4>
                     <div class="space-y-2 text-sm">
                         <a href="https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf"
                            target="_blank" rel="noopener"
@@ -545,7 +551,7 @@
                             <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                             </svg>
-                            SHT3x - Temperature &amp; Humidity
+                            <span data-i18n="settings_datasheet_sht3x">SHT3x - Temperature & Humidity</span>
                         </a>
                         <a href="https://cdn.sparkfun.com/assets/2/d/2/a/6/Sensirion_SPS30_Particulate_Matter_Sensor_v0.9_D1__1_.pdf"
                            target="_blank" rel="noopener"
@@ -553,7 +559,7 @@
                             <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                             </svg>
-                            SPS30 - Particulate Matter (PM2.5, PM10)
+                            <span data-i18n="settings_datasheet_sps30">SPS30 - Particulate Matter (PM2.5, PM10)</span>
                         </a>
                         <a href="https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/1169/TSL2560%2C61.pdf"
                            target="_blank" rel="noopener"
@@ -561,19 +567,19 @@
                             <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
                             </svg>
-                            TSL2591 - Light Sensor (Lux)
+                            <span data-i18n="settings_datasheet_tsl2591">TSL2591 - Light Sensor (Lux)</span>
                         </a>
                     </div>
                 </div>
 
                 <!-- Event Detection Thresholds (dynamically rendered from constants.js) -->
                 <div class="border-t pt-4 mt-4">
-                    <h4 class="text-sm font-medium text-gray-700 mb-3">Event Detection Thresholds</h4>
-                    <p class="text-xs text-gray-500 mb-3">Values that trigger events in the timeline (based on WHO/EPA guidelines)</p>
+                    <h4 class="text-sm font-medium text-gray-700 mb-3" data-i18n="settings_thresholds">Event Detection Thresholds</h4>
+                    <p class="text-xs text-gray-500 mb-3" data-i18n="settings_thresholdsNote">Values that trigger events in the timeline (based on WHO/EPA guidelines)</p>
                     <div id="threshold-table">
                         <!-- Populated by renderThresholdTable() in ui.js -->
                     </div>
-                    <p class="text-xs text-gray-400 mt-2">Yellow events require 5+ min duration. Anomaly spikes (z-score) also detected.</p>
+                    <p class="text-xs text-gray-400 mt-2" data-i18n="settings_thresholdsFooter">Yellow events require 5+ min duration. Anomaly spikes (z-score) also detected.</p>
                 </div>
             </div>
         </div>
@@ -582,21 +588,21 @@
     <!-- Edit Device Modal -->
     <div id="edit-device-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
-            <h3 class="text-lg font-semibold mb-4">Edit Device</h3>
+            <h3 class="text-lg font-semibold mb-4" data-i18n="editDevice_title">Edit Device</h3>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                    <input id="edit-device-name-input" type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Kitchen Sensor">
+                    <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="editDevice_name">Name</label>
+                    <input id="edit-device-name-input" type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n-placeholder="editDevice_namePlaceholder" placeholder="e.g., Kitchen Sensor">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-                    <input id="edit-device-tags-input" type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., kitchen, indoor">
-                    <p class="text-xs text-gray-500 mt-1">Separate tags with commas</p>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="editDevice_tags">Tags</label>
+                    <input id="edit-device-tags-input" type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n-placeholder="editDevice_tagsPlaceholder" placeholder="e.g., kitchen, indoor">
+                    <p class="text-xs text-gray-500 mt-1" data-i18n="editDevice_tagsHint">Separate tags with commas</p>
                 </div>
             </div>
             <div class="flex gap-2 mt-6">
-                <button id="save-device-metadata-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded transition duration-200">Save</button>
-                <button id="cancel-device-metadata-btn" class="flex-1 border border-gray-300 hover:bg-gray-50 py-2 rounded transition duration-200">Cancel</button>
+                <button id="save-device-metadata-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded transition duration-200" data-i18n="action_save">Save</button>
+                <button id="cancel-device-metadata-btn" class="flex-1 border border-gray-300 hover:bg-gray-50 py-2 rounded transition duration-200" data-i18n="action_cancel">Cancel</button>
             </div>
         </div>
     </div>

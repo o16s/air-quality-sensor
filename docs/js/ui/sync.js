@@ -3,6 +3,7 @@
  * Handles auto-refresh, log downloads, and device time sync
  */
 
+import { i18n } from '../i18n.js';
 import { isDeviceConnected, getDevice, getDeviceInfo } from '../webusb.js';
 import {
     getLogCount,
@@ -68,32 +69,32 @@ export async function handleRefresh() {
     try {
         // Trigger sensor acquisition
         const device = getDevice();
-        btn.textContent = 'Acquiring...';
+        btn.textContent = i18n.t('sync_acquiring');
         await triggerAcquisition(device);
 
         // 20-second countdown
         for (let i = 20; i > 0; i--) {
-            btn.textContent = `Acquiring... ${i}s`;
+            btn.textContent = i18n.t('sync_acquiringCountdown', { seconds: i });
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         // Fetch fresh data
-        btn.textContent = 'Reading...';
+        btn.textContent = i18n.t('sync_reading');
         await updateLiveData();
 
         // Update sparklines from browser storage
         await loadSparklinesFromStorage();
 
         // Success feedback
-        btn.textContent = 'Refreshed!';
+        btn.textContent = i18n.t('sync_refreshed');
         await new Promise(resolve => setTimeout(resolve, 500));
 
     } catch (error) {
         console.error('Failed to refresh:', error);
-        showError('Failed to refresh: ' + error.message);
+        showError(i18n.t('sync_refreshFailed', { message: error.message }));
     } finally {
         btn.disabled = false;
-        btn.textContent = 'Measure Now';
+        btn.textContent = i18n.t('action_measureNow');
     }
 }
 
@@ -114,7 +115,7 @@ export async function handleRefreshTime() {
         console.log('Device time re-synchronized');
     } catch (error) {
         console.error('Failed to refresh device time:', error);
-        showError('Failed to sync time: ' + error.message);
+        showError(i18n.t('sync_timeFailed', { message: error.message }));
     } finally {
         btn.disabled = false;
     }
@@ -163,8 +164,7 @@ export function updateDeviceCapacity(count) {
 
     // Update count display
     const countEl = document.getElementById('storage-count-inline');
-    const measurementText = count === 1 ? 'measurement' : 'measurements';
-    countEl.textContent = `${count} ${measurementText}`;
+    countEl.textContent = i18n.t('storage_measurement', { count });
 
     // Calculate and display "Memory full in X days"
     const fullDateEl = document.getElementById('storage-full-date');
@@ -173,24 +173,24 @@ export function updateDeviceCapacity(count) {
         const secondsUntilFull = remainingLogs * measurementInterval;
         const daysUntilFull = secondsUntilFull / (60 * 60 * 24);
 
-        let fullText;
+        let timeText;
         if (daysUntilFull < 1) {
             const hoursUntilFull = Math.round(secondsUntilFull / 3600);
-            fullText = `Memory full in ${hoursUntilFull}h`;
+            timeText = `${hoursUntilFull}h`;
         } else {
-            fullText = `Memory full in ${Math.round(daysUntilFull)}d`;
+            timeText = `${Math.round(daysUntilFull)}d`;
         }
-        fullDateEl.textContent = fullText;
+        fullDateEl.textContent = i18n.t('storage_memoryFullIn', { time: timeText });
 
         // Set tooltip with detailed info
         const intervalMinutes = Math.round(measurementInterval / 60);
-        const tooltip = `Recording every ${intervalMinutes} min • Max ${maxCapacity} measurements • ${percent.toFixed(1)}% used`;
+        const tooltip = `${i18n.t('storage_tooltip', { interval: intervalMinutes })} • ${i18n.t('storage_maxMeasurements', { max: maxCapacity })} • ${i18n.t('storage_percentUsed', { percent: percent.toFixed(1) })}`;
         fullDateEl.setAttribute('title', tooltip);
 
         fullDateEl.classList.remove('hidden');
     } else if (count >= maxCapacity) {
-        fullDateEl.textContent = 'Memory full';
-        fullDateEl.setAttribute('title', `Max ${maxCapacity} measurements reached`);
+        fullDateEl.textContent = i18n.t('storage_memoryFull');
+        fullDateEl.setAttribute('title', i18n.t('storage_maxMeasurements', { max: maxCapacity }));
         fullDateEl.classList.remove('hidden');
     } else {
         fullDateEl.classList.add('hidden');
@@ -211,14 +211,14 @@ export async function handleDownloadLogs() {
     const originalText = btn.textContent;
 
     btn.disabled = true;
-    btn.textContent = 'Syncing...';
+    btn.textContent = i18n.t('sync_syncing');
 
     try {
         const device = getDevice();
         const info = getDeviceInfo();
 
         const result = await downloadAllLogs(device, (current, total) => {
-            btn.textContent = `Syncing ${current}/${total}`;
+            btn.textContent = i18n.t('sync_syncingProgress', { current, total });
         });
 
         const { logType, logs } = result;
@@ -250,12 +250,12 @@ export async function handleDownloadLogs() {
 
             // Report results with duplicate information
             if (storeResult.skipped > 0) {
-                showSuccess(`Downloaded ${logs.length} logs (${formatName} format): ${storeResult.success} new, ${storeResult.skipped} duplicates skipped`);
+                showSuccess(i18n.t('sync_downloadedNew', { total: logs.length, format: formatName, new: storeResult.success, skipped: storeResult.skipped }));
             } else {
-                showSuccess(`Downloaded and stored ${storeResult.success} logs (${formatName} format)`);
+                showSuccess(i18n.t('sync_downloadedAll', { count: storeResult.success, format: formatName }));
             }
         } else {
-            showSuccess('No new logs to download');
+            showSuccess(i18n.t('sync_noNewLogs'));
         }
 
         // Update counts, table, and sparklines
@@ -267,7 +267,7 @@ export async function handleDownloadLogs() {
 
     } catch (error) {
         console.error('Download failed:', error);
-        showError('Download failed: ' + error.message);
+        showError(i18n.t('sync_failed', { message: error.message }));
     } finally {
         state.set('isDownloading', false);
         btn.disabled = false;
@@ -283,7 +283,7 @@ export function updateLastSyncTime() {
     localStorage.setItem('lastSyncTime', now.toString());
 
     const timeString = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    document.getElementById('last-sync-time').textContent = `Last synced: ${timeString}`;
+    document.getElementById('last-sync-time').textContent = i18n.t('time_lastSynced', { time: timeString });
 }
 
 /**
@@ -294,6 +294,6 @@ export function loadLastSyncTime() {
     if (lastSync) {
         const date = new Date(parseInt(lastSync));
         const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        document.getElementById('last-sync-time').textContent = `Last synced: ${timeString}`;
+        document.getElementById('last-sync-time').textContent = i18n.t('time_lastSynced', { time: timeString });
     }
 }

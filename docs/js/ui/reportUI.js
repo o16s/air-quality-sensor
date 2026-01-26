@@ -3,6 +3,7 @@
  * Handles report page functions
  */
 
+import { i18n } from '../i18n.js';
 import {
     getDatabaseStats,
     getAllDeviceMetadata,
@@ -73,7 +74,7 @@ export async function populateReportDeviceList() {
     });
 
     if (stats.devices.length === 0) {
-        container.innerHTML = '<p class="text-sm text-gray-400">No devices with data found</p>';
+        container.innerHTML = `<p class="text-sm text-gray-400">${i18n.t('report_noDevicesWithData')}</p>`;
         return;
     }
 
@@ -91,7 +92,7 @@ export async function populateReportDeviceList() {
                 <input type="checkbox" value="${serial}" class="report-device-checkbox mt-0.5" checked>
                 <div class="flex-1 min-w-0">
                     <span class="text-sm font-medium text-gray-700 truncate block">${escapeHtmlAttr(displayName)}</span>
-                    <span class="text-xs text-gray-500">${count.toLocaleString()} measurements</span>
+                    <span class="text-xs text-gray-500">${i18n.t('report_measurements', { count })}</span>
                 </div>
             </label>
         `;
@@ -146,8 +147,8 @@ export async function updateReportStats() {
     const gi2StatusContainer = document.getElementById('report-gi2-status');
 
     if (selectedDevices.length === 0) {
-        statsContainer.innerHTML = '<p class="text-gray-400">Select at least one device</p>';
-        eventStatsContainer.innerHTML = '<p class="text-gray-400">No data</p>';
+        statsContainer.innerHTML = `<p class="text-gray-400">${i18n.t('report_selectAtLeastOne')}</p>`;
+        eventStatsContainer.innerHTML = `<p class="text-gray-400">${i18n.t('report_noData')}</p>`;
         gi2StatusContainer.innerHTML = '<span class="text-gray-400">--</span>';
         state.set('reportStats', null);
         state.set('reportEventStats', null);
@@ -159,8 +160,8 @@ export async function updateReportStats() {
     const logs = await getLogsForReport(selectedDevices, startTimestamp, endTimestamp);
 
     if (logs.length === 0) {
-        statsContainer.innerHTML = '<p class="text-gray-400">No data in selected range</p>';
-        eventStatsContainer.innerHTML = '<p class="text-gray-400">No data</p>';
+        statsContainer.innerHTML = `<p class="text-gray-400">${i18n.t('report_noDataInRange')}</p>`;
+        eventStatsContainer.innerHTML = `<p class="text-gray-400">${i18n.t('report_noData')}</p>`;
         gi2StatusContainer.innerHTML = '<span class="text-gray-400">--</span>';
         state.set('reportStats', null);
         state.set('reportEventStats', null);
@@ -178,17 +179,17 @@ export async function updateReportStats() {
     state.set('reportGI2Status', reportGI2Status);
 
     // Display computed statistics
-    let statsHtml = `<p><strong>${reportStats.totalMeasurements.toLocaleString()}</strong> measurements</p>`;
+    let statsHtml = `<p><strong>${reportStats.totalMeasurements.toLocaleString()}</strong> ${i18n.t('report_measurements', { count: reportStats.totalMeasurements }).split(' ').slice(1).join(' ')}</p>`;
 
     if (reportStats.co2.avg !== null) {
-        statsHtml += `<p>CO2 Average: <strong>${Math.round(reportStats.co2.avg)} ppm</strong></p>`;
-        statsHtml += `<p>CO2 Peak: <strong>${Math.round(reportStats.co2.max)} ppm</strong></p>`;
+        statsHtml += `<p>${i18n.t('report_co2Average')}: <strong>${Math.round(reportStats.co2.avg)} ppm</strong></p>`;
+        statsHtml += `<p>${i18n.t('report_co2Peak')}: <strong>${Math.round(reportStats.co2.max)} ppm</strong></p>`;
     }
     if (reportStats.pm25.avg !== null) {
-        statsHtml += `<p>PM2.5 Average: <strong>${reportStats.pm25.avg.toFixed(1)} ug/m3</strong></p>`;
+        statsHtml += `<p>${i18n.t('report_pm25Average')}: <strong>${reportStats.pm25.avg.toFixed(1)} ug/m3</strong></p>`;
     }
     if (reportStats.temperature.avg !== null) {
-        statsHtml += `<p>Temperature Avg: <strong>${reportStats.temperature.avg.toFixed(1)} C</strong></p>`;
+        statsHtml += `<p>${i18n.t('report_tempAverage')}: <strong>${reportStats.temperature.avg.toFixed(1)} C</strong></p>`;
     }
 
     statsContainer.innerHTML = statsHtml;
@@ -196,19 +197,19 @@ export async function updateReportStats() {
     // Display event statistics
     const totalEvents = reportEventStats.yellow.count + reportEventStats.orange.count + reportEventStats.red.count;
     if (totalEvents > 0) {
-        let eventHtml = `<p><strong>${totalEvents}</strong> events detected</p>`;
+        let eventHtml = `<p>${i18n.t('report_eventsDetected', { count: totalEvents })}</p>`;
         if (reportEventStats.yellow.count > 0) {
-            eventHtml += `<p class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400"></span>Yellow: ${reportEventStats.yellow.count} (${reportEventStats.yellow.totalMinutes} min)</p>`;
+            eventHtml += `<p class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400"></span>${i18n.t('report_yellow')}: ${reportEventStats.yellow.count} (${reportEventStats.yellow.totalMinutes} min)</p>`;
         }
         if (reportEventStats.orange.count > 0) {
-            eventHtml += `<p class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-400"></span>Orange: ${reportEventStats.orange.count} (${reportEventStats.orange.totalMinutes} min)</p>`;
+            eventHtml += `<p class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-400"></span>${i18n.t('report_orange')}: ${reportEventStats.orange.count} (${reportEventStats.orange.totalMinutes} min)</p>`;
         }
         if (reportEventStats.red.count > 0) {
-            eventHtml += `<p class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>Red: ${reportEventStats.red.count} (${reportEventStats.red.totalMinutes} min)</p>`;
+            eventHtml += `<p class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span>${i18n.t('report_red')}: ${reportEventStats.red.count} (${reportEventStats.red.totalMinutes} min)</p>`;
         }
         eventStatsContainer.innerHTML = eventHtml;
     } else {
-        eventStatsContainer.innerHTML = '<p class="text-green-600">No threshold violations</p>';
+        eventStatsContainer.innerHTML = `<p class="text-green-600">${i18n.t('report_noThresholdViolations')}</p>`;
     }
 
     // Display GI 2.0 status
@@ -219,10 +220,10 @@ export async function updateReportStats() {
         unknown: 'text-gray-400'
     };
     const statusLabels = {
-        pass: 'Compliant',
-        warning: 'Warning',
-        fail: 'Not Compliant',
-        unknown: 'Unknown'
+        pass: i18n.t('report_gi2Pass'),
+        warning: i18n.t('report_gi2Warning'),
+        fail: i18n.t('report_gi2Fail'),
+        unknown: i18n.t('report_gi2Unknown')
     };
 
     gi2StatusContainer.innerHTML = `
@@ -339,12 +340,12 @@ export async function handleGeneratePDF() {
     const originalText = btn.textContent;
 
     btn.disabled = true;
-    btn.textContent = 'Generating...';
+    btn.textContent = i18n.t('report_generating');
 
     try {
         const previewElement = document.getElementById('report-preview').firstElementChild;
         if (!previewElement) {
-            throw new Error('No preview content to export');
+            throw new Error(i18n.t('report_noPreview'));
         }
 
         const title = document.getElementById('report-title').value || 'Air-Quality-Report';
@@ -352,7 +353,7 @@ export async function handleGeneratePDF() {
 
         await generatePDF(previewElement, filename);
 
-        btn.textContent = 'PDF Generated!';
+        btn.textContent = i18n.t('report_generated');
         setTimeout(() => {
             btn.textContent = originalText;
             btn.disabled = false;

@@ -3,6 +3,7 @@
  * Handles device selection dropdown and device filter
  */
 
+import { i18n } from '../i18n.js';
 import {
     getDatabaseStats,
     getDeviceMetadata,
@@ -60,7 +61,7 @@ export async function populateDeviceDropdown() {
     deviceList.innerHTML = '';
 
     if (allDevices.size === 0) {
-        deviceList.innerHTML = '<p class="px-3 py-2 text-sm text-gray-500">No devices found</p>';
+        deviceList.innerHTML = `<p class="px-3 py-2 text-sm text-gray-500">${i18n.t('device_noDevicesFound')}</p>`;
         return;
     }
 
@@ -125,7 +126,7 @@ export async function populateDeviceDropdown() {
         // Determine dot color: green=plugged in, gray=offline
         const isOnline = isConnected || isAvailable;
         const dotColor = isOnline ? 'bg-green-500' : 'bg-gray-300';
-        const dotTitle = isOnline ? 'Online' : 'Offline';
+        const dotTitle = isOnline ? i18n.t('device_online') : i18n.t('device_offline');
 
         item.innerHTML = `
             <div class="flex items-start gap-2 flex-1 min-w-0">
@@ -138,7 +139,7 @@ export async function populateDeviceDropdown() {
                     ${pillsHtml}
                 </div>
             </div>
-            <button class="edit-device-btn p-1 text-gray-400 hover:text-gray-600 flex-shrink-0" data-serial="${serial}" title="Edit device">
+            <button class="edit-device-btn p-1 text-gray-400 hover:text-gray-600 flex-shrink-0" data-serial="${serial}" title="${i18n.t('device_edit')}"">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
                     <path d="M13.5 6.5l4 4" />
@@ -214,7 +215,7 @@ export async function updateSwitcherDisplay() {
     const currentDeviceModel = state.get('currentDeviceModel');
 
     if (!selectedDeviceSerial) {
-        nameEl.textContent = 'Select Device';
+        nameEl.textContent = i18n.t('device_selectDevice');
         iconEl.style.display = 'none';
         dotEl.classList.remove('bg-green-500', 'bg-yellow-400');
         dotEl.classList.add('bg-gray-400');
@@ -308,10 +309,10 @@ export async function updateDeviceDetailsBar() {
         const lastSync = localStorage.getItem('lastSyncTime');
         if (lastSync) {
             const date = new Date(parseInt(lastSync));
-            lastSyncEl.textContent = `Last synced: ${date.toLocaleDateString()}`;
+            lastSyncEl.textContent = i18n.t('time_lastSynced', { time: date.toLocaleDateString() });
             lastSyncEl.classList.remove('hidden');
         } else {
-            lastSyncEl.textContent = 'Never synced';
+            lastSyncEl.textContent = i18n.t('time_neverSynced');
             lastSyncEl.classList.remove('hidden');
         }
     }
@@ -347,7 +348,7 @@ export async function updateDeviceFilter() {
         const currentValue = select.value;
 
         // Clear existing options and add "All Devices"
-        select.innerHTML = '<option value="">All Devices</option>';
+        select.innerHTML = `<option value="">${i18n.t('history_allDevices')}</option>`;
 
         // Add each unique device, marking connected one and showing custom name
         for (const serial of stats.devices) {
@@ -358,7 +359,7 @@ export async function updateDeviceFilter() {
             let displayName = metadata?.name || serial;
 
             if (serial === connectedSerial) {
-                option.textContent = `${displayName} (connected)`;
+                option.textContent = `${displayName} (${i18n.t('device_connected')})`;
             } else {
                 option.textContent = displayName;
             }

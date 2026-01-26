@@ -3,6 +3,7 @@
  * Handles heatmap visualization rendering
  */
 
+import { i18n } from '../i18n.js';
 import { getAllLogs, getLogsByDevice } from '../storage.js';
 import { AIR_QUALITY_THRESHOLDS } from '../constants.js';
 import { generateHeatmapData, formatHeatmapTooltip } from '../heatmap.js';
@@ -22,7 +23,7 @@ export async function updateHeatmap(deviceSerial = null, metric = 'pm25') {
             : await getAllLogs();
 
         if (logs.length < 10) {
-            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Not enough data for heatmap</p>';
+            container.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">${i18n.t('heatmap_notEnoughData')}</p>`;
             renderHeatmapLegend(metric);
             return;
         }
@@ -33,7 +34,7 @@ export async function updateHeatmap(deviceSerial = null, metric = 'pm25') {
 
     } catch (error) {
         console.error('Failed to update heatmap:', error);
-        container.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error generating heatmap</p>';
+        container.innerHTML = `<p class="text-sm text-red-500 text-center py-4">${i18n.t('heatmap_error')}</p>`;
     }
 }
 
@@ -94,15 +95,15 @@ export function renderHeatmapLegend(metric) {
     const levels = config.levels;
 
     legendContainer.innerHTML = `
-        <span class="text-gray-400">Less</span>
+        <span class="text-gray-400">${i18n.t('heatmap_less')}</span>
         <div class="flex items-center gap-1">
-            <div class="w-3 h-3 rounded-sm" style="background-color: #f3f4f6;" title="No data"></div>
-            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.good.color};" title="Good (<${levels.good.max})"></div>
-            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.yellow.color};" title="Moderate (${levels.good.max}-${levels.yellow.max})"></div>
-            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.orange.color};" title="Poor (${levels.yellow.max}-${levels.orange.max})"></div>
-            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.red.color};" title="Unhealthy (>${levels.orange.max})"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: #f3f4f6;" title="${i18n.t('heatmap_noData')}"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.good.color};" title="${i18n.t('heatmap_good')} (<${levels.good.max})"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.yellow.color};" title="${i18n.t('heatmap_moderate')} (${levels.good.max}-${levels.yellow.max})"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.orange.color};" title="${i18n.t('heatmap_poor')} (${levels.yellow.max}-${levels.orange.max})"></div>
+            <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.red.color};" title="${i18n.t('heatmap_unhealthy')} (>${levels.orange.max})"></div>
         </div>
-        <span class="text-gray-400">More</span>
+        <span class="text-gray-400">${i18n.t('heatmap_more')}</span>
         <span class="ml-4 text-gray-400">${config.unit}</span>
     `;
 }

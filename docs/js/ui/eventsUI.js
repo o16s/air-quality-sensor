@@ -3,6 +3,7 @@
  * Handles events timeline display
  */
 
+import { i18n } from '../i18n.js';
 import { getAllLogs, getLogsByDevice } from '../storage.js';
 import { detectEvents, formatEventDuration, formatEventTimeRange } from '../events.js';
 import * as state from './state.js';
@@ -22,14 +23,14 @@ export async function updateEventsTimeline(deviceSerial = null) {
             : await getAllLogs();
 
         if (logs.length < 10) {
-            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Not enough data for event detection</p>';
+            container.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">${i18n.t('events_notEnoughData')}</p>`;
             return;
         }
 
         const events = detectEvents(logs);
 
         if (events.length === 0) {
-            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No significant events detected</p>';
+            container.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">${i18n.t('events_noEvents')}</p>`;
             return;
         }
 
@@ -38,7 +39,7 @@ export async function updateEventsTimeline(deviceSerial = null) {
         const filteredEvents = filterEventsByTime(events, currentEventsTimeFilter);
 
         if (filteredEvents.length === 0) {
-            container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No events in selected time period</p>';
+            container.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">${i18n.t('events_noEventsInPeriod')}</p>`;
             return;
         }
 
@@ -46,7 +47,7 @@ export async function updateEventsTimeline(deviceSerial = null) {
 
     } catch (error) {
         console.error('Failed to update events timeline:', error);
-        container.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Error detecting events</p>';
+        container.innerHTML = `<p class="text-sm text-red-500 text-center py-4">${i18n.t('events_errorDetecting')}</p>`;
     }
 }
 
@@ -105,16 +106,16 @@ export function renderEventCard(event) {
     // Detection method badge
     const methodBadge = event.detectionMethod === 'anomaly'
         ? `<span class="text-xs text-gray-400">Z: ${event.maxZScore?.toFixed(1) || '?'}σ</span>`
-        : `<span class="text-xs text-gray-400">${event.severity} threshold</span>`;
+        : `<span class="text-xs text-gray-400">${i18n.t('events_threshold_' + event.severity)}</span>`;
 
     // Combustion indicator (PM2.5 + PM10 correlated)
     const combustionBadge = event.combustionLikely
-        ? `<span class="inline-flex items-center ml-2 text-xs text-orange-600 cursor-help" title="PM2.5 and PM10 spiked together - indicates combustion source (smoking, cooking, exhaust)">
+        ? `<span class="inline-flex items-center ml-2 text-xs text-orange-600 cursor-help" title="${i18n.t('events_combustionTooltip')}">
             <svg class="w-4 h-4 mr-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" />
             </svg>
-            combustion
+            ${i18n.t('events_combustion')}
           </span>`
         : '';
 
@@ -124,9 +125,9 @@ export function renderEventCard(event) {
                 <div>
                     <div class="text-sm font-medium text-gray-900">${timeRange}</div>
                     <div class="text-sm mt-1">
-                        <span class="text-gray-600">Peak ${getMetricLabel(event.metric)}:</span>
+                        <span class="text-gray-600">${i18n.t('events_peak', { metric: getMetricLabel(event.metric) })}:</span>
                         <span class="${peakColor} font-semibold">${peakValue} ${event.unit}</span>
-                        ${baselineValue !== null ? `<span class="text-gray-400 text-xs ml-1 cursor-help border-b border-dotted border-gray-400" title="Baseline = median of all readings for this metric">(baseline: ${baselineValue} ${event.unit})</span>` : ''}
+                        ${baselineValue !== null ? `<span class="text-gray-400 text-xs ml-1 cursor-help border-b border-dotted border-gray-400" title="Baseline = median of all readings for this metric">(${i18n.t('events_baseline')}: ${baselineValue} ${event.unit})</span>` : ''}
                     </div>
                     <div class="mt-1 flex items-center">${methodBadge}${combustionBadge}</div>
                 </div>
