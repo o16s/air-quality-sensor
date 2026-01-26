@@ -127,6 +127,9 @@
                 <button id="connect-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
                     Connect Device
                 </button>
+                <p id="electron-connect-hint" class="hidden text-gray-600 mt-4">
+                    Plug in your Octanis sensor via USB to connect automatically.
+                </p>
             </div>
         </div>
 
@@ -233,7 +236,7 @@
             </div>
         </div>
 
-        <!-- Instructions (shown when not connected) -->
+        <!-- Instructions for Browser (shown when not connected) -->
         <div id="instructions" class="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
             <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
             <ol class="list-decimal list-inside space-y-2 text-blue-800">
@@ -245,6 +248,16 @@
             <p class="mt-4 text-sm text-blue-700">
                 <strong>Note:</strong> This interface requires Chrome or Edge browser with WebUSB support.
             </p>
+        </div>
+
+        <!-- Instructions for Electron (hidden by default) -->
+        <div id="instructions-electron" class="hidden bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
+            <h2 class="text-lg font-semibold text-blue-900 mb-2">Getting Started</h2>
+            <ol class="list-decimal list-inside space-y-2 text-blue-800">
+                <li>Connect your Octanis Sensor via USB</li>
+                <li>The app will detect and connect automatically</li>
+                <li>View live sensor data and download historical logs</li>
+            </ol>
         </div>
 
         <!-- Footer Logo (shown when connected) -->

@@ -57,6 +57,15 @@ Electron requires explicit USB permission handling in the main process.
 ### macOS Distribution
 Signed with Developer ID and notarized by Apple. See [docs/macos_distribution.md](docs/macos_distribution.md).
 
+### Windows Distribution
+Uses Squirrel installer with `electron-squirrel-startup` for proper lifecycle handling:
+- Creates Start Menu shortcut on install
+- Creates Desktop shortcut on install
+- Appears in Add/Remove Programs
+- Handles uninstall cleanly
+
+**Note:** WebUSB requires firmware with MS OS 2.0 descriptors for Windows to auto-load WinUSB driver.
+
 ### GitHub Actions CI
 Automated builds for all platforms on tag push. See [docs/github_ci.md](docs/github_ci.md).
 

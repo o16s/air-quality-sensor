@@ -1,7 +1,7 @@
 {
-  "name": "octanis-sensor-dashboard",
+  "name": "octanis-ics",
   "version": "0.0.1",
-  "description": "Desktop app for Octanis environmental sensors",
+  "description": "Octanis Indoor Climate Sensing desktop app",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",

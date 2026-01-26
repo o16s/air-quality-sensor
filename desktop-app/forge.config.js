@@ -4,10 +4,11 @@ const isDarwin = process.platform === 'darwin';
 const hasSigningCredentials = process.env.APPLE_ID && process.env.APPLE_ID_PASSWORD;
 
 const packagerConfig = {
-  name: 'Octanis Sensor Dashboard',
-  executableName: 'octanis-sensor-dashboard',
+  name: 'Octanis ICS',
+  executableName: 'octanis-ics',
   extraResource: ['../docs'],
-  asar: true
+  asar: true,
+  icon: './icons/icon'  // .icns for macOS, .ico for Windows, .png for Linux
 };
 
 // Only add signing/notarization on macOS with credentials
@@ -38,7 +39,8 @@ module.exports = {
     {
       name: '@electron-forge/maker-squirrel',
       config: {
-        name: 'OctanisSensorDashboard'
+        name: 'OctanisICS',
+        setupIcon: './icons/icon.ico'
       }
     },
     {

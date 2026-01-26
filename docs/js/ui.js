@@ -49,6 +49,9 @@ let autoRefreshInterval = null;
 let isDownloading = false;
 let currentLogType = null;  // LOG_TYPE.GPS or LOG_TYPE.TSL2591
 
+// Environment detection (set once at module load)
+const runningInElectron = navigator.userAgent.toLowerCase().includes('electron');
+
 // Sparklines are populated from browser storage, not in-memory history
 // This ensures sparklines show historical data, not just live readings
 
@@ -56,23 +59,25 @@ let currentLogType = null;  // LOG_TYPE.GPS or LOG_TYPE.TSL2591
  * Initialize UI and event handlers
  */
 export async function initUI() {
+    // Apply Electron-specific UI adjustments once at startup
+    if (runningInElectron) {
+        document.getElementById('connect-btn').style.display = 'none';
+        document.getElementById('electron-connect-hint').classList.remove('hidden');
+    }
+
     setupEventHandlers();
     await attemptAutoReconnect();
     updateBrowserLogCount();
-    updateLogTable();  // Load existing logs from IndexedDB on page load
-    loadSparklinesFromStorage();  // Load sparklines from existing data
-    loadLastSyncTime();  // Load last sync time from localStorage
+    updateLogTable();
+    loadSparklinesFromStorage();
+    loadLastSyncTime();
 
     // Show appropriate section based on connection state
     if (isDeviceConnected()) {
-        // Device connected - show device info
         document.getElementById('connect-section').classList.add('hidden');
         document.getElementById('device-info').classList.remove('hidden');
     } else {
-        // No device - show connect section
         document.getElementById('connect-section').classList.remove('hidden');
-
-        // Show measurement history if available, otherwise show instructions
         await showAppropriateDisconnectedContent();
     }
 }
@@ -192,8 +197,9 @@ async function handleDeviceConnected(device) {
     console.log('connect-section hidden?', connectSection.classList.contains('hidden'));
     console.log('device-info hidden?', deviceInfo.classList.contains('hidden'));
 
-    // Show main content and hide instructions
+    // Show main content and hide instructions (both versions)
     document.getElementById('instructions').classList.add('hidden');
+    document.getElementById('instructions-electron').classList.add('hidden');
     document.getElementById('main-content').classList.remove('hidden');
     document.getElementById('live-data-section').classList.remove('hidden');
 
@@ -284,22 +290,28 @@ async function handleDeviceConnected(device) {
  * Show appropriate content when disconnected (instructions or measurement history)
  */
 async function showAppropriateDisconnectedContent() {
+    // Use environment-specific instructions
+    const instructions = document.getElementById(runningInElectron ? 'instructions-electron' : 'instructions');
+    const otherInstructions = document.getElementById(runningInElectron ? 'instructions' : 'instructions-electron');
+
+    // Always hide the wrong instructions
+    otherInstructions.classList.add('hidden');
+
     try {
         const logCount = await getStorageLogCount();
+        const hasLogs = logCount > 0;
 
-        if (logCount > 0) {
-            // Have data - show measurement history (but not live data)
-            document.getElementById('instructions').classList.add('hidden');
-            document.getElementById('main-content').classList.remove('hidden');
+        // Show instructions OR main content (measurement history)
+        instructions.classList.toggle('hidden', hasLogs);
+        document.getElementById('main-content').classList.toggle('hidden', !hasLogs);
+
+        if (hasLogs) {
+            // Hide live data section when disconnected
             document.getElementById('live-data-section').classList.add('hidden');
-        } else {
-            // No data - show getting started instructions
-            document.getElementById('instructions').classList.remove('hidden');
-            document.getElementById('main-content').classList.add('hidden');
         }
     } catch (error) {
         // Error checking logs - default to showing instructions
-        document.getElementById('instructions').classList.remove('hidden');
+        instructions.classList.remove('hidden');
         document.getElementById('main-content').classList.add('hidden');
     }
 }
