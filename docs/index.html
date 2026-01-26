@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Octanis Sensor Dashboard</title>
+    <title>Octanis ICS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -182,9 +182,17 @@
                                 <div id="lux-value" class="text-2xl font-bold text-gray-800">-- lux</div>
                             </div>
                         </div>
+                        <!-- CO2 Sensor Card - shown for CO2 format -->
+                        <div id="co2-card" class="sensor-card relative overflow-hidden hidden">
+                            <canvas id="co2-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                            <div class="relative z-10">
+                                <div class="text-gray-600 text-sm mb-1">CO2</div>
+                                <div id="co2-value" class="text-2xl font-bold text-gray-800">-- ppm</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="mt-4 text-xs text-gray-500">
-                        <div>PM data: <span id="measured-age">--</span></div>
+                        <div>Sensor data: <span id="measured-age">--</span></div>
                     </div>
                 </div>
             </div>

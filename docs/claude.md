@@ -1,4 +1,4 @@
-# Octanis Sensor Dashboard - Developer Documentation
+# Octanis ICS - Developer Documentation
 
 ## Project Overview
 
@@ -14,8 +14,8 @@ This is a browser-based WebUSB interface for Octanis environmental sensors (STM3
 
 ### Browser Compatibility
 
-✅ Chrome 61+, Edge 79+, Opera 48+
-❌ Safari, Firefox (no WebUSB support)
+- Chrome 61+, Edge 79+, Opera 48+
+- Safari, Firefox (no WebUSB support)
 
 ## Architecture
 
@@ -81,8 +81,8 @@ docs/
 ├── css/
 │   └── style.css          # Custom styles
 ├── js/
-│   ├── constants.js       # All configuration constants ⭐
-│   ├── utils.js           # Shared utility functions ⭐
+│   ├── constants.js       # All configuration constants
+│   ├── utils.js           # Shared utility functions
 │   ├── protocol.js        # Firmware protocol & USB communication
 │   ├── webusb.js          # USB device connection management
 │   ├── storage.js         # IndexedDB wrapper
@@ -90,25 +90,22 @@ docs/
 │   └── export.js          # CSV/JSON/GeoJSON export
 └── __tests__/
     ├── setup.js           # Test mocks (WebUSB, IndexedDB, DOM)
-    ├── protocol.test.js   # Protocol tests (19 tests)
-    ├── webusb.test.js     # WebUSB tests (27 tests)
-    ├── storage.test.js    # Storage tests (36 tests) - includes duplicate detection
-    ├── export.test.js     # Export tests (30 tests)
-    └── utils.test.js      # Utils tests (23 tests) - NEW
+    ├── webusb.test.js     # WebUSB tests
+    ├── storage.test.js    # Storage tests (includes duplicate detection)
+    ├── export.test.js     # Export tests
+    └── utils.test.js      # Utils tests
 ```
-
-⭐ = Core files created during refactoring
 
 ### Module Responsibilities
 
 | Module | Purpose | Key Functions |
 |--------|---------|---------------|
-| **constants.js** | Single source of truth for all configuration | USB constants, buffer layouts, mock data, error messages, device capacity |
-| **utils.js** | Shared utilities used across modules | Device validation, buffer helpers, download helper, delays, **duplicate detection** |
-| **protocol.js** | Firmware protocol implementation | USB vendor requests, data parsing, mock mode, erase logs |
+| **constants.js** | Single source of truth for all configuration | USB constants, buffer layouts, error messages, device capacity |
+| **utils.js** | Shared utilities used across modules | Device validation, buffer helpers, download helper, **duplicate detection** |
+| **protocol.js** | Firmware protocol implementation | USB vendor requests, data parsing, erase logs |
 | **webusb.js** | USB device lifecycle management | Connect, disconnect, auto-reconnect, callbacks |
 | **storage.js** | IndexedDB persistence layer | Store/retrieve logs, queries, statistics, **duplicate prevention** |
-| **ui.js** | User interface logic | Event handlers, data display, UI updates, **capacity tracking** |
+| **ui.js** | User interface logic | Event handlers, data display, **widget configuration**, **capacity tracking** |
 | **export.js** | Data export functionality | CSV, JSON, GeoJSON, statistics export |
 
 ### Data Flow
@@ -134,13 +131,13 @@ Parsed Data
 **Rule**: All magic numbers, configuration, and error messages MUST be in `constants.js`
 
 ```javascript
-// ❌ BAD: Magic numbers
+// BAD: Magic numbers
 view.setInt16(0, 23500, true);
 throw new Error('Device not connected');
 
-// ✅ GOOD: Use constants
-import { STATUS_LAYOUT, MOCK_DATA, ERRORS } from './constants.js';
-setBufferValue(view, STATUS_LAYOUT.TEMPERATURE, MOCK_DATA.TEMPERATURE_C);
+// GOOD: Use constants
+import { STATUS_LAYOUT, ERRORS } from './constants.js';
+setBufferValue(view, STATUS_LAYOUT.TEMPERATURE, temp);
 throw new Error(ERRORS.DEVICE_NOT_CONNECTED);
 ```
 
@@ -149,12 +146,12 @@ throw new Error(ERRORS.DEVICE_NOT_CONNECTED);
 **Rule**: Extract repeated logic into `utils.js` or shared functions
 
 ```javascript
-// ❌ BAD: Repeated validation
+// BAD: Repeated validation
 if (!device || !device.opened) {
     throw new Error('Device not connected');
 }
 
-// ✅ GOOD: Use utility
+// GOOD: Use utility
 import { validateDevice } from './utils.js';
 validateDevice(device);
 ```
@@ -164,11 +161,11 @@ validateDevice(device);
 **Rule**: Use buffer layout constants and helper functions
 
 ```javascript
-// ❌ BAD: Hardcoded offsets
+// BAD: Hardcoded offsets
 view.setInt16(0, temp * 1000, true);
 view.setUint16(2, humidity * 1000, true);
 
-// ✅ GOOD: Use layout and helpers
+// GOOD: Use layout and helpers
 import { STATUS_LAYOUT } from './constants.js';
 import { setBufferValue } from './utils.js';
 setBufferValue(view, STATUS_LAYOUT.TEMPERATURE, temp);
@@ -180,73 +177,32 @@ setBufferValue(view, STATUS_LAYOUT.HUMIDITY, humidity);
 **Rule**: Use centralized error messages from constants
 
 ```javascript
-// ❌ BAD: Inline error strings
+// BAD: Inline error strings
 throw new Error('WebUSB is not supported in this browser');
 
-// ✅ GOOD: Use ERRORS constant
+// GOOD: Use ERRORS constant
 import { ERRORS } from './constants.js';
 throw new Error(ERRORS.WEBUSB_NOT_SUPPORTED);
 ```
 
-### 5. Mock Data Pattern
-
-**Rule**: Use `executeWithMockFallback()` for mock/real data switching
-
-**Important**: Mock mode is controlled by URL hash (`#mock`), not by automatic fallback. If firmware fails without `#mock`, errors propagate to the UI (showing "N/A").
-
-```javascript
-// ❌ BAD: Repeated mock pattern
-if (useMockData) {
-    data = generateMock();
-} else {
-    data = await realFn();  // Throws if firmware fails
-}
-
-// ✅ GOOD: Use utility
-import { executeWithMockFallback } from './utils.js';
-const data = await executeWithMockFallback(
-    device,
-    async (d) => await realOperation(d),
-    async () => generateMockData(),
-    useMockData,
-    setMockMode
-);
-```
-
-**Note**: `executeWithMockFallback()` no longer automatically switches to mock mode on error. It either returns mock data (if `useMockData` is true) or attempts the real operation (which may throw).
-
-### 6. File Downloads
+### 5. File Downloads
 
 **Rule**: Use `downloadFile()` utility for all exports
 
 ```javascript
-// ❌ BAD: Duplicate download logic
+// BAD: Duplicate download logic
 const blob = new Blob([content], { type: mimeType });
 const url = URL.createObjectURL(blob);
 const a = document.createElement('a');
 // ... more boilerplate
 
-// ✅ GOOD: Use utility
+// GOOD: Use utility
 import { downloadFile } from './utils.js';
 import { EXPORT_FILENAMES, MIME_TYPES } from './constants.js';
 downloadFile(content, EXPORT_FILENAMES.CSV, MIME_TYPES.CSV);
 ```
 
-### 7. Async Operations
-
-**Rule**: Use named delay constants
-
-```javascript
-// ❌ BAD: Magic delay numbers
-await new Promise(resolve => setTimeout(resolve, 100));
-
-// ✅ GOOD: Use named constant
-import { DELAYS } from './constants.js';
-import { delay } from './utils.js';
-await delay(DELAYS.STATUS_READ);
-```
-
-### 8. Testing Requirements
+### 6. Testing Requirements
 
 **Rule**: All new functions MUST have corresponding tests
 
@@ -271,22 +227,9 @@ npm run test:ui       # Interactive UI
 
 ### Test Coverage Goals
 
-- Core modules (protocol, storage, webusb, export): **>80%**
+- Core modules (storage, webusb, export): **>80%**
 - Utility functions: **>80%**
 - UI logic: Not tested (requires integration tests)
-
-### Current Coverage
-
-| Module | Coverage |
-|--------|----------|
-| constants.js | 100% |
-| utils.js | 82.92% |
-| export.js | 99.28% |
-| protocol.js | 83.01% |
-| storage.js | 96.39% |
-| webusb.js | 80.66% |
-
-**Overall**: 67.82% (135 tests passing) - **33 new tests added Nov 7, 2025**
 
 ### Writing Tests
 
@@ -320,21 +263,19 @@ Vendor Code: 0x22
 
 ### Commands
 
-**⚠️ Breaking Changes (Nov 4, 2025)**: Command codes reorganized, READ_LOG moved to 0x03
-
 | Command | Code | Direction | Size | Description |
 |---------|------|-----------|------|-------------|
-| GET_STATUS | 0x00 | IN | **20 bytes** | Current sensor readings **(was 16 bytes)** |
+| GET_STATUS | 0x00 | IN | 24 bytes | Current sensor readings |
 | GET_LOG_COUNT | 0x01 | IN | 2 bytes | Number of stored logs |
 | GET_URL | 0x02 | IN | variable | WebUSB landing page URL |
-| READ_LOG | 0x03 | IN | 24 bytes | Single log record (was 0x02, now 24 bytes) |
-| ERASE_LOGS | 0x04 | IN | 1 byte | Erase all logs (wValue=0xDEAD) (was 0x03) |
-| GET_VERSION | 0x05 | IN | 32 bytes | Firmware version string (was 0x04) |
+| READ_LOG | 0x03 | IN | 24 bytes | Single log record |
+| ERASE_LOGS | 0x04 | IN | 1 byte | Erase all logs (wValue=0xDEAD) |
+| GET_VERSION | 0x05 | IN | 32 bytes | Firmware version string |
 | GET_TEST_RESULTS | 0x06 | IN | 64 bytes | Unity test framework results |
 | GET_PRINT_BUFFER | 0x07 | IN | 64 bytes | Debug print buffer |
-| **SET_TIME** | **0x08** | **OUT** | **4 bytes** | **Set device RTC (Host-to-Device)** |
-| **ACQUIRE** | **0x09** | **OUT** | **0 bytes** | **Trigger sensor measurement** |
-| **GET_LOG_TYPE** | **0x0A** | **IN** | **1 byte** | **Get log format type (0=GPS, 1=TSL2591)** |
+| SET_TIME | 0x08 | OUT | 4 bytes | Set device RTC (Host-to-Device) |
+| ACQUIRE | 0x09 | OUT | 0 bytes | Trigger sensor measurement |
+| GET_LOG_TYPE | 0x0A | IN | 1 byte | Get log format type |
 
 ### SET_TIME Command (0x08)
 
@@ -343,7 +284,7 @@ Vendor Code: 0x22
 **Sends 4 bytes**: uint32_t Unix epoch timestamp (little-endian)
 
 **Control Transfer Parameters**:
-- `bmRequestType`: `0x40` (Host-to-Device, Vendor, Device) - **different from IN transfers!**
+- `bmRequestType`: `0x40` (Host-to-Device, Vendor, Device)
 - `bRequest`: `0x22` (WebUSB vendor code)
 - `wIndex`: `0x08` (SET_TIME command)
 - `wValue`: `0` (unused)
@@ -351,21 +292,14 @@ Vendor Code: 0x22
 
 **Usage**: Automatically called when device connects to sync device time with system time.
 
-**Example**:
-```javascript
-const now = Math.floor(Date.now() / 1000);  // Unix timestamp
-await setDeviceTime(device, now);
-```
+### GET_LOG_TYPE Command (0x0A)
 
-**Verification**: Use GET_STATUS to read back the timestamp field and verify it's correct.
-
-### GET_LOG_TYPE Command (0x0A) - Added Nov 6, 2025
-
-**Purpose**: Detects which log format the device uses (GPS or TSL2591 light sensor)
+**Purpose**: Detects which log format the device uses
 
 **Returns**: 1 byte
 - `0x00` = GPS format (latitude, longitude, GPS fix)
 - `0x01` = TSL2591 format (lux, CH0, CH1, overflow)
+- `0x02` = CO2 format (CO2 ppm, pressure, gas resistance)
 
 **Usage**: Call once when device connects to determine how to parse log records.
 
@@ -376,6 +310,8 @@ if (logType === LOG_TYPE.GPS) {
     // Parse logs with GPS fields (lat/lon/fix)
 } else if (logType === LOG_TYPE.TSL2591) {
     // Parse logs with light sensor fields (lux/ch0/ch1/overflow)
+} else if (logType === LOG_TYPE.CO2) {
+    // Parse logs with CO2 fields (co2/pressure/gasResistance)
 }
 ```
 
@@ -384,34 +320,22 @@ if (logType === LOG_TYPE.GPS) {
 ### Buffer Layouts
 
 Defined in `constants.js`:
-- `STATUS_LAYOUT` - **20-byte status response (was 16 bytes)**
-  - **Humidity changed**: Now centi-percent (÷100) instead of milli-percent (÷1000)
-  - **Device Flags added** at offset 11 (was RESERVED)
-  - **CURRENT_TIME added** at offset 12-15 (renamed from TIMESTAMP)
-  - **MEASURED_AT added** at offset 16-19 (NEW field showing when sensor data was captured)
-- `LOG_LAYOUT` - 24-byte GPS log record (was 22 bytes)
-  - **Humidity changed**: Now centi-percent (÷100)
-  - **Includes 2-byte padding** at offset 18-19 (compiler alignment)
-  - **Timestamp moved** from offset 18 to offset 20
-  - Contains: lat, lon, GPS fix
-- **`LOG_LAYOUT_TSL`** - **24-byte TSL2591 light sensor log record (NEW format)**
-  - Same common fields (temp, humidity, PM2.5, PM10, battery, timestamp)
-  - **Contains light sensor data instead of GPS**:
-    - **Lux** (offset 12-13): Illuminance in deci-lux (÷10 for actual lux)
-    - **TSL_CH0** (offset 8-9): Full spectrum raw count (0-65535)
-    - **TSL_CH1** (offset 10-11): IR spectrum raw count (0-65535)
-    - **Overflow** (offset 14): 0=valid, 1=sensor saturated
-  - Use `getLogType()` to determine which layout to use
+
+- **`STATUS_LAYOUT`** - 24-byte GPS status response
+- **`STATUS_LAYOUT_TSL`** - 24-byte TSL2591 status response
+- **`STATUS_LAYOUT_CO2`** - 24-byte CO2 status response
+- **`LOG_LAYOUT`** - 24-byte GPS log record
+- **`LOG_LAYOUT_TSL`** - 24-byte TSL2591 log record
+- **`LOG_LAYOUT_CO2`** - 24-byte CO2 log record
 
 Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
 
-**Key differences**:
-- `CURRENT_TIME` is the device's current time (from GPS/RTC/Uptime), while `MEASURED_AT` is when the sensor data was actually captured. The difference shows measurement age (e.g., "32s ago").
-- GPS vs TSL format is compile-time determined. Use `GET_LOG_TYPE` to detect at runtime.
+**Key differences by format**:
+- **GPS**: Contains latitude, longitude, GPS fix quality
+- **TSL2591**: Contains lux, CH0/CH1 raw counts, overflow flag, PM2.5/PM10
+- **CO2**: Contains CO2 ppm, pressure (hPa), gas resistance (ohms), lux
 
 ### Battery Encoding & Percentage Calculation
-
-**Updated Nov 20, 2025** - Web dashboard now matches firmware percentage calculation
 
 **Packed Format** (1 byte in GET_STATUS and all log formats):
 - Bit 7: Charging flag (0=not charging, 1=charging)
@@ -426,133 +350,13 @@ Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
 
 **Implementation**: See `decodeBatteryByte()` in `utils.js` and `updateBattery()` in `ui.js`
 
-## Mock Mode (Testing Without Hardware)
+## Features
 
-### How Mock Mode Works
-
-Mock mode allows testing the dashboard without real hardware connected. It is **strictly user-controlled** via URL hash.
-
-### Activation
-
-Mock mode is **ONLY active** when the URL contains `#mock`:
-
-```
-✅ Mock Mode ON (GPS format):  index.html#mock
-✅ Mock Mode ON (TSL format):  index.html#tsl
-❌ Mock Mode OFF:              index.html
-```
-
-**Note**: Use `#tsl` to test TSL2591 light sensor format in mock mode.
-
-### Behavior
-
-| URL | Device Connected | Firmware Working | Result |
-|-----|------------------|------------------|--------|
-| `index.html` | ✅ Yes | ✅ Yes | Shows **real sensor data** |
-| `index.html` | ✅ Yes | ❌ No | Shows **N/A** (errors displayed) |
-| `index.html` | ❌ No | N/A | Connection fails (expected) |
-| `index.html#mock` | Any | Any | Shows **mock data** (85% battery, 23.5°C, etc.) |
-
-### Key Points
-
-- **No automatic fallback**: If firmware fails without `#mock`, you'll see "N/A" instead of mock data
-- **User has full control**: Toggle mock mode by adding/removing `#mock` from URL
-- **Dynamic switching**: Change hash while page is loaded to toggle mock mode instantly
-- **Console logging**: Check browser console (F12) for "Mock mode enabled/disabled" messages
-
-### Testing Workflow
-
-```bash
-# Test with mock data (no hardware needed)
-open index.html#mock
-
-# Test with real hardware
-open index.html  # Connect device → see real data
-
-# Debug firmware issues
-open index.html  # If you see N/A, firmware isn't responding
-```
-
-### Mock Data Values
-
-Defined in `constants.js` → `MOCK_DATA`:
-- Temperature: 23.5°C
-- Humidity: 45.6%
-- PM2.5: 12.5 μg/m³
-- PM10: 18.3 μg/m³
-- Battery: 85% (charging)
-- **GPS format**: Zurich coordinates (47.123°, 8.568°)
-- **TSL2591 format**: 123.4 lux, CH0: 12345, CH1: 6789, Overflow: 0
-- Logs: 50 records with 5-minute intervals
-
-### For Tests
-
-Tests explicitly enable mock mode with `setMockMode(true)`, so they work regardless of URL hash.
-
-## What Was Done (Refactoring)
-
-### Problems Identified
-
-The original code had several code quality issues:
-1. **Magic numbers** scattered throughout (40+ instances)
-2. **Duplicated logic** (device validation, mock fallback, downloads)
-3. **Hardcoded values** (USB constants, error messages)
-4. **Repeated buffer offset calculations**
-
-### Solutions Implemented
-
-#### 1. Created `constants.js`
-
-Centralized all configuration into one file:
-- USB device constants
-- WebUSB command codes
-- Buffer layouts with offsets, types, and scales
-- Mock data values
-- Timing delays
-- Error messages
-- Export filenames and MIME types
-
-**Impact**: Zero magic numbers in codebase
-
-#### 2. Created `utils.js`
-
-Extracted common patterns:
-- `validateDevice()` - Single device validation function
-- `executeWithMockFallback()` - DRY mock/real data pattern
-- `setBufferValue()` / `getBufferValue()` - Buffer helpers
-- `downloadFile()` - Shared download logic
-- `delay()` - Named async delays
-
-**Impact**: Removed ~150 lines of duplicated code
-
-#### 3. Refactored All Modules
-
-- **protocol.js**: Uses constants, buffer helpers, mock utility
-- **webusb.js**: Uses USB constants, centralized errors
-- **export.js**: Uses download utility, export constants
-
-**Impact**: Improved maintainability by 40%, testability by 20%
-
-### Results
-
-✅ All 103 tests passing (zero regressions)
-✅ Coverage improved from 62.44% → 67.82%
-✅ Code quality grade: B+ → A-
-✅ Zero magic numbers
-✅ Zero duplicated logic
-✅ Single source of truth for all configuration
-
-## Recent Features (Nov 7, 2025)
-
-Three major features were added to improve log management and device monitoring:
-
-### 1. Duplicate Detection & Smart Sync
+### Duplicate Detection & Smart Sync
 
 **Problem**: Users could re-download the same logs multiple times, filling up browser storage with duplicates.
 
 **Solution**: Intelligent duplicate detection that works even when device timestamps are incorrect.
-
-#### Implementation
 
 **`utils.js` - `isDuplicateLog()` function:**
 - **Exact match**: timestamp + deviceSerial (instant detection)
@@ -573,45 +377,19 @@ const result = await storeLogs(logs, deviceSerial);
 "Downloaded 50 logs: 30 new, 20 duplicates skipped"
 ```
 
-#### Why It Works
-
-The fuzzy matching handles real-world scenarios:
-1. **Re-downloads**: Exact timestamp match → instant detection
-2. **Clock drift**: ±2s tolerance catches minor time errors
-3. **Wrong timestamps**: Compares actual sensor readings instead
-4. **Different devices**: Always allows same timestamp from different devices
-
-#### Testing
-
-23 comprehensive tests in `utils.test.js` cover:
-- Exact and fuzzy matching
-- Edge cases (missing data, zero values, negative temps)
-- Real-world scenarios (re-downloads, clock drift)
-
-10 integration tests in `storage.test.js` verify:
-- Batch processing with mixed new/duplicate logs
-- Multi-device handling
-- Boundary conditions (±2s vs ±3s)
-
-### 2. Device Capacity Tracking & Erase
-
-**Problem**: No visibility into how full the device storage is, manual erase was risky.
-
-**Solution**: Visual capacity meter with safe erase functionality.
-
-#### Implementation
+### Device Capacity Tracking & Erase
 
 **`constants.js` - Device capacity:**
 ```javascript
 export const DEVICE_CAPACITY = {
-    MAX_LOG_CAPACITY: 2048,      // Maximum log records
+    MAX_LOG_CAPACITY: 4680,      // Maximum log records
     ERASE_MAGIC_VALUE: 0xDEAD    // Safety parameter for erase
 };
 ```
 
 **`ui.js` - Capacity display:**
 - Located in **Device Info box** (top of page)
-- Shows: "512 / 2048 (25.0%)"
+- Shows: "512 / 4680 (10.9%)"
 - Progress bar with color coding:
   - Blue: <50% full
   - Yellow: 50-75% full
@@ -620,74 +398,51 @@ export const DEVICE_CAPACITY = {
 - Updates automatically after downloads/erases
 
 **`ui.js` - Erase button:**
-- Moved from Logs section to Device Info box
-- Auto-enables/disables based on log count
+- Located in Device Settings modal
 - **Double confirmation** dialog for safety
 - Updates capacity display after erase
 
-**`protocol.js` - `eraseLogs()` function:**
+### Serial Number Column
+
+Added "Serial" column to log table for tracking logs from multiple devices.
+
+### Widget Configuration System
+
+**Problem**: Different device types (GPS, TSL2591, CO2) need different sensor cards displayed. The previous approach of hiding/showing cards in multiple places was fragile.
+
+**Solution**: Centralized widget configuration in `ui.js`:
+
 ```javascript
-// Already existed, now properly integrated with UI
-await eraseLogs(device);  // Requires wValue=0xDEAD for safety
+const WIDGET_CONFIG = {
+    [LOG_TYPE.GPS]: {
+        pm25: { visible: true, label: 'PM2.5', ... },
+        pm10: { visible: true, label: 'PM10', ... },
+        co2:  { visible: false },
+        lux:  { visible: false }
+    },
+    [LOG_TYPE.TSL2591]: {
+        pm25: { visible: true, ... },
+        pm10: { visible: true, ... },
+        co2:  { visible: false },
+        lux:  { visible: true, label: 'Light', ... }
+    },
+    [LOG_TYPE.CO2]: {
+        pm25: { visible: false },
+        pm10: { visible: false },
+        co2:  { visible: true, label: 'CO2', ... },
+        lux:  { visible: true, label: 'Light', ... }
+    }
+};
 ```
 
-#### User Experience
+**`configureWidgetsForLogType(logType)`** - Single function that:
+- Shows/hides appropriate sensor cards
+- Sets correct labels
+- Clears stale sparkline canvases
+- Called on device connect (after log type detection)
+- Called on device disconnect (resets to GPS default)
 
-1. Connect device → capacity shows immediately
-2. Download logs → capacity updates
-3. Click "Erase Device Logs" → two confirmation dialogs
-4. After erase → capacity resets to "0 / 2048 (0.0%)"
-
-### 3. Serial Number Column
-
-**Problem**: When viewing logs from multiple devices, couldn't tell which device each log came from.
-
-**Solution**: Added "Serial" column to log table.
-
-#### Implementation
-
-**`index.html` - Table header:**
-```html
-<th>Serial</th>
-```
-
-**`ui.js` - Table rendering:**
-```javascript
-// Both GPS and TSL2591 formats now include:
-<td class="px-4 py-3 text-xs text-gray-600 font-mono">
-    ${log.deviceSerial || '-'}
-</td>
-```
-
-- Displays in monospace font for readability
-- Shows "-" if serial number not available
-- Works for both GPS and TSL2591 log formats
-
-#### Use Cases
-
-- Track logs from multiple test devices
-- Debug device-specific issues
-- Verify data provenance for analysis
-
-### Feature Summary
-
-| Feature | Files Modified | Tests Added | Lines Changed |
-|---------|---------------|-------------|---------------|
-| Duplicate Detection | utils.js, storage.js, ui.js | 23 + 10 = 33 | ~80 |
-| Capacity Tracking | constants.js, ui.js, index.html | 0 (UI logic) | ~60 |
-| Serial Column | index.html, ui.js | 0 (display only) | ~10 |
-
-### Testing Impact
-
-- **Before**: 103 tests
-- **After**: 135 tests (+33 tests, +32% coverage)
-- **All tests passing**: ✅ 135/135
-
-### Commits
-
-1. `eb8b517` - Bug fix: Load log table on page refresh
-2. `b2d7a58` - Features: duplicate detection, capacity tracking, serial column
-3. `4184820` - Tests: comprehensive duplicate detection tests
+**Key principle**: Widget visibility is set ONCE when device connects, not on every data update.
 
 ## Adding New Features
 
@@ -695,43 +450,56 @@ await eraseLogs(device);  // Requires wValue=0xDEAD for safety
 
 1. **Add constants** to `constants.js`:
 ```javascript
-export const NEW_SENSOR_LAYOUT = {
-    VALUE: { offset: 0, type: 'Uint16', scale: 100 }
+export const LOG_TYPE = {
+    GPS: 0,
+    TSL2591: 1,
+    CO2: 2,
+    NEW_TYPE: 3  // NEW
+};
+
+export const LOG_LAYOUT_NEW = {
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },
+    // ... other fields
 };
 ```
 
-2. **Add mock data** to `constants.js`:
+2. **Add parsing function** to `protocol.js`:
 ```javascript
-export const MOCK_DATA = {
-    // ... existing
-    NEW_SENSOR_VALUE: 42.5
-};
-```
-
-3. **Add function** to `protocol.js`:
-```javascript
-export async function getNewSensorData(device) {
-    validateDevice(device);
-    const data = await executeWithMockFallback(
-        device,
-        async (d) => await sendControlTransfer(d, COMMANDS.GET_NEW_SENSOR, 0, 2),
-        async () => generateMockNewSensor(),
-        useMockData,
-        setMockMode
-    );
-    return parseNewSensorData(data);
+function parseLogItemNew(data) {
+    const view = new DataView(data.buffer);
+    return {
+        temperature: getBufferValue(view, LOG_LAYOUT_NEW.TEMPERATURE),
+        // ... other fields
+    };
 }
 ```
 
-4. **Add tests** to `__tests__/protocol.test.js`:
+3. **Update `readLogRecord()`** to handle new type:
 ```javascript
-it('should get new sensor data', async () => {
-    const data = await getNewSensorData(mockDevice);
-    expect(data.value).toBeTypeOf('number');
-});
+if (logType === LOG_TYPE.NEW_TYPE) {
+    return parseLogItemNew(data);
+}
 ```
 
-5. **Run tests**:
+4. **Add widget configuration** in `ui.js`:
+```javascript
+const WIDGET_CONFIG = {
+    // ... existing configs ...
+    [LOG_TYPE.NEW_TYPE]: {
+        pm25: { visible: false },
+        pm10: { visible: false },
+        co2:  { visible: false },
+        lux:  { visible: true },
+        // Add new widget entries as needed
+    }
+};
+```
+
+5. **Update `updateLiveData()`** in `ui.js` to handle new sensor values
+
+6. **Update export** in `export.js` for CSV/JSON headers
+
+7. **Run tests**:
 ```bash
 npm test
 ```
@@ -757,13 +525,6 @@ npx http-server
 
 ## Troubleshooting
 
-### Tests Failing After Changes
-
-1. Check if constants were updated in both production and test files
-2. Verify mock implementations match real implementations
-3. Run `npm test:coverage` to see what's not covered
-4. Check console for import/export errors
-
 ### WebUSB Not Working
 
 1. Ensure using Chrome/Edge (not Safari/Firefox)
@@ -776,43 +537,23 @@ npx http-server
 1. Verify buffer size matches layout
 2. Check scale factors in constants
 3. Ensure little-endian byte order
-4. Test with mock data first
 
 ### Seeing "N/A" or No Data
 
 If UI shows "N/A" for sensor values:
 
-1. **Check URL**: Are you using `index.html#mock`? If not, you need real hardware
-2. **Check device connection**: Click "Connect Device" and select your sensor
-3. **Check firmware implementation**: Does your firmware implement the WebUSB commands?
+1. **Check device connection**: Click "Connect Device" and select your sensor
+2. **Check firmware implementation**: Does your firmware implement the WebUSB commands?
    - GET_STATUS (0x00) - Required for live sensor data
    - GET_LOG_COUNT (0x01) - Required for log count
-   - GET_VERSION (0x04) - Required for firmware version
-4. **Check browser console** (F12):
-   - Look for "Mock mode enabled/disabled" messages
+   - GET_VERSION (0x05) - Required for firmware version
+3. **Check browser console** (F12):
    - Look for error messages about control transfers
    - Check for "Failed to read sensor data" errors
-5. **Test with mock mode**: Add `#mock` to URL to verify UI works
-6. **Check firmware response**: Use browser console to see raw USB responses
-
-### How to Tell if Mock Mode is Active
-
-**Console Method** (recommended):
-1. Open browser DevTools (F12)
-2. Go to Console tab
-3. Look for: `Mock mode enabled` or `Mock mode disabled`
-
-**URL Method**:
-- If URL shows `#mock` → Mock mode is ON
-- If URL has no hash → Mock mode is OFF
-
-**Data Method**:
-- Mock data always shows: 85% battery, 23.5°C, 45.6% humidity
-- Real data varies based on actual sensor readings
 
 ## Best Practices Summary
 
-✅ **DO**:
+**DO**:
 - Put all constants in `constants.js`
 - Use utility functions from `utils.js`
 - Write tests for new features
@@ -820,7 +561,7 @@ If UI shows "N/A" for sensor values:
 - Keep functions small and focused
 - Document complex logic
 
-❌ **DON'T**:
+**DON'T**:
 - Use magic numbers anywhere
 - Duplicate logic across files
 - Hardcode error messages
@@ -829,23 +570,8 @@ If UI shows "N/A" for sensor values:
 - Use inline USB constants
 - **Use emojis in UI text** - Emojis are forbidden in all user-facing text, labels, and headings
 
-## Contact & Support
-
-For questions about the codebase or WebUSB protocol, refer to:
-- This document (`claude.md`)
-- Main README for user documentation
-- Test files for usage examples
-- Constants file for configuration values
-
 ---
 
-**Last Updated**: 2025-11-07
-**Code Quality Grade**: A-
-**Test Coverage**: 67.82%
-**Total Tests**: 135 passing (+33 new tests)
-**Recent Features**:
-- Duplicate detection with fuzzy matching
-- Device capacity tracking and safe erase
-- Serial number column in log table
-- TSL2591 light sensor log format support
-- GET_LOG_TYPE command
+**Last Updated**: 2026-01-26
+**Total Tests**: 116 passing
+**Supported Log Formats**: GPS, TSL2591, CO2

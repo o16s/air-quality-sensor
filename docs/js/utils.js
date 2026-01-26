@@ -26,27 +26,6 @@ export function delay(ms) {
 }
 
 /**
- * Execute a function with automatic fallback to mock data
- * Centralizes the mock/real data pattern used throughout protocol.js
- *
- * @param {USBDevice} device - The USB device
- * @param {Function} realFn - Function to execute with real device (receives device)
- * @param {Function} mockFn - Function to execute for mock data (no args)
- * @param {boolean} useMockData - Whether to use mock data
- * @param {Function} setMockMode - Function to set mock mode (receives boolean)
- * @returns {Promise<any>} Result from either real or mock function
- */
-export async function executeWithMockFallback(device, realFn, mockFn, useMockData, setMockMode) {
-    if (useMockData) {
-        return await mockFn();
-    }
-
-    // No automatic fallback - let errors propagate
-    // User must explicitly enable mock mode via #mock URL hash
-    return await realFn(device);
-}
-
-/**
  * Set a value in a DataView buffer using layout configuration
  * @param {DataView} view - The DataView to write to
  * @param {Object} layout - Layout config with offset, type, and scale

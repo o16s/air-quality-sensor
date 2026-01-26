@@ -25,11 +25,10 @@ import {
     getLogType,
     formatGPSFix,
     createMapsURL,
-    setMockMode,
     eraseLogs
 } from './protocol.js';
 
-import { LOG_TYPE, DEVICE_CAPACITY, SPARKLINE_THRESHOLDS } from './constants.js';
+import { LOG_TYPE, DEVICE_CAPACITY, SPARKLINE_THRESHOLDS, CO2_THRESHOLDS } from './constants.js';
 
 import {
     getAllLogs,
@@ -47,7 +46,100 @@ import { TIME_SYNC } from './constants.js';
 // UI state
 let autoRefreshInterval = null;
 let isDownloading = false;
-let currentLogType = null;  // LOG_TYPE.GPS or LOG_TYPE.TSL2591
+let currentLogType = null;  // LOG_TYPE.GPS, LOG_TYPE.TSL2591, or LOG_TYPE.CO2
+
+/**
+ * Widget Configuration per Log Type
+ * Defines which sensor cards are visible and their labels for each device format
+ */
+const WIDGET_CONFIG = {
+    [LOG_TYPE.GPS]: {
+        pm25: { visible: true, label: 'PM2.5', valueId: 'pm25-value', sparklineId: 'pm25-sparkline' },
+        pm10: { visible: true, label: 'PM10', valueId: 'pm10-value', sparklineId: 'pm10-sparkline' },
+        co2:  { visible: false },
+        lux:  { visible: false }
+    },
+    [LOG_TYPE.TSL2591]: {
+        pm25: { visible: true, label: 'PM2.5', valueId: 'pm25-value', sparklineId: 'pm25-sparkline' },
+        pm10: { visible: true, label: 'PM10', valueId: 'pm10-value', sparklineId: 'pm10-sparkline' },
+        co2:  { visible: false },
+        lux:  { visible: true, label: 'Light', valueId: 'lux-value', sparklineId: 'lux-sparkline' }
+    },
+    [LOG_TYPE.CO2]: {
+        pm25: { visible: false },
+        pm10: { visible: false },
+        co2:  { visible: true, label: 'CO2', valueId: 'co2-value', sparklineId: 'co2-sparkline' },
+        lux:  { visible: true, label: 'Light', valueId: 'lux-value', sparklineId: 'lux-sparkline' }
+    }
+};
+
+/**
+ * Configure widget visibility and labels based on device log type
+ * Called when device connects and log type is detected
+ * @param {number} logType - LOG_TYPE.GPS, LOG_TYPE.TSL2591, or LOG_TYPE.CO2
+ */
+function configureWidgetsForLogType(logType) {
+    const config = WIDGET_CONFIG[logType] || WIDGET_CONFIG[LOG_TYPE.GPS];
+
+    // Configure PM2.5 card
+    const pm25Card = document.getElementById('pm25-value')?.closest('.sensor-card');
+    if (pm25Card) {
+        if (config.pm25.visible) {
+            pm25Card.classList.remove('hidden');
+            const label = pm25Card.querySelector('.text-gray-600');
+            if (label) label.textContent = config.pm25.label;
+            document.getElementById('pm25-value').textContent = '--';
+        } else {
+            pm25Card.classList.add('hidden');
+        }
+    }
+
+    // Configure PM10 card
+    const pm10Card = document.getElementById('pm10-value')?.closest('.sensor-card');
+    if (pm10Card) {
+        if (config.pm10.visible) {
+            pm10Card.classList.remove('hidden');
+            const label = pm10Card.querySelector('.text-gray-600');
+            if (label) label.textContent = config.pm10.label;
+            document.getElementById('pm10-value').textContent = '--';
+        } else {
+            pm10Card.classList.add('hidden');
+        }
+    }
+
+    // Configure CO2 card
+    const co2Card = document.getElementById('co2-card');
+    if (co2Card) {
+        if (config.co2.visible) {
+            co2Card.classList.remove('hidden');
+            document.getElementById('co2-value').textContent = '-- ppm';
+        } else {
+            co2Card.classList.add('hidden');
+        }
+    }
+
+    // Configure Lux card
+    const luxCard = document.getElementById('lux-card');
+    if (luxCard) {
+        if (config.lux.visible) {
+            luxCard.classList.remove('hidden');
+            document.getElementById('lux-value').textContent = '-- lux';
+        } else {
+            luxCard.classList.add('hidden');
+        }
+    }
+
+    // Clear all sparkline canvases to avoid stale data
+    ['pm25-sparkline', 'pm10-sparkline', 'co2-sparkline', 'lux-sparkline'].forEach(id => {
+        const canvas = document.getElementById(id);
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    });
+
+    console.log(`Widgets configured for log type: ${logType === LOG_TYPE.CO2 ? 'CO2' : logType === LOG_TYPE.TSL2591 ? 'TSL2591' : 'GPS'}`);
+}
 
 // Environment detection (set once at module load)
 const runningInElectron = navigator.userAgent.toLowerCase().includes('electron');
@@ -249,10 +341,15 @@ async function handleDeviceConnected(device) {
         document.getElementById('device-firmware').textContent = 'N/A';
     }
 
-    // Detect log format type
+    // Detect log format type and configure widgets
     try {
         currentLogType = await getLogType(device);
-        const formatText = currentLogType === LOG_TYPE.TSL2591 ? 'TSL2591 (Light Sensor)' : 'GPS';
+        let formatText = 'GPS';
+        if (currentLogType === LOG_TYPE.CO2) {
+            formatText = 'CO2';
+        } else if (currentLogType === LOG_TYPE.TSL2591) {
+            formatText = 'PM';
+        }
         console.log(`Log format: ${formatText}`);
         // Display log format if we have a UI element for it
         const logFormatEl = document.getElementById('log-format');
@@ -263,6 +360,9 @@ async function handleDeviceConnected(device) {
         console.log('Failed to detect log format:', error.message);
         currentLogType = LOG_TYPE.GPS;  // Default to GPS format
     }
+
+    // Configure sensor widgets based on detected log type
+    configureWidgetsForLogType(currentLogType);
 
     // Set device time to current system time
     try {
@@ -348,6 +448,10 @@ async function handleDeviceDisconnected() {
     // Update connection status
     updateConnectionStatus(false);
 
+    // Reset widgets to GPS format (default) - clears any CO2-specific state
+    configureWidgetsForLogType(LOG_TYPE.GPS);
+    currentLogType = null;
+
     // Show measurement history if available, otherwise show instructions
     await showAppropriateDisconnectedContent();
 
@@ -401,18 +505,23 @@ async function updateLiveData() {
         document.getElementById('humidity-value').textContent =
             `${status.humidity.toFixed(1)}%`;
 
-        // Update PM values with AQI coloring
-        updatePMValue('pm25-value', status.pm25);
-        updatePMValue('pm10-value', status.pm10);
+        // Update format-specific values (widget visibility handled by configureWidgetsForLogType)
+        if (currentLogType === LOG_TYPE.CO2) {
+            // CO2 format: update CO2 and Lux values
+            updateCO2Value('co2-value', status.co2);
+            updateLux(status.lux);
+        } else {
+            // GPS/TSL2591 format: update PM values
+            updatePMValue('pm25-value', status.pm25);
+            updatePMValue('pm10-value', status.pm10);
+            // Update Lux for TSL2591 format
+            if (currentLogType === LOG_TYPE.TSL2591) {
+                updateLux(status.lux);
+            }
+        }
 
         // Update battery (now uses voltage instead of percentage)
         updateBattery(status.batteryVoltage, status.charging);
-
-        // Update Lux for TSL2591 format
-        // Sparklines are NOT updated here - they update only on Refresh or Sync
-        if (currentLogType === LOG_TYPE.TSL2591) {
-            updateLux(status.lux);
-        }
 
         // Update PM measurement age
         const ageSeconds = status.currentTime - status.measuredAt;
@@ -435,8 +544,8 @@ async function updateLiveData() {
         document.getElementById('humidity-value').textContent = 'N/A';
         document.getElementById('pm25-value').textContent = 'N/A';
         document.getElementById('pm10-value').textContent = 'N/A';
-        document.getElementById('battery-level').textContent = 'N/A';
-        document.getElementById('battery-charging').textContent = 'N/A';
+        document.getElementById('co2-value').textContent = 'N/A';
+        document.getElementById('lux-value').textContent = 'N/A';
         document.getElementById('measured-age').textContent = '--';
     }
 }
@@ -462,6 +571,43 @@ function updatePMValue(elementId, value) {
         el.classList.add('text-red-600'); // Unhealthy
     } else {
         el.classList.add('text-purple-600'); // Very unhealthy
+    }
+}
+
+/**
+ * Update CO2 value with color coding based on indoor air quality thresholds
+ */
+function updateCO2Value(elementId, value) {
+    const el = document.getElementById(elementId);
+    el.textContent = `${Math.round(value)} ppm`;
+
+    // Remove existing color classes
+    el.classList.remove('text-green-600', 'text-yellow-600', 'text-orange-600', 'text-red-600', 'text-purple-600');
+
+    // Apply color based on CO2 levels
+    if (value < CO2_THRESHOLDS.GOOD) {
+        el.classList.add('text-green-600'); // Good (< 800 ppm)
+    } else if (value < CO2_THRESHOLDS.MODERATE) {
+        el.classList.add('text-yellow-600'); // Moderate (800-1000 ppm)
+    } else if (value < CO2_THRESHOLDS.POOR) {
+        el.classList.add('text-orange-600'); // Poor (1000-1500 ppm)
+    } else {
+        el.classList.add('text-red-600'); // Very poor (> 1500 ppm)
+    }
+}
+
+/**
+ * Get Tailwind color class for CO2 value (for table display)
+ */
+function getCO2ColorClass(value) {
+    if (value < CO2_THRESHOLDS.GOOD) {
+        return 'text-green-600 font-semibold'; // Good (< 800 ppm)
+    } else if (value < CO2_THRESHOLDS.MODERATE) {
+        return 'text-yellow-600 font-semibold'; // Moderate (800-1000 ppm)
+    } else if (value < CO2_THRESHOLDS.POOR) {
+        return 'text-orange-600 font-semibold'; // Poor (1000-1500 ppm)
+    } else {
+        return 'text-red-600 font-semibold'; // Very poor (> 1500 ppm)
     }
 }
 
@@ -833,7 +979,9 @@ async function handleDownloadLogs() {
             }));
 
             const storeResult = await storeLogs(logsWithMetadata, info.serialNumber);
-            const formatName = logType === LOG_TYPE.TSL2591 ? 'TSL2591' : 'GPS';
+            let formatName = 'GPS';
+            if (logType === LOG_TYPE.CO2) formatName = 'CO2';
+            else if (logType === LOG_TYPE.TSL2591) formatName = 'TSL2591';
 
             // Sync device time AFTER downloading
             try {
@@ -906,10 +1054,41 @@ async function updateLogTable() {
         }
 
         // Detect log format from first log
-        const isTSL = logs[0].hasOwnProperty('lux');
+        const isCO2 = logs[0].hasOwnProperty('co2');
+        const isTSL = logs[0].hasOwnProperty('lux') && !isCO2;
 
         // Update table headers based on format
-        if (isTSL) {
+        if (isCO2) {
+            thead.innerHTML = `
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CO2 (ppm)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pressure (hPa)</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lux</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Charging</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
+            `;
+            tbody.innerHTML = logs.map(log => {
+                const syncedOnDate = log.syncedOn ? new Date(log.syncedOn).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+                return `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3 text-sm text-gray-900">${formatTimestamp(log.timestamp)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.temperature.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.humidity.toFixed(1)}</td>
+                    <td class="px-4 py-3 text-sm ${getCO2ColorClass(log.co2)}">${Math.round(log.co2)}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.pressure ? log.pressure.toFixed(1) : '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${log.lux ? log.lux.toFixed(1) : '-'}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">${(log.batteryVoltage / 1000).toFixed(2)}V</td>
+                    <td class="px-4 py-3 text-sm ${log.charging ? 'text-green-600' : 'text-gray-400'}">${log.charging ? '⚡' : '—'}</td>
+                    <td class="px-4 py-3 text-xs text-gray-600 font-mono">${log.deviceSerial || '-'}</td>
+                    <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>
+                </tr>
+            `;
+            }).join('');
+        } else if (isTSL) {
             thead.innerHTML = `
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
@@ -1179,33 +1358,42 @@ async function loadSparklinesFromStorage() {
         // Sort chronologically (oldest first)
         const logsChronological = recentLogs.sort((a, b) => a.timestamp - b.timestamp);
 
-        // Detect log format from stored data (check if logs have 'lux' field)
+        // Detect log format from stored data
+        const hasCO2Data = logsChronological.some(log => log.co2 !== undefined && log.co2 !== null);
         const hasLuxData = logsChronological.some(log => log.lux !== undefined && log.lux !== null);
+        const hasPMData = logsChronological.some(log => log.pm25 !== undefined && log.pm25 !== null);
 
         // Extract timestamps and sensor values
         const timestamps = logsChronological.map(log => log.timestamp);
-        const pm25Values = logsChronological.map(log => log.pm25).filter(v => v !== undefined && v !== null);
-        const pm10Values = logsChronological.map(log => log.pm10).filter(v => v !== undefined && v !== null);
         const tempValues = logsChronological.map(log => log.temperature).filter(v => v !== undefined && v !== null);
         const humidityValues = logsChronological.map(log => log.humidity).filter(v => v !== undefined && v !== null);
 
-        // Update sparklines with fixed scales, thresholds, and timestamps
-        const pm25Config = { ...SPARKLINE_THRESHOLDS.pm25, timestamps };
-        const pm10Config = { ...SPARKLINE_THRESHOLDS.pm10, timestamps };
+        // Update common sparklines (temp and humidity are on all formats)
         const tempConfig = { ...getTemperatureScale(tempValues), timestamps };
         const humidityConfig = { ...SPARKLINE_THRESHOLDS.humidity, timestamps };
-
-        updateSparkline('pm25-sparkline', pm25Values, pm25Config);
-        updateSparkline('pm10-sparkline', pm10Values, pm10Config);
         updateSparkline('temp-sparkline', tempValues, tempConfig);
         updateSparkline('humidity-sparkline', humidityValues, humidityConfig);
 
-        // Update lux sparkline if TSL2591 format (detect from data)
+        // Update format-specific sparklines (visibility handled by configureWidgetsForLogType)
+        if (hasCO2Data) {
+            // CO2 format: update CO2 sparkline
+            const co2Values = logsChronological.map(log => log.co2).filter(v => v !== undefined && v !== null);
+            const co2Config = { ...SPARKLINE_THRESHOLDS.co2, timestamps };
+            updateSparkline('co2-sparkline', co2Values, co2Config);
+        }
+
+        if (hasPMData) {
+            // GPS/TSL2591 format: update PM sparklines
+            const pm25Values = logsChronological.map(log => log.pm25).filter(v => v !== undefined && v !== null);
+            const pm10Values = logsChronological.map(log => log.pm10).filter(v => v !== undefined && v !== null);
+            const pm25Config = { ...SPARKLINE_THRESHOLDS.pm25, timestamps };
+            const pm10Config = { ...SPARKLINE_THRESHOLDS.pm10, timestamps };
+            updateSparkline('pm25-sparkline', pm25Values, pm25Config);
+            updateSparkline('pm10-sparkline', pm10Values, pm10Config);
+        }
+
         if (hasLuxData) {
-            const luxCard = document.getElementById('lux-card');
-            if (luxCard) {
-                luxCard.classList.remove('hidden');
-            }
+            // TSL2591 and CO2 formats have lux data
             const luxValues = logsChronological.map(log => log.lux).filter(v => v !== undefined && v !== null);
             const luxConfig = { ...SPARKLINE_THRESHOLDS.lux, timestamps };
             updateSparkline('lux-sparkline', luxValues, luxConfig);

@@ -32,7 +32,8 @@ export const COMMANDS = {
 // Log Format Types
 export const LOG_TYPE = {
     GPS: 0,         // GPS format: lat/lon/fix
-    TSL2591: 1      // TSL2591 light sensor format: lux/ch0/ch1
+    TSL2591: 1,     // TSL2591 light sensor format: lux/ch0/ch1
+    CO2: 2          // CO2 sensor format: co2/pressure/gasResistance
 };
 
 // Device Capacity
@@ -135,57 +136,41 @@ export const LOG_LAYOUT_TSL = {
     TIMESTAMP: { offset: 20, type: 'Uint32', scale: 1 }         // Unix epoch
 };
 
-// Mock Data Values (for testing without hardware)
-export const MOCK_DATA = {
-    // Status mock values
-    TEMPERATURE_C: 23.5,
-    HUMIDITY_PERCENT: 45.6,
-    PM25_UG_M3: 12.5,
-    PM10_UG_M3: 18.3,
-    BATTERY_VOLTAGE_MV: 4100,   // 4.1V (typical LiPo full charge)
-    IS_CHARGING: true,
-    GPS_FIX_QUALITY: 1,         // 1 = GPS fix
-
-    // Log mock value ranges
-    TEMP_MIN_C: 20.0,
-    TEMP_MAX_C: 28.0,
-    HUMIDITY_MIN_PERCENT: 30.0,
-    HUMIDITY_MAX_PERCENT: 70.0,
-    PM25_MIN_UG_M3: 5.0,
-    PM25_MAX_UG_M3: 20.0,
-    PM10_MIN_UG_M3: 10.0,
-    PM10_MAX_UG_M3: 30.0,
-    BATTERY_MIN_MV: 3300,       // Minimum battery voltage (3.3V - LiPo cutoff = 0%)
-    BATTERY_MAX_MV: 4150,       // Maximum battery voltage (4.15V - LiPo full = 100%, matches firmware)
-
-
-    // GPS mock coordinates (Zurich, Switzerland area)
-    GPS_LAT: 47.1234567,
-    GPS_LON: 8.5678901,
-
-    // TSL2591 light sensor mock values (added Nov 6, 2025)
-    TSL_LUX: 123.4,             // Mock lux value
-    TSL_CH0: 12345,             // Mock full spectrum raw count
-    TSL_CH1: 6789,              // Mock IR spectrum raw count
-    TSL_OVERFLOW: 0,            // 0 = valid reading
-    TSL_LUX_MIN: 0.1,           // Minimum lux (dark)
-    TSL_LUX_MAX: 800.0,         // Maximum lux (bright indoor/outdoor)
-    TSL_CH0_MIN: 100,           // Minimum CH0 raw count
-    TSL_CH0_MAX: 50000,         // Maximum CH0 raw count (below saturation)
-    TSL_CH1_MIN: 50,            // Minimum CH1 raw count
-    TSL_CH1_MAX: 30000,         // Maximum CH1 raw count (below saturation)
-
-    // Timing
-    LOG_INTERVAL_SECONDS: 300,  // 5 minutes between logs
-    LOG_COUNT: 50               // Number of mock logs to generate
+// Log Record Buffer Layout - CO2 Sensor Format (24 bytes)
+// Added Jan 2026 - CO2 sensor with environmental monitoring
+export const LOG_LAYOUT_CO2 = {
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },      // °C × 100 (centi-degrees)
+    HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
+    CO2: { offset: 4, type: 'Uint16', scale: 1 },               // ppm (no scaling)
+    RESERVED: { offset: 6, type: 'Uint16', scale: 1 },          // Reserved
+    TSL_CH0: { offset: 8, type: 'Uint16', scale: 1 },           // Full spectrum raw count
+    TSL_CH1: { offset: 10, type: 'Uint16', scale: 1 },          // IR spectrum raw count
+    LUX: { offset: 12, type: 'Uint16', scale: 10 },             // lux × 10 (deci-lux)
+    OVERFLOW: { offset: 14, type: 'Uint8', scale: 1 },          // 0=valid, 1=saturated
+    BATTERY: { offset: 15, type: 'Uint8', scale: 1 },           // [bit7:charging][bits6-0:voltage]
+    PRESSURE: { offset: 16, type: 'Uint16', scale: 10 },        // hPa × 10 (deci-hPa)
+    GAS_RESISTANCE: { offset: 18, type: 'Uint16', scale: 0.1 }, // stored/10, multiply by 10 for ohms
+    TIMESTAMP: { offset: 20, type: 'Uint32', scale: 1 }         // Unix epoch
 };
 
-// Async Operation Delays (milliseconds)
-export const DELAYS = {
-    STATUS_READ: 100,           // Mock delay for status read
-    LOG_COUNT_READ: 50,         // Mock delay for log count
-    LOG_RECORD_READ: 10,        // Mock delay for single log read
-    AUTO_REFRESH_INTERVAL: 10000 // UI auto-refresh interval
+// Status Buffer Layout - CO2 Format (24 bytes)
+// Added Jan 2026 - For CO2 sensor builds
+export const STATUS_LAYOUT_CO2 = {
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },      // °C × 100 (centi-degrees)
+    HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },        // % × 100 (centi-percent)
+    CO2: { offset: 4, type: 'Uint16', scale: 1 },               // ppm (no scaling)
+    RESERVED1: { offset: 6, type: 'Uint16', scale: 1 },         // Reserved
+    BATTERY: { offset: 8, type: 'Uint8', scale: 1 },            // [bit7:charging][bits6-0:voltage]
+    RESERVED2: { offset: 9, type: 'Uint8', scale: 1 },          // Reserved
+    LUX: { offset: 10, type: 'Float32', scale: 1 },             // lux as float32 (NO SCALING!)
+    RESERVED3: { offset: 14, type: 'Uint16', scale: 1 },        // Reserved (2 bytes)
+    CURRENT_TIME: { offset: 16, type: 'Uint32', scale: 1 },     // Current device time
+    MEASURED_AT: { offset: 20, type: 'Uint32', scale: 1 }       // When sensor data was captured
+};
+
+// UI Configuration
+export const UI_CONFIG = {
+    AUTO_REFRESH_INTERVAL: 10000 // UI auto-refresh interval (milliseconds)
 };
 
 // Time Sync Configuration
@@ -209,7 +194,7 @@ export const GPS_FIX_LABELS = {
 
 // IndexedDB Configuration
 export const DB = {
-    NAME: 'octanis-sensor-logs',
+    NAME: 'octanis-ics-logs',
     VERSION: 1,
     STORE_NAME: 'logs',
     INDEXES: {
@@ -221,10 +206,10 @@ export const DB = {
 
 // Export Filenames
 export const EXPORT_FILENAMES = {
-    CSV: 'octanis-sensor-logs.csv',
-    JSON: 'octanis-sensor-logs.json',
-    GEOJSON: 'octanis-sensor-logs.geojson',
-    STATISTICS: 'octanis-sensor-statistics.txt'
+    CSV: 'octanis-ics-logs.csv',
+    JSON: 'octanis-ics-logs.json',
+    GEOJSON: 'octanis-ics-logs.geojson',
+    STATISTICS: 'octanis-ics-statistics.txt'
 };
 
 // MIME Types
@@ -238,7 +223,8 @@ export const MIME_TYPES = {
 // CSV Column Headers (Added Nov 6, 2025)
 export const CSV_HEADERS = {
     GPS: 'Timestamp,Temperature_C,Humidity_Pct,PM25_ugm3,PM10_ugm3,Latitude,Longitude,GPS_Fix,Battery_Pct',
-    TSL: 'Timestamp,Temperature_C,Humidity_Pct,PM25_ugm3,PM10_ugm3,Lux,TSL_CH0,TSL_CH1,Overflow,Battery_Pct'
+    TSL: 'Timestamp,Temperature_C,Humidity_Pct,PM25_ugm3,PM10_ugm3,Lux,TSL_CH0,TSL_CH1,Overflow,Battery_Pct',
+    CO2: 'Timestamp,Temperature_C,Humidity_Pct,CO2_ppm,Pressure_hPa,GasRes_Ohm,Lux,Battery_Pct'
 };
 
 // Air Quality Index (AQI) Thresholds for PM2.5 (μg/m³)
@@ -248,6 +234,14 @@ export const AQI_THRESHOLDS = {
     UNHEALTHY_SENSITIVE: 55.4,
     UNHEALTHY: 150.4,
     VERY_UNHEALTHY: 250.4
+};
+
+// CO2 Air Quality Thresholds (ppm)
+export const CO2_THRESHOLDS = {
+    GOOD: 800,          // < 800 ppm = green (excellent)
+    MODERATE: 1000,     // 800-1000 ppm = yellow (acceptable)
+    POOR: 1500,         // 1000-1500 ppm = orange (poor)
+    VERY_POOR: 1500     // > 1500 ppm = red (unhealthy)
 };
 
 // Error Messages
@@ -305,6 +299,22 @@ export const SPARKLINE_THRESHOLDS = {
             { label: '100', value: 100, color: '#6b7280', name: 'Dim' },               // gray
             { label: '500', value: 500, color: '#3b82f6', name: 'Bright indoor' },     // blue
             { label: '1000', value: 1000, color: '#f59e0b', name: 'Very bright' }      // yellow
+        ]
+    },
+    co2: {
+        range: { min: 400, max: 2000 },  // ppm (indoor CO2)
+        thresholds: [
+            { label: '800', value: 800, color: '#10b981', name: 'Good' },              // green
+            { label: '1000', value: 1000, color: '#f59e0b', name: 'Moderate' },        // yellow
+            { label: '1500', value: 1500, color: '#ef4444', name: 'Poor' }             // red
+        ]
+    },
+    pressure: {
+        range: { min: 980, max: 1040 },  // hPa (sea level typical range)
+        thresholds: [
+            { label: '1000', value: 1000, color: '#6b7280', name: 'Low' },             // gray
+            { label: '1013', value: 1013, color: '#3b82f6', name: 'Standard' },        // blue
+            { label: '1030', value: 1030, color: '#6b7280', name: 'High' }             // gray
         ]
     }
 };

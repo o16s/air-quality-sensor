@@ -8,7 +8,7 @@ import { downloadFile, formatGPSFix } from './utils.js';
 
 /**
  * Export logs to CSV format
- * Automatically detects GPS vs TSL2591 format
+ * Automatically detects GPS vs TSL2591 vs CO2 format
  */
 export function exportToCSV(logs) {
     if (!logs || logs.length === 0) {
@@ -16,11 +16,29 @@ export function exportToCSV(logs) {
     }
 
     // Detect format from first log
-    const isTSL = logs[0].hasOwnProperty('lux');
+    const isCO2 = logs[0].hasOwnProperty('co2');
+    const isTSL = logs[0].hasOwnProperty('lux') && !isCO2;
 
     // CSV headers based on format
-    const headers = isTSL
-        ? [
+    let headers;
+    if (isCO2) {
+        headers = [
+            'Timestamp',
+            'Date',
+            'Time',
+            'Temperature (°C)',
+            'Humidity (%)',
+            'CO2 (ppm)',
+            'Pressure (hPa)',
+            'Gas Resistance (Ohm)',
+            'Lux',
+            'Battery (V)',
+            'Charging',
+            'Device Serial',
+            'Downloaded At'
+        ];
+    } else if (isTSL) {
+        headers = [
             'Timestamp',
             'Date',
             'Time',
@@ -36,8 +54,9 @@ export function exportToCSV(logs) {
             'Charging',
             'Device Serial',
             'Downloaded At'
-        ]
-        : [
+        ];
+    } else {
+        headers = [
             'Timestamp',
             'Date',
             'Time',
@@ -53,6 +72,7 @@ export function exportToCSV(logs) {
             'Device Serial',
             'Downloaded At'
         ];
+    }
 
     // Build CSV content
     const rows = [headers.join(',')];
@@ -61,8 +81,25 @@ export function exportToCSV(logs) {
         const date = new Date(log.timestamp * 1000);
         const downloadDate = log.downloadedAt ? new Date(log.downloadedAt * 1000) : null;
 
-        const row = isTSL
-            ? [
+        let row;
+        if (isCO2) {
+            row = [
+                log.timestamp,
+                date.toLocaleDateString(),
+                date.toLocaleTimeString(),
+                log.temperature?.toFixed(3) || '',
+                log.humidity?.toFixed(3) || '',
+                log.co2 || '',
+                log.pressure?.toFixed(1) || '',
+                log.gasResistance || '',
+                log.lux?.toFixed(1) || '',
+                log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
+                log.charging ? '1' : '0',
+                log.deviceSerial || '',
+                downloadDate ? downloadDate.toISOString() : ''
+            ];
+        } else if (isTSL) {
+            row = [
                 log.timestamp,
                 date.toLocaleDateString(),
                 date.toLocaleTimeString(),
@@ -78,8 +115,9 @@ export function exportToCSV(logs) {
                 log.charging ? '1' : '0',
                 log.deviceSerial || '',
                 downloadDate ? downloadDate.toISOString() : ''
-            ]
-            : [
+            ];
+        } else {
+            row = [
                 log.timestamp,
                 date.toLocaleDateString(),
                 date.toLocaleTimeString(),
@@ -95,6 +133,7 @@ export function exportToCSV(logs) {
                 log.deviceSerial || '',
                 downloadDate ? downloadDate.toISOString() : ''
             ];
+        }
 
         // Escape fields that contain commas or quotes
         const escapedRow = row.map(field => {
@@ -122,50 +161,101 @@ export function exportToJSON(logs) {
         throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
 
+    // Detect format from first log
+    const isCO2 = logs[0].hasOwnProperty('co2');
+    const isTSL = logs[0].hasOwnProperty('lux') && !isCO2;
+
+    // Determine format name
+    let formatName = 'GPS';
+    if (isCO2) formatName = 'CO2';
+    else if (isTSL) formatName = 'TSL2591';
+
     // Create structured JSON with metadata
     const exportData = {
         metadata: {
             exportDate: new Date().toISOString(),
             totalRecords: logs.length,
             devices: [...new Set(logs.map(l => l.deviceSerial).filter(Boolean))],
-            format: 'CCC Sensor Logs v1.0'
+            format: 'Octanis ICS Logs v1.0',
+            sensorFormat: formatName
         },
-        logs: logs.map(log => ({
-            timestamp: log.timestamp,
-            dateTime: new Date(log.timestamp * 1000).toISOString(),
-            sensors: {
-                temperature: {
-                    value: log.temperature,
-                    unit: '°C'
+        logs: logs.map(log => {
+            const baseLog = {
+                timestamp: log.timestamp,
+                dateTime: new Date(log.timestamp * 1000).toISOString(),
+                sensors: {
+                    temperature: {
+                        value: log.temperature,
+                        unit: '°C'
+                    },
+                    humidity: {
+                        value: log.humidity,
+                        unit: '%'
+                    }
                 },
-                humidity: {
-                    value: log.humidity,
-                    unit: '%'
+                battery: {
+                    voltage: log.batteryVoltage,
+                    voltageUnit: 'mV',
+                    charging: log.charging
                 },
-                pm25: {
+                device: {
+                    serial: log.deviceSerial
+                },
+                downloadedAt: log.downloadedAt ? new Date(log.downloadedAt * 1000).toISOString() : null
+            };
+
+            // Add format-specific fields
+            if (isCO2) {
+                baseLog.sensors.co2 = {
+                    value: log.co2,
+                    unit: 'ppm'
+                };
+                baseLog.sensors.pressure = {
+                    value: log.pressure,
+                    unit: 'hPa'
+                };
+                baseLog.sensors.gasResistance = {
+                    value: log.gasResistance,
+                    unit: 'Ohm'
+                };
+                baseLog.sensors.lux = {
+                    value: log.lux,
+                    unit: 'lux'
+                };
+            } else if (isTSL) {
+                baseLog.sensors.pm25 = {
                     value: log.pm25,
                     unit: 'μg/m³'
-                },
-                pm10: {
+                };
+                baseLog.sensors.pm10 = {
                     value: log.pm10,
                     unit: 'μg/m³'
-                }
-            },
-            gps: {
-                latitude: log.lat,
-                longitude: log.lon,
-                fix: formatGPSFix(log.fix)
-            },
-            battery: {
-                voltage: log.batteryVoltage,
-                voltageUnit: 'mV',
-                charging: log.charging
-            },
-            device: {
-                serial: log.deviceSerial
-            },
-            downloadedAt: log.downloadedAt ? new Date(log.downloadedAt * 1000).toISOString() : null
-        }))
+                };
+                baseLog.sensors.lux = {
+                    value: log.lux,
+                    unit: 'lux'
+                };
+                baseLog.sensors.tslCH0 = log.tslCH0;
+                baseLog.sensors.tslCH1 = log.tslCH1;
+                baseLog.sensors.overflow = log.overflow;
+            } else {
+                baseLog.sensors.pm25 = {
+                    value: log.pm25,
+                    unit: 'μg/m³'
+                };
+                baseLog.sensors.pm10 = {
+                    value: log.pm10,
+                    unit: 'μg/m³'
+                };
+                baseLog.gps = {
+                    latitude: log.lat,
+                    longitude: log.lon,
+                    fix: formatGPSFix(log.fix)
+                };
+            }
+
+            return baseLog;
+        })
     };
 
     const jsonContent = JSON.stringify(exportData, null, 2);
@@ -279,7 +369,7 @@ export function exportStatistics(logs) {
     const endDate = new Date(stats.timeRange.end * 1000);
 
     const content = `
-Octanis Sensor Data Statistics
+Octanis ICS Data Statistics
 ===========================
 
 Time Range: ${startDate.toLocaleString()} to ${endDate.toLocaleString()}
