@@ -7,6 +7,14 @@ import { EXPORT_FILENAMES, MIME_TYPES, ERRORS } from './constants.js';
 import { downloadFile, formatGPSFix } from './utils.js';
 
 /**
+ * Format date as ISO string for Excel compatibility (YYYY-MM-DD HH:MM:SS)
+ */
+function formatDateTimeISO(date) {
+    const pad = n => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+/**
  * Export logs to CSV format
  * Automatically detects GPS vs TSL2591 vs CO2 format
  */
@@ -23,9 +31,7 @@ export function exportToCSV(logs) {
     let headers;
     if (isCO2) {
         headers = [
-            'Timestamp',
-            'Date',
-            'Time',
+            'DateTime',
             'Temperature (°C)',
             'Humidity (%)',
             'CO2 (ppm)',
@@ -39,9 +45,7 @@ export function exportToCSV(logs) {
         ];
     } else if (isTSL) {
         headers = [
-            'Timestamp',
-            'Date',
-            'Time',
+            'DateTime',
             'Temperature (°C)',
             'Humidity (%)',
             'PM2.5 (μg/m³)',
@@ -57,9 +61,7 @@ export function exportToCSV(logs) {
         ];
     } else {
         headers = [
-            'Timestamp',
-            'Date',
-            'Time',
+            'DateTime',
             'Temperature (°C)',
             'Humidity (%)',
             'PM2.5 (μg/m³)',
@@ -84,9 +86,7 @@ export function exportToCSV(logs) {
         let row;
         if (isCO2) {
             row = [
-                log.timestamp,
-                date.toLocaleDateString(),
-                date.toLocaleTimeString(),
+                formatDateTimeISO(date),
                 log.temperature?.toFixed(3) || '',
                 log.humidity?.toFixed(3) || '',
                 log.co2 || '',
@@ -100,9 +100,7 @@ export function exportToCSV(logs) {
             ];
         } else if (isTSL) {
             row = [
-                log.timestamp,
-                date.toLocaleDateString(),
-                date.toLocaleTimeString(),
+                formatDateTimeISO(date),
                 log.temperature?.toFixed(3) || '',
                 log.humidity?.toFixed(3) || '',
                 log.pm25?.toFixed(1) || '',
@@ -118,9 +116,7 @@ export function exportToCSV(logs) {
             ];
         } else {
             row = [
-                log.timestamp,
-                date.toLocaleDateString(),
-                date.toLocaleTimeString(),
+                formatDateTimeISO(date),
                 log.temperature?.toFixed(3) || '',
                 log.humidity?.toFixed(3) || '',
                 log.pm25?.toFixed(1) || '',

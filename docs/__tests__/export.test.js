@@ -86,7 +86,7 @@ describe('Export - CSV', () => {
 
     exportToCSV(logs);
 
-    expect(csvContent).toContain('Timestamp');
+    expect(csvContent).toContain('DateTime');
     expect(csvContent).toContain('Temperature');
     expect(csvContent).toContain('Humidity');
     expect(csvContent).toContain('PM2.5');

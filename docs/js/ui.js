@@ -49,6 +49,7 @@ import { TIME_SYNC } from './constants.js';
 let autoRefreshInterval = null;
 let isDownloading = false;
 let currentLogType = null;  // LOG_TYPE.GPS, LOG_TYPE.TSL2591, or LOG_TYPE.CO2
+let currentDeviceFilter = null;  // Current device filter selection (null = all devices)
 
 /**
  * Widget Configuration per Log Type
@@ -284,8 +285,8 @@ function setupEventHandlers() {
 
     // Device filter dropdown
     document.getElementById('device-filter').addEventListener('change', (e) => {
-        const deviceSerial = e.target.value || null;
-        updateLogTable(deviceSerial);
+        currentDeviceFilter = e.target.value || null;
+        updateLogTable(currentDeviceFilter);
     });
 
     // WebUSB connection callbacks
@@ -1292,17 +1293,24 @@ function renderGPSTable(thead, tbody, logs) {
 
 /**
  * Handle export to CSV
+ * Exports only the logs matching the current device filter
  */
 async function handleExportCSV() {
     try {
-        const logs = await getAllLogs();
+        const logs = currentDeviceFilter
+            ? await getLogsByDevice(currentDeviceFilter)
+            : await getAllLogs();
         if (logs.length === 0) {
             showError('No logs to export');
             return;
         }
 
+        // Sort by timestamp ascending for export
+        logs.sort((a, b) => a.timestamp - b.timestamp);
+
         exportToCSV(logs);
-        showSuccess(`Exported ${logs.length} logs to CSV`);
+        const filterMsg = currentDeviceFilter ? ` for ${currentDeviceFilter}` : '';
+        showSuccess(`Exported ${logs.length} logs${filterMsg} to CSV`);
 
     } catch (error) {
         console.error('Export failed:', error);
@@ -1312,17 +1320,24 @@ async function handleExportCSV() {
 
 /**
  * Handle export to JSON
+ * Exports only the logs matching the current device filter
  */
 async function handleExportJSON() {
     try {
-        const logs = await getAllLogs();
+        const logs = currentDeviceFilter
+            ? await getLogsByDevice(currentDeviceFilter)
+            : await getAllLogs();
         if (logs.length === 0) {
             showError('No logs to export');
             return;
         }
 
+        // Sort by timestamp ascending for export
+        logs.sort((a, b) => a.timestamp - b.timestamp);
+
         exportToJSON(logs);
-        showSuccess(`Exported ${logs.length} logs to JSON`);
+        const filterMsg = currentDeviceFilter ? ` for ${currentDeviceFilter}` : '';
+        showSuccess(`Exported ${logs.length} logs${filterMsg} to JSON`);
 
     } catch (error) {
         console.error('Export failed:', error);
