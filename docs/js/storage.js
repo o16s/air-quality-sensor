@@ -4,8 +4,9 @@
  */
 
 const DB_NAME = 'ccc-sensor-logs';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'logs';
+const METADATA_STORE = 'deviceMetadata';
 
 let db = null;
 
@@ -29,7 +30,7 @@ export async function initDatabase() {
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
 
-            // Create object store if it doesn't exist
+            // Create logs object store if it doesn't exist
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 const objectStore = db.createObjectStore(STORE_NAME, {
                     keyPath: 'id',
@@ -41,7 +42,13 @@ export async function initDatabase() {
                 objectStore.createIndex('deviceSerial', 'deviceSerial', { unique: false });
                 objectStore.createIndex('deviceTimestamp', ['deviceSerial', 'timestamp'], { unique: false });
 
-                console.log('Object store created');
+                console.log('Logs object store created');
+            }
+
+            // Create device metadata store if it doesn't exist (added in v2)
+            if (!db.objectStoreNames.contains(METADATA_STORE)) {
+                db.createObjectStore(METADATA_STORE, { keyPath: 'serial' });
+                console.log('Device metadata store created');
             }
         };
     });
@@ -397,6 +404,88 @@ export async function getDatabaseStats() {
 
         allRequest.onerror = () => {
             reject(new Error('Failed to get database stats'));
+        };
+    });
+}
+
+/**
+ * Get device metadata by serial number
+ * @param {string} serial - Device serial number
+ * @returns {Promise<Object|null>} Metadata object or null if not found
+ */
+export async function getDeviceMetadata(serial) {
+    const db = await ensureDB();
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([METADATA_STORE], 'readonly');
+        const store = transaction.objectStore(METADATA_STORE);
+        const request = store.get(serial);
+
+        request.onsuccess = () => {
+            resolve(request.result || null);
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to get device metadata'));
+        };
+    });
+}
+
+/**
+ * Set device metadata (create or update)
+ * @param {string} serial - Device serial number
+ * @param {Object} metadata - Metadata to store
+ * @param {string} metadata.name - Custom device name/alias
+ * @param {string[]} metadata.tags - Array of tags
+ * @param {string} metadata.model - Device model name (e.g., "OAQ-1-2")
+ * @returns {Promise<void>}
+ */
+export async function setDeviceMetadata(serial, { name, tags, model }) {
+    const db = await ensureDB();
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([METADATA_STORE], 'readwrite');
+        const store = transaction.objectStore(METADATA_STORE);
+
+        const record = {
+            serial,
+            name: name || '',
+            tags: tags || [],
+            model: model || '',
+            updatedAt: Math.floor(Date.now() / 1000)
+        };
+
+        const request = store.put(record);
+
+        request.onsuccess = () => {
+            console.log(`Device metadata saved for ${serial}`);
+            resolve();
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to save device metadata'));
+        };
+    });
+}
+
+/**
+ * Get all device metadata
+ * @returns {Promise<Object[]>} Array of metadata records
+ */
+export async function getAllDeviceMetadata() {
+    const db = await ensureDB();
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([METADATA_STORE], 'readonly');
+        const store = transaction.objectStore(METADATA_STORE);
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+            resolve(request.result || []);
+        };
+
+        request.onerror = () => {
+            reject(new Error('Failed to get all device metadata'));
         };
     });
 }

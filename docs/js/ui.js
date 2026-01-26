@@ -12,7 +12,9 @@ import {
     getDeviceInfo,
     isDeviceConnected,
     handleUSBError,
-    getDevice
+    getDevice,
+    connectToDeviceBySerial,
+    getPairedDevices
 } from './webusb.js';
 
 import {
@@ -38,7 +40,10 @@ import {
     getRecentLogs,
     getLogsByDateRange,
     getLogsByDevice,
-    getDatabaseStats
+    getDatabaseStats,
+    getDeviceMetadata,
+    setDeviceMetadata,
+    getAllDeviceMetadata
 } from './storage.js';
 
 import { exportToCSV, exportToJSON } from './export.js';
@@ -56,6 +61,12 @@ let currentLogType = null;  // LOG_TYPE.GPS, LOG_TYPE.TSL2591, or LOG_TYPE.CO2
 let currentDeviceFilter = null;  // Current device filter selection (null = all devices)
 let currentEventsTimeFilter = '7d';  // Events time filter: '24h', '7d', '30d', 'all'
 let currentHeatmapMetric = 'pm25';  // Heatmap metric: 'pm25', 'pm10', 'co2'
+let currentDeviceSerial = null;  // Serial number of currently connected device
+let currentDeviceModel = null;  // Model name of currently connected device (e.g., "OAQ-1-2")
+
+// Device Switcher state
+let selectedDeviceSerial = null;  // Currently selected device in UI (may not be connected)
+let connectedDeviceSerial = null; // Currently connected device via USB (null if none)
 
 /**
  * Widget Configuration per Log Type
@@ -153,6 +164,7 @@ function configureWidgetsForLogType(logType) {
 /**
  * Update device filter dropdown with unique devices from storage
  * Marks the currently connected device if any
+ * Shows custom device names if available
  */
 async function updateDeviceFilter() {
     try {
@@ -168,21 +180,38 @@ async function updateDeviceFilter() {
             connectedSerial = info?.serialNumber;
         }
 
+        // Get device metadata for friendly names
+        const metadataList = await getAllDeviceMetadata();
+        const metadataMap = {};
+        metadataList.forEach(m => {
+            metadataMap[m.serial] = m;
+        });
+
         // Preserve current selection
         const currentValue = select.value;
 
         // Clear existing options and add "All Devices"
         select.innerHTML = '<option value="">All Devices</option>';
 
-        // Add each unique device, marking connected one
+        // Add each unique device, marking connected one and showing custom name
         for (const serial of stats.devices) {
             const option = document.createElement('option');
             option.value = serial;
+
+            const metadata = metadataMap[serial];
+            let displayName = metadata?.name || serial;
+
             if (serial === connectedSerial) {
-                option.textContent = `${serial} (connected)`;
+                option.textContent = `${displayName} (connected)`;
             } else {
-                option.textContent = serial;
+                option.textContent = displayName;
             }
+
+            // Add title attribute with serial for reference
+            if (metadata?.name) {
+                option.title = serial;
+            }
+
             select.appendChild(option);
         }
 
@@ -249,6 +278,317 @@ function switchPage(pageId) {
     if (activePage) activePage.classList.add('active');
 }
 
+// ============================================================
+// Device Switcher Functions
+// ============================================================
+
+/**
+ * Show/hide device header bar based on whether we have any device data
+ */
+async function updateSwitcherVisibility() {
+    const stats = await getDatabaseStats();
+    const hasDevices = stats.devices.length > 0 || connectedDeviceSerial;
+    document.getElementById('device-header-bar').classList.toggle('hidden', !hasDevices);
+}
+
+/**
+ * Populate dropdown with all known devices
+ */
+async function populateDeviceDropdown() {
+    const stats = await getDatabaseStats();
+    const metadataList = await getAllDeviceMetadata();
+    const pairedDevices = await getPairedDevices();
+
+    // Build metadata lookup map
+    const metadataMap = {};
+    metadataList.forEach(m => {
+        metadataMap[m.serial] = m;
+    });
+
+    // Build set of available (plugged in) device serials
+    const availableSerials = new Set(pairedDevices.map(d => d.serialNumber));
+
+    // Combine known devices from storage and connected device
+    const allDevices = new Set(stats.devices);
+    if (connectedDeviceSerial) {
+        allDevices.add(connectedDeviceSerial);
+    }
+
+    const deviceList = document.getElementById('device-list');
+    deviceList.innerHTML = '';
+
+    if (allDevices.size === 0) {
+        deviceList.innerHTML = '<p class="px-3 py-2 text-sm text-gray-500">No devices found</p>';
+        return;
+    }
+
+    // Build device list items
+    for (const serial of allDevices) {
+        const metadata = metadataMap[serial];
+        const isConnected = serial === connectedDeviceSerial;
+        const isAvailable = availableSerials.has(serial);
+        const isSelected = serial === selectedDeviceSerial;
+        const displayName = metadata?.name || currentDeviceModel || serial;
+        const tags = metadata?.tags || [];
+
+        // Get device type from logs or current connection
+        let deviceType = null;
+        if (isConnected && currentLogType !== null) {
+            deviceType = currentLogType;
+        } else {
+            // Check stored logs for this device
+            const deviceLogs = await getLogsByDevice(serial);
+            if (deviceLogs.length > 0 && deviceLogs[0].logType !== undefined) {
+                deviceType = deviceLogs[0].logType;
+            }
+        }
+
+        const item = document.createElement('div');
+        item.className = `flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`;
+        item.dataset.serial = serial;
+
+        // Get product image - use model from metadata or current connection
+        const deviceModel = metadata?.model || (isConnected ? currentDeviceModel : null);
+        let imgHtml = '';
+        if (deviceModel) {
+            imgHtml = `<img src="img/${deviceModel}.jpg" class="w-6 h-6 rounded object-cover flex-shrink-0" alt="" onerror="this.style.display='none'">`;
+        } else {
+            // Generic device icon
+            imgHtml = `<svg class="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+            </svg>`;
+        }
+
+        // Build device type pill (first, colored)
+        let typePillHtml = '';
+        if (deviceType === LOG_TYPE.CO2) {
+            typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded font-medium">CO2</span>`;
+        } else if (deviceType === LOG_TYPE.TSL2591 || deviceType === LOG_TYPE.GPS) {
+            typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded font-medium">PM</span>`;
+        }
+
+        // Build tags HTML as pills
+        const tagPills = tags.map(tag =>
+            `<span class="inline-block px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">${tag}</span>`
+        ).join('');
+
+        const pillsHtml = (typePillHtml || tagPills)
+            ? `<div class="flex flex-wrap gap-1 mt-1">${typePillHtml}${tagPills}</div>`
+            : '';
+
+        // Determine dot color: green=plugged in, gray=offline
+        const isOnline = isConnected || isAvailable;
+        const dotColor = isOnline ? 'bg-green-500' : 'bg-gray-300';
+        const dotTitle = isOnline ? 'Online' : 'Offline';
+
+        item.innerHTML = `
+            <div class="flex items-start gap-2 flex-1 min-w-0">
+                ${imgHtml}
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-medium text-gray-900 truncate">${displayName}</span>
+                        <span class="w-2 h-2 rounded-full flex-shrink-0 ${dotColor}" title="${dotTitle}"></span>
+                    </div>
+                    ${pillsHtml}
+                </div>
+            </div>
+            <button class="edit-device-btn p-1 text-gray-400 hover:text-gray-600 flex-shrink-0" data-serial="${serial}" title="Edit device">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+                    <path d="M13.5 6.5l4 4" />
+                </svg>
+            </button>
+        `;
+
+        // Select device on click (not on edit button)
+        item.addEventListener('click', (e) => {
+            if (!e.target.closest('.edit-device-btn')) {
+                selectDevice(serial);
+                closeDeviceDropdown();
+            }
+        });
+
+        // Edit button handler
+        const editBtn = item.querySelector('.edit-device-btn');
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openEditDeviceModalForSerial(serial);
+            closeDeviceDropdown();
+        });
+
+        deviceList.appendChild(item);
+    }
+}
+
+/**
+ * Handle device selection from dropdown
+ * @param {string} serial - Device serial number to select
+ */
+async function selectDevice(serial) {
+    selectedDeviceSerial = serial;
+
+    // If selecting a different device than currently connected, try to switch connection
+    if (serial && serial !== connectedDeviceSerial) {
+        // Try to connect to the selected device (if it's paired and available)
+        const connected = await connectToDeviceBySerial(serial);
+        if (connected) {
+            // Connection successful - handleDeviceConnected will be called via callback
+            // which will update the UI appropriately
+            return;
+        }
+        // If connection failed, continue showing offline view for this device
+    }
+
+    updateSwitcherDisplay();
+    updateDeviceDetailsBar();
+    // Update device filter to match selected device
+    currentDeviceFilter = serial;
+    updateLogTable(serial);
+    updateHeatmap(serial, currentHeatmapMetric);
+    updateEventsTimeline(serial);
+    // Update the device filter dropdown to match
+    const deviceFilterEl = document.getElementById('device-filter');
+    if (deviceFilterEl) {
+        deviceFilterEl.value = serial || '';
+    }
+}
+
+/**
+ * Update the switcher display with selected device info
+ */
+async function updateSwitcherDisplay() {
+    const nameEl = document.getElementById('switcher-device-name');
+    const iconEl = document.getElementById('switcher-device-icon');
+    const dotEl = document.getElementById('switcher-status-dot');
+
+    if (!selectedDeviceSerial) {
+        nameEl.textContent = 'Select Device';
+        iconEl.style.display = 'none';
+        dotEl.classList.remove('bg-green-500', 'bg-yellow-400');
+        dotEl.classList.add('bg-gray-400');
+        return;
+    }
+
+    // Get device metadata for display name
+    const metadata = await getDeviceMetadata(selectedDeviceSerial);
+    const displayName = metadata?.name || currentDeviceModel || selectedDeviceSerial;
+    nameEl.textContent = displayName;
+
+    // Check if device is available (plugged in)
+    const pairedDevices = await getPairedDevices();
+    const isAvailable = pairedDevices.some(d => d.serialNumber === selectedDeviceSerial);
+    const isConnected = selectedDeviceSerial === connectedDeviceSerial;
+    const isOnline = isConnected || isAvailable;
+
+    // Update status dot: green=online (plugged in), gray=offline
+    dotEl.classList.remove('bg-green-500', 'bg-gray-400');
+    dotEl.classList.add(isOnline ? 'bg-green-500' : 'bg-gray-400');
+
+    // Update product icon - show when connected
+    if (isConnected && currentDeviceModel) {
+        iconEl.src = `img/${currentDeviceModel}.jpg`;
+        iconEl.style.display = '';
+    } else {
+        // Hide icon for offline/available devices
+        iconEl.style.display = 'none';
+    }
+}
+
+/**
+ * Toggle dropdown visibility
+ */
+function toggleDeviceDropdown() {
+    const dropdown = document.getElementById('device-switcher-dropdown');
+    const isHidden = dropdown.classList.contains('hidden');
+
+    if (isHidden) {
+        populateDeviceDropdown();
+        dropdown.classList.remove('hidden');
+    } else {
+        dropdown.classList.add('hidden');
+    }
+}
+
+/**
+ * Close dropdown
+ */
+function closeDeviceDropdown() {
+    document.getElementById('device-switcher-dropdown').classList.add('hidden');
+}
+
+/**
+ * Update device header bar based on connection state
+ * Shows/hides status info and action buttons depending on whether SELECTED device is connected
+ */
+async function updateDeviceDetailsBar() {
+    const lastSyncEl = document.getElementById('details-last-sync');
+    const syncBtn = document.getElementById('sync-data-btn-header');
+    const settingsBtn = document.getElementById('settings-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn-header');
+    const batteryStatus = document.getElementById('battery-status-inline');
+    const storageStatus = document.getElementById('storage-status-inline');
+    const liveDataSection = document.getElementById('live-data-section');
+
+    const isViewingConnectedDevice = connectedDeviceSerial && selectedDeviceSerial === connectedDeviceSerial;
+
+    if (isViewingConnectedDevice) {
+        // Viewing the connected device - show full status, actions, and live data
+        syncBtn.classList.remove('hidden');
+        settingsBtn.classList.remove('hidden');
+        disconnectBtn.classList.remove('hidden');
+        batteryStatus.classList.remove('hidden');
+        storageStatus.classList.remove('hidden');
+        lastSyncEl.classList.add('hidden');
+        liveDataSection.classList.remove('hidden');
+
+    } else if (selectedDeviceSerial) {
+        // Viewing an offline device - hide live status, actions, and live data
+        syncBtn.classList.add('hidden');
+        settingsBtn.classList.add('hidden');
+        disconnectBtn.classList.add('hidden');
+        batteryStatus.classList.add('hidden');
+        storageStatus.classList.add('hidden');
+        liveDataSection.classList.add('hidden');
+
+        // Show last sync time for this device
+        const lastSync = localStorage.getItem('lastSyncTime');
+        if (lastSync) {
+            const date = new Date(parseInt(lastSync));
+            lastSyncEl.textContent = `Last synced: ${date.toLocaleDateString()}`;
+            lastSyncEl.classList.remove('hidden');
+        } else {
+            lastSyncEl.textContent = 'Never synced';
+            lastSyncEl.classList.remove('hidden');
+        }
+    }
+}
+
+/**
+ * Open edit device modal for a specific serial
+ * @param {string} serial - Device serial number
+ */
+async function openEditDeviceModalForSerial(serial) {
+    const modal = document.getElementById('edit-device-modal');
+    const nameInput = document.getElementById('edit-device-name-input');
+    const tagsInput = document.getElementById('edit-device-tags-input');
+
+    // Store the serial being edited
+    modal.dataset.editingSerial = serial;
+
+    try {
+        const metadata = await getDeviceMetadata(serial);
+        nameInput.value = metadata?.name || '';
+        tagsInput.value = metadata?.tags?.join(', ') || '';
+    } catch (error) {
+        console.error('Failed to load metadata for editing:', error);
+        nameInput.value = '';
+        tagsInput.value = '';
+    }
+
+    modal.classList.remove('hidden');
+    nameInput.focus();
+}
+
 /**
  * Initialize UI and event handlers
  */
@@ -270,13 +610,23 @@ export async function initUI() {
     renderThresholdTable();
     updateHeatmap(null, currentHeatmapMetric);
 
+    // Initialize device switcher
+    await updateSwitcherVisibility();
+
     // Show appropriate section based on connection state
     if (isDeviceConnected()) {
         document.getElementById('connect-section').classList.add('hidden');
-        document.getElementById('device-info').classList.remove('hidden');
     } else {
         document.getElementById('connect-section').classList.remove('hidden');
         await showAppropriateDisconnectedContent();
+    }
+
+    // If we have stored devices but none connected, select the first one
+    const stats = await getDatabaseStats();
+    if (stats.devices.length > 0 && !connectedDeviceSerial) {
+        selectedDeviceSerial = stats.devices[0];
+        await updateSwitcherDisplay();
+        await updateDeviceDetailsBar();
     }
 }
 
@@ -315,10 +665,29 @@ function setupEventHandlers() {
     // Close modal on Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            const modal = document.getElementById('settings-modal');
-            if (!modal.classList.contains('hidden')) {
+            const settingsModal = document.getElementById('settings-modal');
+            const editDeviceModal = document.getElementById('edit-device-modal');
+            const dropdown = document.getElementById('device-switcher-dropdown');
+            if (!settingsModal.classList.contains('hidden')) {
                 closeSettingsModal();
             }
+            if (!editDeviceModal.classList.contains('hidden')) {
+                closeEditDeviceModal();
+            }
+            if (!dropdown.classList.contains('hidden')) {
+                closeDeviceDropdown();
+            }
+        }
+    });
+
+    // Edit device modal buttons
+    document.getElementById('save-device-metadata-btn').addEventListener('click', handleSaveDeviceMetadata);
+    document.getElementById('cancel-device-metadata-btn').addEventListener('click', closeEditDeviceModal);
+
+    // Close edit device modal when clicking outside
+    document.getElementById('edit-device-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-device-modal') {
+            closeEditDeviceModal();
         }
     });
 
@@ -328,9 +697,13 @@ function setupEventHandlers() {
     // Clear logs button
     document.getElementById('clear-logs-btn').addEventListener('click', handleClearLogs);
 
-    // Device filter dropdown
+    // Device filter dropdown (on History page)
     document.getElementById('device-filter').addEventListener('change', (e) => {
         currentDeviceFilter = e.target.value || null;
+        // Also update selected device in switcher
+        selectedDeviceSerial = currentDeviceFilter;
+        updateSwitcherDisplay();
+        updateDeviceDetailsBar();
         updateLogTable(currentDeviceFilter);
         updateHeatmap(currentDeviceFilter, currentHeatmapMetric);
     });
@@ -345,6 +718,24 @@ function setupEventHandlers() {
     document.getElementById('heatmap-metric').addEventListener('change', (e) => {
         currentHeatmapMetric = e.target.value;
         updateHeatmap(currentDeviceFilter, currentHeatmapMetric);
+    });
+
+    // Device Switcher events
+    document.getElementById('device-switcher-btn').addEventListener('click', toggleDeviceDropdown);
+
+    // Connect new device button in dropdown
+    document.getElementById('connect-new-device-btn').addEventListener('click', () => {
+        closeDeviceDropdown();
+        handleConnect();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const headerBar = document.getElementById('device-header-bar');
+        const dropdown = document.getElementById('device-switcher-dropdown');
+        if (headerBar && !headerBar.contains(e.target) && !dropdown.classList.contains('hidden')) {
+            closeDeviceDropdown();
+        }
     });
 
     // WebUSB connection callbacks
@@ -399,20 +790,19 @@ async function handleConnect() {
  */
 async function handleDeviceConnected(device) {
     console.log('Device connected:', device);
-    console.log('Hiding connect section, showing device info');
 
-    // Hide connect section, show device info
+    // Get device info
+    const info = getDeviceInfo();
+    currentDeviceSerial = info.serialNumber;
+    connectedDeviceSerial = info.serialNumber;
+    selectedDeviceSerial = info.serialNumber;
+
+    // Update hidden fields for existing code compatibility
+    document.getElementById('device-serial').textContent = info.serialNumber;
+
+    // Hide connect section, show main content
     const connectSection = document.getElementById('connect-section');
-    const deviceInfo = document.getElementById('device-info');
-
-    console.log('connect-section element:', connectSection);
-    console.log('device-info element:', deviceInfo);
-
     connectSection.classList.add('hidden');
-    deviceInfo.classList.remove('hidden');
-
-    console.log('connect-section hidden?', connectSection.classList.contains('hidden'));
-    console.log('device-info hidden?', deviceInfo.classList.contains('hidden'));
 
     // Show main content and hide instructions (both versions)
     document.getElementById('instructions').classList.add('hidden');
@@ -423,46 +813,28 @@ async function handleDeviceConnected(device) {
     // Show footer logo when connected
     document.getElementById('footer-logo').classList.remove('hidden');
 
-    // Get and display device info
-    const info = getDeviceInfo();
-    document.getElementById('device-name').textContent = info.productName;
-    document.getElementById('device-serial').textContent = info.serialNumber;
-
-    // Update connection status
-    updateConnectionStatus(true);
-
     // Get firmware version and parse model
     try {
         const versionString = await getFirmwareVersion(device);
 
         // Parse version string: "OAQ-1-2 7088c449-dirty" → model + firmware
         const parts = versionString.trim().split(' ');
-        const model = parts[0] || '-';
+        currentDeviceModel = parts[0] || '-';
         const firmware = parts.slice(1).join(' ') || '-';
 
-        // Display model and firmware separately
-        document.getElementById('device-model').textContent = model;
+        // Update hidden fields
         document.getElementById('device-firmware').textContent = firmware;
+        document.getElementById('device-model').textContent = currentDeviceModel;
 
-        // Display product image if available
-        if (model !== '-') {
-            const productImage = document.getElementById('product-image');
-            const productImageContainer = document.getElementById('product-image-container');
-
-            productImage.src = `img/${model}.jpg`;
-            productImage.alt = model;
-
-            // Show image container (hide on error)
-            productImage.onload = () => {
-                productImageContainer.classList.remove('hidden');
-            };
-            productImage.onerror = () => {
-                productImageContainer.classList.add('hidden');
-                console.log(`Product image not found: img/${model}.jpg`);
-            };
-        }
+        // Save model to device metadata for future reference (preserves existing name/tags)
+        const existingMetadata = await getDeviceMetadata(info.serialNumber);
+        await setDeviceMetadata(info.serialNumber, {
+            name: existingMetadata?.name || '',
+            tags: existingMetadata?.tags || [],
+            model: currentDeviceModel
+        });
     } catch (error) {
-        document.getElementById('device-model').textContent = 'N/A';
+        currentDeviceModel = 'N/A';
         document.getElementById('device-firmware').textContent = 'N/A';
     }
 
@@ -476,14 +848,13 @@ async function handleDeviceConnected(device) {
             formatText = 'PM';
         }
         console.log(`Log format: ${formatText}`);
-        // Display log format if we have a UI element for it
         const logFormatEl = document.getElementById('log-format');
         if (logFormatEl) {
             logFormatEl.textContent = formatText;
         }
     } catch (error) {
         console.log('Failed to detect log format:', error.message);
-        currentLogType = LOG_TYPE.GPS;  // Default to GPS format
+        currentLogType = LOG_TYPE.GPS;
     }
 
     // Configure sensor widgets based on detected log type
@@ -495,17 +866,21 @@ async function handleDeviceConnected(device) {
         console.log('Device time synchronized to system time');
     } catch (error) {
         console.log('Failed to set device time on connect:', error.message);
-        // Non-critical, continue anyway
     }
 
     // Get device log count
     updateDeviceLogCount();
 
-    // Load sparklines from storage (now that main content is visible)
+    // Load sparklines from storage
     loadSparklinesFromStorage();
 
-    // Update device filter to show connected indicator
+    // Update device filter dropdown
     await updateDeviceFilter();
+
+    // Update device switcher
+    await updateSwitcherVisibility();
+    await updateSwitcherDisplay();
+    await updateDeviceDetailsBar();
 
     // Start auto-refresh
     startAutoRefresh();
@@ -558,63 +933,107 @@ function closeSettingsModal() {
     document.getElementById('settings-modal').classList.add('hidden');
 }
 
+
+/**
+ * Open edit device modal with current values (for connected device)
+ */
+async function openEditDeviceModal() {
+    if (!currentDeviceSerial) return;
+    await openEditDeviceModalForSerial(currentDeviceSerial);
+}
+
+/**
+ * Close edit device modal
+ */
+function closeEditDeviceModal() {
+    document.getElementById('edit-device-modal').classList.add('hidden');
+}
+
+/**
+ * Handle save device metadata button click
+ */
+async function handleSaveDeviceMetadata() {
+    const modal = document.getElementById('edit-device-modal');
+    const serial = modal.dataset.editingSerial || currentDeviceSerial;
+
+    if (!serial) return;
+
+    const nameInput = document.getElementById('edit-device-name-input');
+    const tagsInput = document.getElementById('edit-device-tags-input');
+
+    const name = nameInput.value.trim();
+    const tagsRaw = tagsInput.value;
+
+    // Parse tags: split by comma, trim whitespace, filter empty
+    const tags = tagsRaw
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t.length > 0);
+
+    try {
+        await setDeviceMetadata(serial, { name, tags });
+
+        // Update device filter dropdown to show new name
+        await updateDeviceFilter();
+
+        // Update switcher display if this is the selected device
+        if (serial === selectedDeviceSerial) {
+            await updateSwitcherDisplay();
+        }
+
+        closeEditDeviceModal();
+        console.log('Device metadata saved successfully');
+    } catch (error) {
+        console.error('Failed to save device metadata:', error);
+        showError('Failed to save device metadata: ' + error.message);
+    }
+}
+
 /**
  * Handle device disconnected event
  */
 async function handleDeviceDisconnected() {
     console.log('Device disconnected');
 
-    // Show connect section, hide device info
+    // Clear connected device state (but keep selected device)
+    connectedDeviceSerial = null;
+    currentLogType = null;
+    currentDeviceSerial = null;
+    currentDeviceModel = null;
+
+    // Show connect section
     document.getElementById('connect-section').classList.remove('hidden');
-    document.getElementById('device-info').classList.add('hidden');
 
     // Reset connect button state
     const connectBtn = document.getElementById('connect-btn');
     connectBtn.disabled = false;
     connectBtn.textContent = 'Connect Device';
 
-    // Update connection status
-    updateConnectionStatus(false);
-
-    // Reset widgets to GPS format (default) - clears any CO2-specific state
+    // Reset widgets to GPS format (default)
     configureWidgetsForLogType(LOG_TYPE.GPS);
-    currentLogType = null;
 
     // Show measurement history if available, otherwise show instructions
     await showAppropriateDisconnectedContent();
 
     // Hide status indicators
     document.getElementById('storage-status-inline').classList.add('hidden');
+    document.getElementById('battery-status-inline').classList.add('hidden');
 
-    // Hide product image and footer logo
-    document.getElementById('product-image-container').classList.add('hidden');
+    // Hide footer logo
     document.getElementById('footer-logo').classList.add('hidden');
 
     // Update device filter to remove connected indicator
     await updateDeviceFilter();
 
+    // Update device switcher - keep visible, show offline state
+    await updateSwitcherVisibility();
+    await updateSwitcherDisplay();
+    await updateDeviceDetailsBar();
+
     // Stop auto-refresh
     stopAutoRefresh();
 }
 
-/**
- * Update connection status indicator
- */
-function updateConnectionStatus(connected) {
-    const statusEl = document.getElementById('connection-status');
-    const dot = statusEl.querySelector('.w-2');
-    const text = statusEl.querySelector('.font-medium');
-
-    if (connected) {
-        dot.classList.remove('bg-gray-400');
-        dot.classList.add('bg-green-500');
-        text.textContent = 'Connected';
-    } else {
-        dot.classList.remove('bg-green-500');
-        dot.classList.add('bg-gray-400');
-        text.textContent = 'Disconnected';
-    }
-}
 
 /**
  * Update live sensor data
@@ -763,6 +1182,11 @@ function updateBattery(voltageMv, charging) {
     const batteryPercent = document.getElementById('battery-percent-inline');
     const batteryCharging = document.getElementById('battery-charging-inline');
     const batteryFill = document.getElementById('battery-fill');
+
+    // Only show battery if viewing the connected device
+    if (selectedDeviceSerial !== connectedDeviceSerial) {
+        return;
+    }
 
     // Convert voltage to percentage (LiPo battery curve approximation)
     // 3.3V = 0%, 4.15V = 100% (matches firmware calculation)
@@ -1010,6 +1434,11 @@ async function updateDeviceLogCount() {
  * @param {number} count - Current number of logs on device
  */
 function updateDeviceCapacity(count) {
+    // Only show storage if viewing the connected device
+    if (selectedDeviceSerial !== connectedDeviceSerial) {
+        return;
+    }
+
     const maxCapacity = DEVICE_CAPACITY.MAX_LOG_CAPACITY;
     const percent = (count / maxCapacity) * 100;
     const measurementInterval = DEVICE_CAPACITY.MEASUREMENT_INTERVAL;
@@ -1369,7 +1798,14 @@ async function handleExportCSV() {
         // Sort by timestamp ascending for export
         logs.sort((a, b) => a.timestamp - b.timestamp);
 
-        exportToCSV(logs);
+        // Build device metadata map for export
+        const metadataList = await getAllDeviceMetadata();
+        const deviceMetadataMap = {};
+        metadataList.forEach(m => {
+            deviceMetadataMap[m.serial] = m;
+        });
+
+        exportToCSV(logs, deviceMetadataMap);
         const filterMsg = currentDeviceFilter ? ` for ${currentDeviceFilter}` : '';
         showSuccess(`Exported ${logs.length} logs${filterMsg} to CSV`);
 
@@ -1396,7 +1832,14 @@ async function handleExportJSON() {
         // Sort by timestamp ascending for export
         logs.sort((a, b) => a.timestamp - b.timestamp);
 
-        exportToJSON(logs);
+        // Build device metadata map for export
+        const metadataList = await getAllDeviceMetadata();
+        const deviceMetadataMap = {};
+        metadataList.forEach(m => {
+            deviceMetadataMap[m.serial] = m;
+        });
+
+        exportToJSON(logs, deviceMetadataMap);
         const filterMsg = currentDeviceFilter ? ` for ${currentDeviceFilter}` : '';
         showSuccess(`Exported ${logs.length} logs${filterMsg} to JSON`);
 

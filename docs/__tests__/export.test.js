@@ -128,6 +128,65 @@ describe('Export - CSV', () => {
     expect(() => exportToCSV([])).toThrow('No logs to export');
     expect(() => exportToCSV(null)).toThrow('No logs to export');
   });
+
+  it('should include Device Name and Device Tags columns in CSV headers', () => {
+    const logs = createMockLogs();
+    let csvContent = '';
+
+    global.Blob = vi.fn().mockImplementation((content) => {
+      csvContent = content[0];
+      return { type: 'text/csv' };
+    });
+
+    exportToCSV(logs);
+
+    expect(csvContent).toContain('Device Name');
+    expect(csvContent).toContain('Device Tags');
+  });
+
+  it('should include device metadata in CSV rows when provided', () => {
+    const logs = createMockLogs();
+    let csvContent = '';
+
+    global.Blob = vi.fn().mockImplementation((content) => {
+      csvContent = content[0];
+      return { type: 'text/csv' };
+    });
+
+    const deviceMetadataMap = {
+      'TEST-001': { name: 'Kitchen Sensor', tags: ['kitchen', 'indoor'] },
+      'TEST-002': { name: 'Office', tags: ['office'] }
+    };
+
+    exportToCSV(logs, deviceMetadataMap);
+
+    expect(csvContent).toContain('Kitchen Sensor');
+    expect(csvContent).toContain('kitchen;indoor');
+    expect(csvContent).toContain('Office');
+    expect(csvContent).toContain('office');
+  });
+
+  it('should handle missing device metadata gracefully', () => {
+    const logs = createMockLogs();
+    let csvContent = '';
+
+    global.Blob = vi.fn().mockImplementation((content) => {
+      csvContent = content[0];
+      return { type: 'text/csv' };
+    });
+
+    // Only provide metadata for one device
+    const deviceMetadataMap = {
+      'TEST-001': { name: 'Kitchen Sensor', tags: ['kitchen'] }
+    };
+
+    exportToCSV(logs, deviceMetadataMap);
+
+    // TEST-002 should have empty name and tags (no error thrown)
+    expect(csvContent).toContain('Kitchen Sensor');
+    // The row for TEST-002 should still exist
+    expect(csvContent).toContain('TEST-002');
+  });
 });
 
 describe('Export - JSON', () => {
@@ -202,6 +261,54 @@ describe('Export - JSON', () => {
 
   it('should throw error when no logs provided', () => {
     expect(() => exportToJSON([])).toThrow('No logs to export');
+  });
+
+  it('should include device name and tags in JSON export', () => {
+    const logs = createMockLogs();
+    let jsonContent = '';
+
+    global.Blob = vi.fn().mockImplementation((content) => {
+      jsonContent = content[0];
+      return { type: 'application/json' };
+    });
+
+    const deviceMetadataMap = {
+      'TEST-001': { name: 'Kitchen Sensor', tags: ['kitchen', 'indoor'] },
+      'TEST-002': { name: 'Office', tags: ['office'] }
+    };
+
+    exportToJSON(logs, deviceMetadataMap);
+
+    const parsed = JSON.parse(jsonContent);
+
+    // Check first log (TEST-001)
+    const log1 = parsed.logs.find(l => l.device.serial === 'TEST-001');
+    expect(log1.device.name).toBe('Kitchen Sensor');
+    expect(log1.device.tags).toEqual(['kitchen', 'indoor']);
+
+    // Check second device (TEST-002)
+    const log2 = parsed.logs.find(l => l.device.serial === 'TEST-002');
+    expect(log2.device.name).toBe('Office');
+    expect(log2.device.tags).toEqual(['office']);
+  });
+
+  it('should handle missing device metadata with null/empty values', () => {
+    const logs = createMockLogs();
+    let jsonContent = '';
+
+    global.Blob = vi.fn().mockImplementation((content) => {
+      jsonContent = content[0];
+      return { type: 'application/json' };
+    });
+
+    // No metadata map provided
+    exportToJSON(logs, {});
+
+    const parsed = JSON.parse(jsonContent);
+    const log = parsed.logs[0];
+
+    expect(log.device.name).toBeNull();
+    expect(log.device.tags).toEqual([]);
   });
 });
 

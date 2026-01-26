@@ -61,83 +61,89 @@
     <!-- Page: Overview -->
     <div id="page-overview" class="page active">
         <div class="page-content">
-        <!-- Device Info -->
-        <div id="device-info" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
-            <div class="flex items-start justify-between gap-6">
-                <div class="flex items-start gap-6 flex-1 min-w-0">
-                    <!-- Product Image -->
-                    <div id="product-image-container" class="hidden flex-shrink-0">
-                        <img id="product-image" src="" alt="Product" class="w-28 h-28 object-cover rounded-lg shadow-sm">
-                    </div>
-
-                    <!-- Device Info -->
-                    <div class="flex-1 min-w-0">
-                        <!-- Model & Device Name -->
-                        <div class="mb-4">
-                            <h2 id="device-model" class="text-xl font-semibold text-gray-900">-</h2>
-                            <p id="device-name" class="text-sm text-gray-600 mt-0.5">-</p>
+        <!-- Device Header Bar (unified switcher + status + actions) -->
+        <div id="device-header-bar" class="hidden bg-white rounded-lg shadow-sm border border-gray-100 p-3 mb-6">
+            <div class="flex items-center justify-between">
+                <!-- Left: Device Selector -->
+                <div class="relative">
+                    <button id="device-switcher-btn" class="flex items-center gap-3 px-2 py-1 hover:bg-gray-50 rounded-lg transition">
+                        <img id="switcher-device-icon" src="" class="w-10 h-10 rounded-lg object-cover" alt="" onerror="this.style.display='none'">
+                        <div class="flex items-center gap-2">
+                            <span id="switcher-device-name" class="text-sm font-semibold text-gray-900">Select Device</span>
+                            <span id="switcher-status-dot" class="w-2 h-2 rounded-full bg-gray-400"></span>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
                         </div>
+                    </button>
 
-                        <!-- Status Line -->
-                        <div class="flex items-center gap-6 mb-4 text-sm">
-                            <div id="connection-status" class="flex items-center">
-                                <span class="w-2 h-2 bg-gray-400 rounded-full mr-2"></span>
-                                <span class="font-medium">Disconnected</span>
-                            </div>
-                            <div id="battery-status-inline" class="flex items-center hidden">
-                                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <rect x="2" y="7" width="18" height="10" rx="1" stroke-width="2"/>
-                                    <rect id="battery-fill" x="3" y="8" width="0" height="8" fill="currentColor" opacity="0.5"/>
-                                    <path d="M20 10h2v4h-2" stroke-width="2"/>
-                                </svg>
-                                <span id="battery-percent-inline" class="font-medium">--%</span>
-                                <span id="battery-charging-inline" class="ml-1 text-xs text-gray-500 hidden">(charging)</span>
-                            </div>
-                            <div id="storage-status-inline" class="flex items-center hidden">
-                                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
-                                </svg>
-                                <span id="storage-count-inline" class="font-medium">-- measurements</span>
-                                <span id="storage-full-date" class="ml-2 text-xs text-gray-500 hidden cursor-help" title="">Memory full in --</span>
-                            </div>
+                    <!-- Dropdown Menu -->
+                    <div id="device-switcher-dropdown" class="hidden absolute left-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                        <div id="device-list" class="py-2 max-h-64 overflow-y-auto">
+                            <!-- Populated dynamically -->
                         </div>
-
-                        <!-- Metadata -->
-                        <div class="space-y-2 text-sm">
-                            <div class="flex">
-                                <span class="text-gray-500 w-16">Serial</span>
-                                <span id="device-serial" class="font-mono text-gray-900">-</span>
-                            </div>
-                            <div class="flex">
-                                <span class="text-gray-500 w-16">Format</span>
-                                <span id="log-format" class="text-gray-900">-</span>
-                            </div>
-                            <div class="flex">
-                                <span class="text-gray-500 w-16">Version</span>
-                                <span id="device-firmware" class="font-mono text-gray-900">-</span>
-                            </div>
+                        <div class="border-t border-gray-100 p-2">
+                            <button id="connect-new-device-btn" class="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                Connect new device
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Device Actions -->
-                <div class="flex items-center gap-2 flex-shrink-0">
-                    <button id="sync-data-btn-header" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                <!-- Center: Status Info -->
+                <div class="flex items-center gap-6 text-sm">
+                    <!-- Battery -->
+                    <div id="battery-status-inline" class="flex items-center hidden">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <rect x="2" y="7" width="18" height="10" rx="1" stroke-width="2"/>
+                            <rect id="battery-fill" x="3" y="8" width="0" height="8" fill="currentColor" opacity="0.5"/>
+                            <path d="M20 10h2v4h-2" stroke-width="2"/>
+                        </svg>
+                        <span id="battery-percent-inline" class="font-medium">--%</span>
+                        <span id="battery-charging-inline" class="ml-1 text-xs text-gray-500 hidden">(charging)</span>
+                    </div>
+                    <!-- Storage -->
+                    <div id="storage-status-inline" class="flex items-center hidden">
+                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/>
+                        </svg>
+                        <span id="storage-count-inline" class="font-medium">-- measurements</span>
+                        <span id="storage-full-date" class="ml-2 text-xs text-gray-500 hidden cursor-help" title="">Memory full in --</span>
+                    </div>
+                    <!-- Last Sync (shown when offline) -->
+                    <span id="details-last-sync" class="text-gray-500 hidden"></span>
+                </div>
+
+                <!-- Right: Actions -->
+                <div class="flex items-center gap-2">
+                    <button id="sync-data-btn-header" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1.5 px-3 rounded-lg transition duration-200">
                         Sync Data
                     </button>
-                    <button id="settings-btn" class="border border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800 p-2 rounded-lg transition duration-200" title="Device Settings">
+                    <button id="settings-btn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200" title="Device Settings">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
                             <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/>
                         </svg>
                     </button>
-                    <button id="disconnect-btn-header" class="border border-gray-300 hover:border-gray-400 text-gray-600 hover:text-gray-800 p-2 rounded-lg transition duration-200" title="Disconnect Device">
+                    <button id="disconnect-btn-header" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200" title="Disconnect Device">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M7.27 1.047a1 1 0 0 1 1.46 0l6.345 6.77c.6.638.146 1.683-.73 1.683H1.656C.78 9.5.326 8.455.926 7.816zM14.346 8.5 8 1.731 1.654 8.5zM.5 11.5a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1zm14 0h-13v1h13z"/>
                         </svg>
                     </button>
                 </div>
             </div>
+        </div>
+
+        <!-- Hidden fields for device data (used by existing code) -->
+        <div class="hidden">
+            <span id="device-serial">-</span>
+            <span id="device-model">-</span>
+            <span id="device-firmware">-</span>
+            <span id="log-format">-</span>
+            <span id="device-tags"></span>
         </div>
 
         <!-- Low Battery Warning -->
@@ -453,6 +459,28 @@
                     </div>
                     <p class="text-xs text-gray-400 mt-2">Yellow events require 5+ min duration. Anomaly spikes (z-score) also detected.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Device Modal -->
+    <div id="edit-device-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-sm w-full mx-4 p-6">
+            <h3 class="text-lg font-semibold mb-4">Edit Device</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <input id="edit-device-name-input" type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Kitchen Sensor">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                    <input id="edit-device-tags-input" type="text" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., kitchen, indoor">
+                    <p class="text-xs text-gray-500 mt-1">Separate tags with commas</p>
+                </div>
+            </div>
+            <div class="flex gap-2 mt-6">
+                <button id="save-device-metadata-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded transition duration-200">Save</button>
+                <button id="cancel-device-metadata-btn" class="flex-1 border border-gray-300 hover:bg-gray-50 py-2 rounded transition duration-200">Cancel</button>
             </div>
         </div>
     </div>

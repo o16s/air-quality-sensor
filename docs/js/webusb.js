@@ -206,6 +206,76 @@ export async function autoReconnect() {
 }
 
 /**
+ * Get list of all paired devices (without connecting)
+ * @returns {Promise<Array>} Array of device info objects
+ */
+export async function getPairedDevices() {
+    if (!checkWebUSBSupport()) {
+        return [];
+    }
+
+    try {
+        const devices = await navigator.usb.getDevices();
+        return devices
+            .filter(d =>
+                d.vendorId === DEVICE_FILTERS[0].vendorId &&
+                d.productId === DEVICE_FILTERS[0].productId
+            )
+            .map(d => ({
+                serialNumber: d.serialNumber,
+                productName: d.productName,
+                device: d
+            }));
+    } catch (error) {
+        console.error('Failed to get paired devices:', error);
+        return [];
+    }
+}
+
+/**
+ * Connect to a specific device by serial number
+ * Disconnects current device if needed
+ * @param {string} serialNumber - Serial number of device to connect to
+ * @returns {Promise<boolean>} True if connected successfully
+ */
+export async function connectToDeviceBySerial(serialNumber) {
+    if (!checkWebUSBSupport()) {
+        return false;
+    }
+
+    try {
+        // Get all paired devices
+        const devices = await navigator.usb.getDevices();
+
+        // Find device with matching serial
+        const targetDevice = devices.find(d =>
+            d.vendorId === DEVICE_FILTERS[0].vendorId &&
+            d.productId === DEVICE_FILTERS[0].productId &&
+            d.serialNumber === serialNumber
+        );
+
+        if (!targetDevice) {
+            console.log(`Device ${serialNumber} not found in paired devices`);
+            return false;
+        }
+
+        // Disconnect current device if different
+        if (device && device.serialNumber !== serialNumber) {
+            await disconnectDevice();
+        }
+
+        // Connect to target device
+        device = targetDevice;
+        await openDevice();
+        return true;
+
+    } catch (error) {
+        console.error(`Failed to connect to device ${serialNumber}:`, error);
+        return false;
+    }
+}
+
+/**
  * Monitor USB device connection/disconnection events
  */
 export function monitorUSBEvents() {

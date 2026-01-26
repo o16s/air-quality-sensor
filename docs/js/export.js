@@ -17,8 +17,10 @@ function formatDateTimeISO(date) {
 /**
  * Export logs to CSV format
  * Automatically detects GPS vs TSL2591 vs CO2 format
+ * @param {Array} logs - Log records to export
+ * @param {Object} deviceMetadataMap - Map of serial -> {name, tags} (optional)
  */
-export function exportToCSV(logs) {
+export function exportToCSV(logs, deviceMetadataMap = {}) {
     if (!logs || logs.length === 0) {
         throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
@@ -41,6 +43,8 @@ export function exportToCSV(logs) {
             'Battery (V)',
             'Charging',
             'Device Serial',
+            'Device Name',
+            'Device Tags',
             'Downloaded At'
         ];
     } else if (isTSL) {
@@ -57,6 +61,8 @@ export function exportToCSV(logs) {
             'Battery (V)',
             'Charging',
             'Device Serial',
+            'Device Name',
+            'Device Tags',
             'Downloaded At'
         ];
     } else {
@@ -72,6 +78,8 @@ export function exportToCSV(logs) {
             'Battery (V)',
             'Charging',
             'Device Serial',
+            'Device Name',
+            'Device Tags',
             'Downloaded At'
         ];
     }
@@ -82,6 +90,11 @@ export function exportToCSV(logs) {
     logs.forEach(log => {
         const date = new Date(log.timestamp * 1000);
         const downloadDate = log.downloadedAt ? new Date(log.downloadedAt * 1000) : null;
+
+        // Look up device metadata for this log's serial
+        const metadata = log.deviceSerial ? deviceMetadataMap[log.deviceSerial] : null;
+        const deviceName = metadata?.name || '';
+        const deviceTags = metadata?.tags?.join(';') || '';
 
         let row;
         if (isCO2) {
@@ -96,6 +109,8 @@ export function exportToCSV(logs) {
                 log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
                 log.charging ? '1' : '0',
                 log.deviceSerial || '',
+                deviceName,
+                deviceTags,
                 downloadDate ? downloadDate.toISOString() : ''
             ];
         } else if (isTSL) {
@@ -112,6 +127,8 @@ export function exportToCSV(logs) {
                 log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
                 log.charging ? '1' : '0',
                 log.deviceSerial || '',
+                deviceName,
+                deviceTags,
                 downloadDate ? downloadDate.toISOString() : ''
             ];
         } else {
@@ -127,6 +144,8 @@ export function exportToCSV(logs) {
                 log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
                 log.charging ? '1' : '0',
                 log.deviceSerial || '',
+                deviceName,
+                deviceTags,
                 downloadDate ? downloadDate.toISOString() : ''
             ];
         }
@@ -151,8 +170,10 @@ export function exportToCSV(logs) {
 
 /**
  * Export logs to JSON format
+ * @param {Array} logs - Log records to export
+ * @param {Object} deviceMetadataMap - Map of serial -> {name, tags} (optional)
  */
-export function exportToJSON(logs) {
+export function exportToJSON(logs, deviceMetadataMap = {}) {
     if (!logs || logs.length === 0) {
         throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
@@ -176,6 +197,9 @@ export function exportToJSON(logs) {
             sensorFormat: formatName
         },
         logs: logs.map(log => {
+            // Look up device metadata for this log's serial
+            const metadata = log.deviceSerial ? deviceMetadataMap[log.deviceSerial] : null;
+
             const baseLog = {
                 timestamp: log.timestamp,
                 dateTime: new Date(log.timestamp * 1000).toISOString(),
@@ -195,7 +219,9 @@ export function exportToJSON(logs) {
                     charging: log.charging
                 },
                 device: {
-                    serial: log.deviceSerial
+                    serial: log.deviceSerial,
+                    name: metadata?.name || null,
+                    tags: metadata?.tags || []
                 },
                 downloadedAt: log.downloadedAt ? new Date(log.downloadedAt * 1000).toISOString() : null
             };

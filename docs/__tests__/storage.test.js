@@ -17,7 +17,10 @@ import {
   getLatestLog,
   getRecentLogs,
   hasLogs,
-  getDatabaseStats
+  getDatabaseStats,
+  getDeviceMetadata,
+  setDeviceMetadata,
+  getAllDeviceMetadata
 } from '../js/storage.js';
 
 // Sample log data
@@ -512,5 +515,98 @@ describe('Storage - Duplicate Detection', () => {
 
     const allLogs = await getAllLogs();
     expect(allLogs).toHaveLength(2);
+  });
+});
+
+describe('Storage - Device Metadata', () => {
+  it('should return null for non-existent device metadata', async () => {
+    const metadata = await getDeviceMetadata('NONEXISTENT-SERIAL');
+    expect(metadata).toBeNull();
+  });
+
+  it('should set and get device metadata', async () => {
+    await setDeviceMetadata('TEST-SERIAL-001', {
+      name: 'Kitchen Sensor',
+      tags: ['kitchen', 'indoor']
+    });
+
+    const metadata = await getDeviceMetadata('TEST-SERIAL-001');
+
+    expect(metadata).toBeDefined();
+    expect(metadata.serial).toBe('TEST-SERIAL-001');
+    expect(metadata.name).toBe('Kitchen Sensor');
+    expect(metadata.tags).toEqual(['kitchen', 'indoor']);
+    expect(metadata.updatedAt).toBeTypeOf('number');
+  });
+
+  it('should update existing device metadata', async () => {
+    await setDeviceMetadata('TEST-SERIAL-002', {
+      name: 'Old Name',
+      tags: ['old']
+    });
+
+    await setDeviceMetadata('TEST-SERIAL-002', {
+      name: 'New Name',
+      tags: ['new', 'updated']
+    });
+
+    const metadata = await getDeviceMetadata('TEST-SERIAL-002');
+
+    expect(metadata.name).toBe('New Name');
+    expect(metadata.tags).toEqual(['new', 'updated']);
+  });
+
+  it('should handle empty name and tags', async () => {
+    await setDeviceMetadata('TEST-SERIAL-003', {
+      name: '',
+      tags: []
+    });
+
+    const metadata = await getDeviceMetadata('TEST-SERIAL-003');
+
+    expect(metadata.name).toBe('');
+    expect(metadata.tags).toEqual([]);
+  });
+
+  it('should get all device metadata', async () => {
+    await setDeviceMetadata('DEVICE-A', { name: 'Device A', tags: ['a'] });
+    await setDeviceMetadata('DEVICE-B', { name: 'Device B', tags: ['b'] });
+    await setDeviceMetadata('DEVICE-C', { name: 'Device C', tags: ['c'] });
+
+    const allMetadata = await getAllDeviceMetadata();
+
+    expect(allMetadata.length).toBeGreaterThanOrEqual(3);
+
+    const deviceA = allMetadata.find(m => m.serial === 'DEVICE-A');
+    expect(deviceA).toBeDefined();
+    expect(deviceA.name).toBe('Device A');
+  });
+
+  it('should store metadata with updatedAt timestamp', async () => {
+    const beforeTime = Math.floor(Date.now() / 1000) - 1;
+
+    await setDeviceMetadata('TEST-SERIAL-004', {
+      name: 'Test Device',
+      tags: []
+    });
+
+    const afterTime = Math.floor(Date.now() / 1000) + 1;
+
+    const metadata = await getDeviceMetadata('TEST-SERIAL-004');
+
+    expect(metadata.updatedAt).toBeGreaterThanOrEqual(beforeTime);
+    expect(metadata.updatedAt).toBeLessThanOrEqual(afterTime);
+  });
+
+  it('should handle null/undefined values gracefully', async () => {
+    await setDeviceMetadata('TEST-SERIAL-005', {
+      name: null,
+      tags: undefined
+    });
+
+    const metadata = await getDeviceMetadata('TEST-SERIAL-005');
+
+    expect(metadata.name).toBe('');
+    expect(metadata.tags).toEqual([]);
   });
 });
