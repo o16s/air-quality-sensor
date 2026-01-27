@@ -236,10 +236,39 @@
                                 <div id="co2-value" class="text-2xl font-bold text-gray-800">-- ppm</div>
                             </div>
                         </div>
+                        <!-- Pressure Card - shown for CO2 format -->
+                        <div id="pressure-card" class="sensor-card relative overflow-hidden hidden">
+                            <canvas id="pressure-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                            <div class="relative z-10">
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_pressure">Pressure</div>
+                                <div id="pressure-value" class="text-2xl font-bold text-gray-800">-- hPa</div>
+                                <div class="text-gray-400 text-[10px] mt-0.5" data-i18n="sensor_fromLastSync">(from last sync)</div>
+                            </div>
+                        </div>
+                        <!-- Gas Resistance Card - shown for CO2 format -->
+                        <div id="gasResistance-card" class="sensor-card relative overflow-hidden hidden">
+                            <canvas id="gasResistance-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                            <div class="relative z-10">
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_gasResistance">Gas Resistance</div>
+                                <div id="gasResistance-value" class="text-2xl font-bold text-gray-800">--</div>
+                                <div class="text-gray-400 text-[10px] mt-0.5" data-i18n="sensor_fromLastSync">(from last sync)</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="mt-4 text-xs text-gray-500">
                         <div><span data-i18n="live_sensorData">Sensor data</span>: <span id="measured-age">--</span></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Heatmap Section -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="mb-3">
+                    <h2 class="widget-header" data-i18n="heatmap_title">Activity Heatmap</h2>
+                    <p id="heatmap-subtitle" class="widget-subtitle" data-i18n="heatmap_subtitle">Hourly averages (last 14 days)</p>
+                </div>
+                <div id="heatmap-container" class="flex gap-6 overflow-x-auto">
+                    <p class="text-sm text-gray-500 text-center py-4">No data available</p>
                 </div>
             </div>
 
@@ -259,27 +288,6 @@
                 </div>
                 <div id="events-timeline">
                     <p class="text-sm text-gray-500 text-center py-4">No data available</p>
-                </div>
-            </div>
-
-            <!-- Heatmap Section -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div class="flex items-center justify-between mb-3">
-                    <div>
-                        <h2 class="widget-header" data-i18n="heatmap_title">Activity Heatmap</h2>
-                        <p class="widget-subtitle" data-i18n="heatmap_subtitle">Hourly averages (last 14 days)</p>
-                    </div>
-                    <select id="heatmap-metric" class="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="pm25" selected>PM2.5</option>
-                        <option value="pm10">PM10</option>
-                        <option value="co2">CO2</option>
-                    </select>
-                </div>
-                <div id="heatmap-container" class="overflow-x-auto">
-                    <p class="text-sm text-gray-500 text-center py-4">No data available</p>
-                </div>
-                <div id="heatmap-legend" class="mt-3 flex items-center justify-center gap-4 text-xs text-gray-500">
-                    <!-- Legend populated by renderHeatmapLegend() -->
                 </div>
             </div>
         </div>
@@ -355,7 +363,7 @@
                     <div>
                         <div class="flex items-center gap-3 mt-1">
                             <div id="browser-log-count" class="text-sm text-gray-600">
-                                <span class="font-medium">0</span> measurements stored locally
+                                <span class="font-medium">0</span> <span data-i18n="history_storedLocally">measurements stored locally</span>
                             </div>
                             <div id="last-sync-time" class="text-xs text-gray-500" data-i18n="time_neverSynced">Never synced</div>
                         </div>

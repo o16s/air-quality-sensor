@@ -5,33 +5,8 @@
 
 import { getLogsByDateRange, getRecentLogs } from '../storage.js';
 import { SPARKLINE_THRESHOLDS } from '../constants.js';
-
-/**
- * Calculate temperature scale (uses fixed range 16-27°C for office comfort)
- * @param {Array<number>} tempValues - Temperature values in °C
- * @returns {Object} Scale configuration with range and thresholds
- */
-export function getTemperatureScale(tempValues) {
-    if (!tempValues || tempValues.length === 0) {
-        return SPARKLINE_THRESHOLDS.temperature;
-    }
-
-    const dataMin = Math.min(...tempValues);
-    const dataMax = Math.max(...tempValues);
-
-    // Use fixed temperature range from constants (16-27°C)
-    let rangeMin = SPARKLINE_THRESHOLDS.temperature.range.min; // Fixed at 16°C
-    let rangeMax = SPARKLINE_THRESHOLDS.temperature.range.max; // Fixed at 27°C
-
-    // Expand if data exceeds range
-    if (dataMin < rangeMin) rangeMin = Math.floor(dataMin);
-    if (dataMax > rangeMax) rangeMax = Math.ceil(dataMax);
-
-    return {
-        range: { min: rangeMin, max: rangeMax },
-        thresholds: SPARKLINE_THRESHOLDS.temperature.thresholds
-    };
-}
+import { METRIC_COLORS } from './historyChart.js';
+import * as state from './state.js';
 
 /**
  * Load sparklines from browser storage (last 12 hours, or recent data if less available)
@@ -39,15 +14,16 @@ export function getTemperatureScale(tempValues) {
  */
 export async function loadSparklinesFromStorage() {
     try {
-        // Get logs from last 12 hours
+        // Get logs from last 12 hours, filtered by selected device
         const now = Math.floor(Date.now() / 1000);
         const twelveHoursAgo = now - (12 * 60 * 60); // 43,200 seconds
+        const deviceSerial = state.get('selectedDeviceSerial');
 
-        let recentLogs = await getLogsByDateRange(twelveHoursAgo, now);
+        let recentLogs = await getLogsByDateRange(twelveHoursAgo, now, deviceSerial);
 
         // If we don't have enough data in 12 hours, fall back to most recent logs
         if (!recentLogs || recentLogs.length < 2) {
-            recentLogs = await getRecentLogs(10); // Get up to 10 most recent logs
+            recentLogs = await getRecentLogs(10, deviceSerial); // Get up to 10 most recent logs
         }
 
         if (!recentLogs || recentLogs.length < 2) {
@@ -69,17 +45,17 @@ export async function loadSparklinesFromStorage() {
         const humidityValues = logsChronological.map(log => log.humidity).filter(v => v !== undefined && v !== null);
 
         // Update common sparklines (temp and humidity are on all formats)
-        const tempConfig = { ...getTemperatureScale(tempValues), timestamps };
+        const tempConfig = { ...SPARKLINE_THRESHOLDS.temperature, timestamps };
         const humidityConfig = { ...SPARKLINE_THRESHOLDS.humidity, timestamps };
-        updateSparkline('temp-sparkline', tempValues, tempConfig);
-        updateSparkline('humidity-sparkline', humidityValues, humidityConfig);
+        updateSparkline('temp-sparkline', tempValues, tempConfig, 'temperature');
+        updateSparkline('humidity-sparkline', humidityValues, humidityConfig, 'humidity');
 
         // Update format-specific sparklines (visibility handled by configureWidgetsForLogType)
         if (hasCO2Data) {
             // CO2 format: update CO2 sparkline
             const co2Values = logsChronological.map(log => log.co2).filter(v => v !== undefined && v !== null);
             const co2Config = { ...SPARKLINE_THRESHOLDS.co2, timestamps };
-            updateSparkline('co2-sparkline', co2Values, co2Config);
+            updateSparkline('co2-sparkline', co2Values, co2Config, 'co2');
         }
 
         if (hasPMData) {
@@ -88,15 +64,35 @@ export async function loadSparklinesFromStorage() {
             const pm10Values = logsChronological.map(log => log.pm10).filter(v => v !== undefined && v !== null);
             const pm25Config = { ...SPARKLINE_THRESHOLDS.pm25, timestamps };
             const pm10Config = { ...SPARKLINE_THRESHOLDS.pm10, timestamps };
-            updateSparkline('pm25-sparkline', pm25Values, pm25Config);
-            updateSparkline('pm10-sparkline', pm10Values, pm10Config);
+            updateSparkline('pm25-sparkline', pm25Values, pm25Config, 'pm25');
+            updateSparkline('pm10-sparkline', pm10Values, pm10Config, 'pm10');
         }
 
         if (hasLuxData) {
             // TSL2591 and CO2 formats have lux data
             const luxValues = logsChronological.map(log => log.lux).filter(v => v !== undefined && v !== null);
             const luxConfig = { ...SPARKLINE_THRESHOLDS.lux, timestamps };
-            updateSparkline('lux-sparkline', luxValues, luxConfig);
+            updateSparkline('lux-sparkline', luxValues, luxConfig, 'lux');
+        }
+
+        // Pressure and gas resistance: populate from most recent log (not in live status)
+        const hasPressureData = logsChronological.some(log => log.pressure !== undefined && log.pressure !== null);
+        if (hasPressureData) {
+            const pressureValues = logsChronological.map(log => log.pressure).filter(v => v !== undefined && v !== null);
+            const pressureConfig = { ...SPARKLINE_THRESHOLDS.pressure, timestamps };
+            updateSparkline('pressure-sparkline', pressureValues, pressureConfig, 'pressure');
+
+            const latestPressure = pressureValues[pressureValues.length - 1];
+            const pressureEl = document.getElementById('pressure-value');
+            if (pressureEl) pressureEl.textContent = `${latestPressure.toFixed(1)} hPa`;
+        }
+
+        const hasGasResData = logsChronological.some(log => log.gasResistance !== undefined && log.gasResistance !== null);
+        if (hasGasResData) {
+            const gasResValues = logsChronological.map(log => log.gasResistance).filter(v => v !== undefined && v !== null);
+            const latestGasRes = gasResValues[gasResValues.length - 1];
+            const gasResEl = document.getElementById('gasResistance-value');
+            if (gasResEl) gasResEl.textContent = `${Math.round(latestGasRes)} \u03A9`;
         }
     } catch (error) {
         console.error('Failed to load sparklines from storage:', error);
@@ -111,8 +107,9 @@ export async function loadSparklinesFromStorage() {
  * @param {Object} config.range - Fixed y-axis range {min, max}
  * @param {Array} config.thresholds - Threshold definitions [{label, value, color, name}, ...]
  * @param {Array<number>} config.timestamps - Unix timestamps for each data point
+ * @param {string|null} metric - Metric key for color lookup (e.g. 'temperature', 'humidity')
  */
-export function updateSparkline(canvasId, dataPoints, config = {}) {
+export function updateSparkline(canvasId, dataPoints, config = {}, metric = null) {
     const canvas = document.getElementById(canvasId);
     if (!canvas || !dataPoints || dataPoints.length < 2) {
         return; // Need minimum 2 points for sparkline
@@ -121,12 +118,15 @@ export function updateSparkline(canvasId, dataPoints, config = {}) {
     const { range = {}, thresholds = [] } = config;
 
     const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
     const width = canvas.offsetWidth;
     const height = canvas.offsetHeight;
+    if (width <= 0 || height <= 0) return;
 
-    // Set canvas size to match actual display size
-    canvas.width = width;
-    canvas.height = height;
+    // Set canvas size to match actual display size (DPR-aware for crisp rendering)
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -213,7 +213,10 @@ export function updateSparkline(canvasId, dataPoints, config = {}) {
     const lastPoint = points[points.length - 1];
     ctx.lineTo(lastPoint.x, lastPoint.y);
 
-    ctx.strokeStyle = 'rgba(59, 130, 246, 0.7)'; // blue-600 at 70% opacity (increased visibility)
+    const lineColor = (metric && METRIC_COLORS[metric])
+        ? METRIC_COLORS[metric] + 'b3'   // 70% opacity hex
+        : 'rgba(59, 130, 246, 0.7)';
+    ctx.strokeStyle = lineColor;
     ctx.lineWidth = 2;
     ctx.stroke();
 

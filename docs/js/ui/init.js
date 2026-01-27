@@ -46,6 +46,7 @@ import {
 import { handleExportCSV, handleExportJSON } from './export.js';
 import { initReportPage, setupReportEventHandlers } from './reportUI.js';
 import { updateEventsTimeline } from './eventsUI.js';
+import { initHistoryChart, refreshHistoryChart } from './historyChartUI.js';
 
 /**
  * Handle clear logs button - clears all logs from browser storage
@@ -120,19 +121,25 @@ const WIDGET_CONFIG = {
         pm25: { visible: true, label: 'PM2.5', valueId: 'pm25-value', sparklineId: 'pm25-sparkline' },
         pm10: { visible: true, label: 'PM10', valueId: 'pm10-value', sparklineId: 'pm10-sparkline' },
         co2:  { visible: false },
-        lux:  { visible: false }
+        lux:  { visible: false },
+        pressure: { visible: false },
+        gasResistance: { visible: false }
     },
     [LOG_TYPE.TSL2591]: {
         pm25: { visible: true, label: 'PM2.5', valueId: 'pm25-value', sparklineId: 'pm25-sparkline' },
         pm10: { visible: true, label: 'PM10', valueId: 'pm10-value', sparklineId: 'pm10-sparkline' },
         co2:  { visible: false },
-        lux:  { visible: true, label: 'Light', valueId: 'lux-value', sparklineId: 'lux-sparkline' }
+        lux:  { visible: true, label: 'Light', valueId: 'lux-value', sparklineId: 'lux-sparkline' },
+        pressure: { visible: false },
+        gasResistance: { visible: false }
     },
     [LOG_TYPE.CO2]: {
         pm25: { visible: false },
         pm10: { visible: false },
         co2:  { visible: true, label: 'CO2', valueId: 'co2-value', sparklineId: 'co2-sparkline' },
-        lux:  { visible: true, label: 'Light', valueId: 'lux-value', sparklineId: 'lux-sparkline' }
+        lux:  { visible: false },
+        pressure: { visible: true, label: 'Pressure', valueId: 'pressure-value', sparklineId: 'pressure-sparkline' },
+        gasResistance: { visible: true, label: 'Gas Resistance', valueId: 'gasResistance-value', sparklineId: 'gasResistance-sparkline' }
     }
 };
 
@@ -192,8 +199,30 @@ export function configureWidgetsForLogType(logType) {
         }
     }
 
+    // Configure Pressure card
+    const pressureCard = document.getElementById('pressure-card');
+    if (pressureCard) {
+        if (config.pressure.visible) {
+            pressureCard.classList.remove('hidden');
+            document.getElementById('pressure-value').textContent = '-- hPa';
+        } else {
+            pressureCard.classList.add('hidden');
+        }
+    }
+
+    // Configure Gas Resistance card
+    const gasResCard = document.getElementById('gasResistance-card');
+    if (gasResCard) {
+        if (config.gasResistance.visible) {
+            gasResCard.classList.remove('hidden');
+            document.getElementById('gasResistance-value').textContent = '--';
+        } else {
+            gasResCard.classList.add('hidden');
+        }
+    }
+
     // Clear all sparkline canvases to avoid stale data
-    ['pm25-sparkline', 'pm10-sparkline', 'co2-sparkline', 'lux-sparkline'].forEach(id => {
+    ['pm25-sparkline', 'pm10-sparkline', 'co2-sparkline', 'lux-sparkline', 'pressure-sparkline', 'gasResistance-sparkline'].forEach(id => {
         const canvas = document.getElementById(id);
         if (canvas) {
             const ctx = canvas.getContext('2d');
@@ -238,6 +267,12 @@ export function switchPage(pageId) {
     });
     const activePage = document.getElementById(`page-${pageId}`);
     if (activePage) activePage.classList.add('active');
+
+    // Re-render history chart when navigating to History page
+    // (canvas may not have rendered while the page was display:none)
+    if (pageId === 'history') {
+        refreshHistoryChart();
+    }
 }
 
 /**
@@ -330,19 +365,14 @@ function setupEventHandlers() {
         updateSwitcherDisplay();
         updateDeviceDetailsBar();
         updateLogTable(newFilter);
-        updateHeatmap(newFilter, state.get('currentHeatmapMetric'));
+        updateHeatmap(newFilter);
+        refreshHistoryChart();
     });
 
     // Events time filter dropdown
     document.getElementById('events-time-filter').addEventListener('change', (e) => {
         state.set('currentEventsTimeFilter', e.target.value);
         updateEventsTimeline(state.get('currentDeviceFilter'));
-    });
-
-    // Heatmap metric dropdown
-    document.getElementById('heatmap-metric').addEventListener('change', (e) => {
-        state.set('currentHeatmapMetric', e.target.value);
-        updateHeatmap(state.get('currentDeviceFilter'), e.target.value);
     });
 
     // Device Switcher events
@@ -400,10 +430,9 @@ export async function initUI() {
     await updateBrowserLogCount();
     await updateDeviceFilter();
     await updateLogTable();
-    await loadSparklinesFromStorage();
+    await initHistoryChart();
     loadLastSyncTime();
     renderThresholdTable();
-    await updateHeatmap(null, state.get('currentHeatmapMetric'));
 
     // Initialize device switcher
     await updateSwitcherVisibility();
@@ -426,4 +455,9 @@ export async function initUI() {
         await updateSwitcherDisplay();
         await updateDeviceDetailsBar();
     }
+
+    // Load sparklines and heatmap after device selection is resolved
+    const selectedDevice = state.get('selectedDeviceSerial');
+    await loadSparklinesFromStorage();
+    await updateHeatmap(selectedDevice || null);
 }

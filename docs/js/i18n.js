@@ -67,6 +67,7 @@ const translations = {
         sensor_light: "Light",
         sensor_pressure: "Pressure",
         sensor_gasResistance: "Gas Resistance",
+        sensor_fromLastSync: "(from last sync)",
         sensor_battery: "Battery",
 
         // Time strings
@@ -563,6 +564,7 @@ const translations = {
         sensor_light: "Licht",
         sensor_pressure: "Druck",
         sensor_gasResistance: "Gaswiderstand",
+        sensor_fromLastSync: "(letzte Synchronisierung)",
         sensor_battery: "Batterie",
 
         // Time strings

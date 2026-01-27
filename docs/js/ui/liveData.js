@@ -33,9 +33,8 @@ export async function updateLiveData() {
 
         // Update format-specific values (widget visibility handled by configureWidgetsForLogType)
         if (currentLogType === LOG_TYPE.CO2) {
-            // CO2 format: update CO2 and Lux values
+            // CO2 format: update CO2 value (lux hidden for CO2 — pressure/gasResistance from sync)
             updateCO2Value('co2-value', status.co2);
-            updateLux(status.lux);
         } else {
             // GPS/TSL2591 format: update PM values
             updatePMValue('pm25-value', status.pm25);
