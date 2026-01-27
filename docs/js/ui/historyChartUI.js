@@ -17,7 +17,8 @@ const ALL_METRICS = [
     { key: 'pm10',        i18nKey: 'sensor_pm10',        field: 'pm10' },
     { key: 'co2',         i18nKey: 'sensor_co2',         field: 'co2' },
     { key: 'lux',         i18nKey: 'sensor_light',       field: 'lux' },
-    { key: 'pressure',    i18nKey: 'sensor_pressure',    field: 'pressure' }
+    { key: 'pressure',    i18nKey: 'sensor_pressure',    field: 'pressure' },
+    { key: 'gasResistance', i18nKey: 'sensor_gasResistance', field: 'gasResistance' }
 ];
 
 const BUCKET_SECONDS = 900; // 15 minutes
@@ -350,7 +351,8 @@ const METRIC_LABELS = {
     pm10:        'PM10',
     co2:         'CO2',
     lux:         'Light',
-    pressure:    'Pressure'
+    pressure:    'Pressure',
+    gasResistance: 'Gas Res.'
 };
 
 /**

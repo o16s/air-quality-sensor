@@ -11,7 +11,8 @@ export const METRIC_COLORS = {
     pm10:        '#8b5cf6',
     co2:         '#10b981',
     lux:         '#f97316',
-    pressure:    '#6366f1'
+    pressure:    '#6366f1',
+    gasResistance: '#ec4899'
 };
 
 /** Unit string per metric */
@@ -22,7 +23,8 @@ export const METRIC_UNITS = {
     pm10:        '\u00B5g/m\u00B3',
     co2:         'ppm',
     lux:         'lux',
-    pressure:    'hPa'
+    pressure:    'hPa',
+    gasResistance: '\u03A9'
 };
 
 // Layout constants

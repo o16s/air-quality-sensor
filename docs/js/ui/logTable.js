@@ -144,6 +144,7 @@ function renderCO2Table(thead, tbody, logs) {
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CO2 (ppm)</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pressure (hPa)</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gas Res. (&Omega;)</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lux</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
         <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
@@ -157,6 +158,7 @@ function renderCO2Table(thead, tbody, logs) {
             <td class="px-4 py-3 text-sm text-gray-900">${log.humidity?.toFixed(1) ?? '-'}</td>
             <td class="px-4 py-3 text-sm ${getCO2ColorClass(log.co2)}">${log.co2 != null ? Math.round(log.co2) : '-'}</td>
             <td class="px-4 py-3 text-sm text-gray-900">${log.pressure?.toFixed(1) ?? '-'}</td>
+            <td class="px-4 py-3 text-sm text-gray-900">${log.gasResistance?.toFixed(0) ?? '-'}</td>
             <td class="px-4 py-3 text-sm text-gray-900">${log.lux?.toFixed(1) ?? '-'}</td>
             <td class="px-4 py-3 text-sm text-gray-900">${log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(2) + 'V' : '-'}</td>
             <td class="px-4 py-3 text-xs text-gray-500">${syncedOnDate}</td>

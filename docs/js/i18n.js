@@ -49,6 +49,9 @@ const translations = {
         action_cancel: "Cancel",
         action_reset: "Reset",
         action_generatePDF: "Generate PDF Report",
+        action_aiAnalysis: "AI Analysis",
+        action_addFinding: "+ Add finding",
+        action_addRecommendation: "+ Add recommendation",
 
         // Live data section
         live_title: "Live Sensor Data",
@@ -63,6 +66,7 @@ const translations = {
         sensor_co2: "CO2",
         sensor_light: "Light",
         sensor_pressure: "Pressure",
+        sensor_gasResistance: "Gas Resistance",
         sensor_battery: "Battery",
 
         // Time strings
@@ -103,6 +107,7 @@ const translations = {
         // Heatmap section
         heatmap_title: "Activity Heatmap",
         heatmap_subtitle: "Hourly averages (last 14 days)",
+        heatmap_subtitle_dynamic: "Hourly averages (last {{days}} days)",
         heatmap_notEnoughData: "Not enough data for heatmap",
         heatmap_error: "Error generating heatmap",
         heatmap_less: "Less",
@@ -112,6 +117,7 @@ const translations = {
         heatmap_moderate: "Moderate",
         heatmap_poor: "Poor",
         heatmap_unhealthy: "Unhealthy",
+        heatmap_label: "{{metric}} — {{device}}",
 
         // History page
         history_storedLocally: "measurements stored locally",
@@ -332,7 +338,8 @@ const translations = {
         report_eventStats: "Event Statistics",
         report_eventStatsHint: "Computed from selected data",
         report_noData: "No data",
-        report_eventsDetected: "{{count}} events detected",
+        report_eventsDetected_one: "{{count}} event detected",
+        report_eventsDetected_other: "{{count}} events detected",
         report_noThresholdViolations: "No threshold violations",
         report_gi2Compliance: "GI 2.0 Compliance",
         report_gi2Auto: "Auto-compute from data",
@@ -469,6 +476,27 @@ const translations = {
         report_no_period: "No period selected",
         report_no_measurement_data: "No measurement data available",
 
+        // AI analysis
+        report_aiAnalyzing: "Analyzing...",
+        report_aiDone: "Done!",
+        report_aiError: "Analysis failed",
+        report_aiNoUrl: "No analysis server configured. Set it in Help > Settings.",
+        report_llmPrompt: "You are an indoor air quality expert. Analyze the measurement data below and produce three sections in the same language as this prompt:\n\n1. **Summary:** Write 1-2 sentences that extend the existing executive summary (which already states the measurement period, count, and GI 2.0 status). Highlight the most important findings to motivate the reader to read on — e.g. critical threshold violations, notable patterns, or rooms of concern.\n\n2. **Findings (Befunde):** List the key observations from the data. Identify rooms or time periods with elevated CO2, PM2.5, PM10, or unusual temperature/humidity. Note threshold violations, patterns (e.g., daily peaks, weekend differences), and any combustion events. Be specific — cite room names, values, and time ranges.\n\n3. **Recommendations (Empfehlungen):** Provide actionable recommendations to improve indoor air quality based on the findings. Reference Swiss standards (SIA 382/1, SIA 180) and WHO guidelines where appropriate. Suggest ventilation improvements, behavioral changes, or further investigation as needed.\n\nReturn your response in exactly this format:\n\n## Summary\nYour 1-2 sentence summary here.\n\n## Findings\n1. First finding\n2. Second finding\n\n## Recommendations\n1. First recommendation\n2. Second recommendation",
+
+        // Help page
+        help_settings: "Settings",
+        help_analysisServer: "Report Analysis Server",
+        help_analysisServerHint: "Webhook URL for AI-powered report analysis. Leave empty to disable.",
+
+        // History chart
+        chart_title: "Time Series",
+        chart_range_24h: "Last 24 hours",
+        chart_range_7d: "Last 7 days",
+        chart_range_30d: "Last 30 days",
+        chart_range_all: "All time",
+        chart_noData: "Select metrics above to visualize trends",
+        chart_noDataAvailable: "No data for selected time range",
+
         // Footer
         footer_company: "Octanis Instruments GmbH, Switzerland"
     },
@@ -517,6 +545,9 @@ const translations = {
         action_cancel: "Abbrechen",
         action_reset: "Zurücksetzen",
         action_generatePDF: "PDF-Bericht erstellen",
+        action_aiAnalysis: "KI-Analyse",
+        action_addFinding: "+ Befund hinzufügen",
+        action_addRecommendation: "+ Empfehlung hinzufügen",
 
         // Live data section
         live_title: "Live-Sensordaten",
@@ -531,6 +562,7 @@ const translations = {
         sensor_co2: "CO2",
         sensor_light: "Licht",
         sensor_pressure: "Druck",
+        sensor_gasResistance: "Gaswiderstand",
         sensor_battery: "Batterie",
 
         // Time strings
@@ -571,6 +603,7 @@ const translations = {
         // Heatmap section
         heatmap_title: "Aktivitäts-Heatmap",
         heatmap_subtitle: "Stündliche Durchschnitte (letzte 14 Tage)",
+        heatmap_subtitle_dynamic: "Stündliche Durchschnitte (letzte {{days}} Tage)",
         heatmap_notEnoughData: "Nicht genügend Daten für Heatmap",
         heatmap_error: "Fehler beim Erstellen der Heatmap",
         heatmap_less: "Weniger",
@@ -580,6 +613,7 @@ const translations = {
         heatmap_moderate: "Mässig",
         heatmap_poor: "Erhöht",
         heatmap_unhealthy: "Stark erhöht",
+        heatmap_label: "{{metric}} — {{device}}",
 
         // History page
         history_storedLocally: "Messungen lokal gespeichert",
@@ -778,7 +812,7 @@ const translations = {
         report_logo_hint: "PNG oder JPG, max. 500KB",
         report_logo_invalid_type: "Bitte eine Bilddatei hochladen (PNG oder JPG)",
         report_logo_too_large: "Logo-Datei ist zu gross (max. 500KB)",
-        report_organization: "Organisation",
+        report_organization: "Firma",
         report_author: "Autor",
         report_author_placeholder: "Name des Berichtsautors",
         report_contact: "Kontakt",
@@ -800,7 +834,8 @@ const translations = {
         report_eventStats: "Ereignisstatistiken",
         report_eventStatsHint: "Berechnet aus ausgewählten Daten",
         report_noData: "Keine Daten",
-        report_eventsDetected: "{{count}} Ereignisse erkannt",
+        report_eventsDetected_one: "{{count}} Ereignis erkannt",
+        report_eventsDetected_other: "{{count}} Ereignisse erkannt",
         report_noThresholdViolations: "Keine Grenzwertüberschreitungen",
         report_gi2Compliance: "GI 2.0 Konformität",
         report_gi2Auto: "Automatisch aus Daten berechnen",
@@ -936,6 +971,27 @@ const translations = {
         report_no_data_available: "Keine Daten verfügbar",
         report_no_period: "Kein Zeitraum ausgewählt",
         report_no_measurement_data: "Keine Messdaten verfügbar",
+
+        // AI analysis
+        report_aiAnalyzing: "Analyse läuft...",
+        report_aiDone: "Fertig!",
+        report_aiError: "Analyse fehlgeschlagen",
+        report_aiNoUrl: "Kein Analyse-Server konfiguriert. Unter Hilfe > Einstellungen festlegen.",
+        report_llmPrompt: "Du bist ein Experte für Innenraumluftqualität. Analysiere die untenstehenden Messdaten und erstelle drei Abschnitte auf Deutsch:\n\n1. **Zusammenfassung:** Schreibe 1-2 Sätze, die die bestehende Zusammenfassung ergänzen (diese enthält bereits Messperiode, Anzahl Messungen und GI 2.0-Status). Hebe die wichtigsten Erkenntnisse hervor, um den Leser zum Weiterlesen zu motivieren — z.B. kritische Grenzwertüberschreitungen, auffällige Muster oder betroffene Räume.\n\n2. **Befunde:** Liste die wichtigsten Beobachtungen aus den Daten auf. Identifiziere Räume oder Zeiträume mit erhöhtem CO2, PM2.5, PM10 oder auffälliger Temperatur/Luftfeuchtigkeit. Nenne Grenzwertüberschreitungen, Muster (z.B. tägliche Spitzen, Unterschiede am Wochenende) und allfällige Verbrennungsereignisse. Sei spezifisch — nenne Raumnamen, Werte und Zeiträume.\n\n3. **Empfehlungen:** Gib umsetzbare Empfehlungen zur Verbesserung der Raumluftqualität basierend auf den Befunden. Verweise wo angebracht auf Schweizer Normen (SIA 382/1, SIA 180) und WHO-Richtlinien. Schlage Verbesserungen der Lüftung, Verhaltensänderungen oder weitere Abklärungen vor.\n\nGib deine Antwort in genau diesem Format zurück:\n\n## Summary\nDeine 1-2 Sätze hier.\n\n## Findings\n1. Erster Befund\n2. Zweiter Befund\n\n## Recommendations\n1. Erste Empfehlung\n2. Zweite Empfehlung",
+
+        // Help page
+        help_settings: "Einstellungen",
+        help_analysisServer: "Berichtsanalyse-Server",
+        help_analysisServerHint: "Webhook-URL für die KI-gestützte Berichtsanalyse. Leer lassen zum Deaktivieren.",
+
+        // History chart
+        chart_title: "Zeitreihen",
+        chart_range_24h: "Letzte 24 Stunden",
+        chart_range_7d: "Letzte 7 Tage",
+        chart_range_30d: "Letzte 30 Tage",
+        chart_range_all: "Gesamter Zeitraum",
+        chart_noData: "Metriken oben auswählen, um Trends anzuzeigen",
+        chart_noDataAvailable: "Keine Daten für den Zeitraum verfügbar",
 
         // Footer
         footer_company: "Octanis Instruments GmbH, Schweiz"
