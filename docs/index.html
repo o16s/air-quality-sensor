@@ -384,11 +384,47 @@
             <div class="flex gap-6">
                 <!-- Config Panel (Left) -->
                 <div class="w-96 flex-shrink-0 bg-white rounded-lg shadow-md p-6 max-h-[calc(100vh-180px)] overflow-y-auto">
-                    <!-- Organization -->
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="report_organization">Organization</label>
-                        <input type="text" id="report-org" value="Octanis Instrumente GmbH" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
+                    <!-- Company / Provider Section -->
+                    <fieldset class="mb-4 border border-gray-200 rounded p-3">
+                        <legend class="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1" data-i18n="report_provider">Report Provider</legend>
+
+                        <!-- Logo Upload -->
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1" data-i18n="report_logo">Company Logo</label>
+                            <div class="flex items-center gap-3">
+                                <div id="logo-preview-container" class="w-16 h-16 border border-dashed border-gray-300 rounded flex items-center justify-center bg-gray-50 overflow-hidden">
+                                    <img id="logo-preview" class="hidden max-w-full max-h-full object-contain" alt="Logo">
+                                    <svg id="logo-placeholder" class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <input type="file" id="logo-upload" accept="image/*" class="hidden">
+                                    <button type="button" id="logo-upload-btn" class="text-sm text-blue-500 hover:text-blue-600" data-i18n="report_upload_logo">Upload logo</button>
+                                    <button type="button" id="logo-remove-btn" class="hidden text-sm text-red-500 hover:text-red-600 ml-2" data-i18n="report_remove_logo">Remove</button>
+                                    <p class="text-xs text-gray-400 mt-1" data-i18n="report_logo_hint">PNG or JPG, max 500KB</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Organization Name -->
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1" data-i18n="report_organization">Organization</label>
+                            <input type="text" id="report-org" value="Octanis Instrumente GmbH" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Author -->
+                        <div class="mb-3">
+                            <label class="block text-xs text-gray-600 mb-1" data-i18n="report_author">Author</label>
+                            <input type="text" id="report-author" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n-placeholder="report_author_placeholder" placeholder="Name of report author">
+                        </div>
+
+                        <!-- Contact Info (optional) -->
+                        <div>
+                            <label class="block text-xs text-gray-600 mb-1" data-i18n="report_contact">Contact</label>
+                            <input type="text" id="report-contact" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" data-i18n-placeholder="report_contact_placeholder" placeholder="Email or phone">
+                        </div>
+                    </fieldset>
 
                     <!-- Report Title -->
                     <div class="mb-4">
@@ -396,18 +432,52 @@
                         <input type="text" id="report-title" value="Indoor Air Quality Audit" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
-                    <!-- Location -->
-                    <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="report_location">Location</label>
-                        <input type="text" id="report-location" value="" data-i18n-placeholder="report_locationPlaceholder" placeholder="Office A, Building B, Zurich" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- Location & Rooms Section -->
+                    <div class="mb-4 pt-4 border-t">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide" data-i18n="report_location_rooms">Location & Rooms</label>
+                        </div>
+
+                        <!-- Location Summary (or Add button if none) -->
+                        <div id="report-location-summary" class="mb-3">
+                            <button id="add-location-btn" class="w-full border border-dashed border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-500 py-2 px-3 rounded text-sm flex items-center justify-center gap-2 transition">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                <span data-i18n="location_add_building">Add Building</span>
+                            </button>
+                        </div>
+
+                        <!-- Rooms List -->
+                        <div id="rooms-section" class="hidden">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm text-gray-600" data-i18n="report_rooms">Rooms</span>
+                                <button id="add-room-btn" class="p-1 text-blue-500 hover:bg-blue-50 rounded" title="Add room">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="report-rooms-list" class="space-y-2 text-sm">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Device Selection (Checkboxes) -->
+                    <!-- Introduction Text -->
                     <div class="mb-4">
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2" data-i18n="report_dataSources">Data Sources</label>
-                        <div id="report-device-list" class="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded p-2">
-                            <p class="text-sm text-gray-400" data-i18n="report_loadingDevices">Loading devices...</p>
-                        </div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1"
+                               data-i18n="report_intro_title">Introduction</label>
+                        <textarea id="report-intro" rows="4"
+                                  class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+
+                    <!-- Regulatory Framework Text -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1"
+                               data-i18n="report_intro_legal_title">Regulatory Framework</label>
+                        <textarea id="report-legal" rows="4"
+                                  class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                     </div>
 
                     <!-- Date Range -->
@@ -603,6 +673,271 @@
             <div class="flex gap-2 mt-6">
                 <button id="save-device-metadata-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded transition duration-200" data-i18n="action_save">Save</button>
                 <button id="cancel-device-metadata-btn" class="flex-1 border border-gray-300 hover:bg-gray-50 py-2 rounded transition duration-200" data-i18n="action_cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location (Building) Modal -->
+    <div id="location-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 my-8 p-6">
+            <h3 class="text-lg font-semibold mb-4" data-i18n="location_building_title">Building Information</h3>
+
+            <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <!-- Basic Address -->
+                <fieldset class="border rounded p-3">
+                    <legend class="text-sm font-medium px-2" data-i18n="location_address">Address</legend>
+                    <div class="space-y-3">
+                        <input id="loc-name" type="text" class="w-full border rounded px-3 py-2" data-i18n-placeholder="location_name_placeholder" placeholder="e.g., Schulhaus Muster">
+                        <input id="loc-street" type="text" class="w-full border rounded px-3 py-2" data-i18n-placeholder="location_street_placeholder" placeholder="Street address">
+                        <div class="grid grid-cols-3 gap-2">
+                            <input id="loc-postal" type="text" class="border rounded px-3 py-2" data-i18n-placeholder="location_postal_placeholder" placeholder="PLZ">
+                            <input id="loc-city" type="text" class="col-span-2 border rounded px-3 py-2" data-i18n-placeholder="location_city_placeholder" placeholder="City">
+                        </div>
+                        <input id="loc-canton" type="text" class="w-full border rounded px-3 py-2" data-i18n-placeholder="location_canton_placeholder" placeholder="Canton (e.g., ZH)">
+                    </div>
+                </fieldset>
+
+                <!-- Building Identification -->
+                <fieldset class="border rounded p-3">
+                    <legend class="text-sm font-medium px-2" data-i18n="location_identification">Identification</legend>
+                    <div class="space-y-3">
+                        <input id="loc-egid" type="text" class="w-full border rounded px-3 py-2" data-i18n-placeholder="location_egid_placeholder" placeholder="Swiss Building ID (EGID)">
+                        <input id="loc-gps" type="text" class="w-full border rounded px-3 py-2" data-i18n-placeholder="location_gps_placeholder" placeholder="e.g., 47.3769, 8.5417">
+                    </div>
+                </fieldset>
+
+                <!-- Building Category -->
+                <fieldset class="border rounded p-3">
+                    <legend class="text-sm font-medium px-2" data-i18n="location_building_category">Building Category</legend>
+                    <select id="loc-category" class="w-full border rounded px-3 py-2">
+                        <option value="single_family" data-i18n="building_single_family">Single-family home</option>
+                        <option value="multi_family" data-i18n="building_multi_family">Multi-family building</option>
+                        <option value="mixed_use" data-i18n="building_mixed_use">Mixed-use building</option>
+                        <option value="school" data-i18n="building_school">School / Kindergarten</option>
+                        <option value="office" data-i18n="building_office">Office / Commercial</option>
+                        <option value="other" data-i18n="building_other">Other</option>
+                    </select>
+                </fieldset>
+
+                <!-- Construction -->
+                <fieldset class="border rounded p-3">
+                    <legend class="text-sm font-medium px-2" data-i18n="location_construction">Construction</legend>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input id="loc-year" type="text" class="border rounded px-3 py-2" data-i18n-placeholder="location_year_placeholder" placeholder="Year built">
+                        <input id="loc-renovation" type="text" class="border rounded px-3 py-2" data-i18n-placeholder="location_renovation_placeholder" placeholder="Last renovation">
+                    </div>
+                </fieldset>
+
+                <!-- Foundation -->
+                <fieldset class="border rounded p-3">
+                    <legend class="text-sm font-medium px-2" data-i18n="location_foundation">Foundation</legend>
+                    <div class="space-y-3">
+                        <select id="loc-foundation" class="w-full border rounded px-3 py-2">
+                            <option value="concrete" data-i18n="foundation_concrete">Concrete</option>
+                            <option value="continuous_base" data-i18n="foundation_continuous">Continuous base plate</option>
+                            <option value="natural_soil" data-i18n="foundation_natural">Natural soil / earth floor</option>
+                            <option value="strip" data-i18n="foundation_strip">Strip foundation</option>
+                            <option value="mixed" data-i18n="foundation_mixed">Mixed</option>
+                            <option value="unknown" data-i18n="foundation_unknown">Unknown</option>
+                        </select>
+                        <select id="loc-basement" class="w-full border rounded px-3 py-2">
+                            <option value="full" data-i18n="basement_full">Full basement</option>
+                            <option value="partial" data-i18n="basement_partial">Partial basement</option>
+                            <option value="none" data-i18n="basement_none">No basement (slab on grade)</option>
+                        </select>
+                        <label class="flex items-center gap-2">
+                            <input id="loc-hillside" type="checkbox" class="rounded">
+                            <span data-i18n="location_hillside">Hillside location</span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <!-- Ventilation -->
+                <fieldset class="border rounded p-3">
+                    <legend class="text-sm font-medium px-2" data-i18n="location_ventilation">Ventilation</legend>
+                    <div class="space-y-3">
+                        <select id="loc-ventilation" class="w-full border rounded px-3 py-2">
+                            <option value="natural" data-i18n="ventilation_natural">Natural ventilation only</option>
+                            <option value="mechanical" data-i18n="ventilation_mechanical">Mechanical ventilation (controlled)</option>
+                            <option value="mixed" data-i18n="ventilation_mixed">Mixed system</option>
+                        </select>
+                        <input id="loc-ventilation-details" type="text" class="w-full border rounded px-3 py-2"
+                               data-i18n-placeholder="location_ventilation_details_placeholder" placeholder="Operating schedule, air exchange rate">
+                    </div>
+                </fieldset>
+
+                <!-- Building Photo -->
+                <fieldset class="border rounded p-3">
+                    <legend class="text-sm font-medium px-2" data-i18n="location_building_photo">Building Photo</legend>
+                    <div class="flex items-center gap-3">
+                        <div id="building-photo-preview-container" class="w-24 h-24 border border-dashed border-gray-300 rounded flex items-center justify-center bg-gray-50 overflow-hidden">
+                            <img id="building-photo-preview" class="hidden max-w-full max-h-full object-contain" alt="">
+                            <svg id="building-photo-placeholder" class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <input type="file" id="building-photo-upload" accept="image/*" class="hidden">
+                            <button type="button" id="building-photo-upload-btn" class="text-sm text-blue-500 hover:text-blue-600" data-i18n="location_upload_photo">Upload photo</button>
+                            <button type="button" id="building-photo-remove-btn" class="hidden text-sm text-red-500 hover:text-red-600 ml-2" data-i18n="report_remove_logo">Remove</button>
+                            <p class="text-xs text-gray-400 mt-1" data-i18n="location_photo_hint">JPG or PNG, max 2 MB</p>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex justify-between items-center mt-6 pt-4 border-t">
+                <button id="delete-location-btn" class="text-red-600 hover:text-red-700 text-sm hidden" data-i18n="action_delete">Delete</button>
+                <div class="flex gap-2 ml-auto">
+                    <button id="cancel-location-btn" class="px-4 py-2 border rounded hover:bg-gray-50" data-i18n="action_cancel">Cancel</button>
+                    <button id="save-location-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" data-i18n="action_save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Modal -->
+    <div id="room-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 p-6">
+            <h3 id="room-modal-title" class="text-lg font-semibold mb-4" data-i18n="room_add_title">Add Room</h3>
+
+            <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="room_name">Room Name</label>
+                    <input id="room-name" type="text" class="w-full border rounded px-3 py-2" data-i18n-placeholder="room_name_placeholder" placeholder="e.g., Living Room">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="room_floor">Floor</label>
+                    <input id="room-floor" type="text" class="w-full border rounded px-3 py-2" data-i18n-placeholder="room_floor_placeholder" placeholder="e.g., EG, 1. OG, UG">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="room_type">Room Type</label>
+                    <select id="room-type" class="w-full border rounded px-3 py-2">
+                        <option value="living_room" data-i18n="room_living_room">Living Room</option>
+                        <option value="bedroom" data-i18n="room_bedroom">Bedroom</option>
+                        <option value="children_room" data-i18n="room_children_room">Children's Room</option>
+                        <option value="office" data-i18n="room_office">Office</option>
+                        <option value="kitchen" data-i18n="room_kitchen">Kitchen</option>
+                        <option value="basement" data-i18n="room_basement_room">Basement Room</option>
+                        <option value="classroom" data-i18n="room_classroom">Classroom</option>
+                        <option value="other" data-i18n="room_other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Room dimensions -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1" data-i18n="room_area">Area (m²)</label>
+                        <input id="room-area" type="number" step="0.1" min="0" class="w-full border rounded px-3 py-2" placeholder="e.g., 25">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1" data-i18n="room_ceiling_height">Ceiling (m)</label>
+                        <input id="room-ceiling" type="number" step="0.1" min="0" class="w-full border rounded px-3 py-2" placeholder="e.g., 2.5">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1" data-i18n="room_sensor_height">Sensor (m)</label>
+                        <input id="room-sensor-height" type="number" step="0.1" min="0" class="w-full border rounded px-3 py-2" placeholder="e.g., 1.2">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="room_device">Device Used</label>
+                    <select id="room-device" class="w-full border rounded px-3 py-2">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <!-- Environmental Factors Section -->
+                <div class="border-t pt-4 mt-2">
+                    <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3" data-i18n="room_environmental_factors">Environmental Factors</h4>
+
+                    <div class="space-y-4">
+                        <!-- Room Ventilation -->
+                        <div>
+                            <label class="block text-sm font-medium mb-1" data-i18n="room_ventilation">Room Ventilation</label>
+                            <select id="room-ventilation" class="w-full border rounded px-3 py-2">
+                                <option value="windows_mechanical" data-i18n="room_vent_windows_mechanical">Windows + mechanical</option>
+                                <option value="windows_only" data-i18n="room_vent_windows_only">Windows only</option>
+                                <option value="mechanical_only" data-i18n="room_vent_mechanical_only">Mechanical only</option>
+                                <option value="none" data-i18n="room_vent_none">None</option>
+                            </select>
+                        </div>
+
+                        <!-- Smoking Policy -->
+                        <div>
+                            <label class="block text-sm font-medium mb-1" data-i18n="room_smoking_policy">Smoking Policy</label>
+                            <select id="room-smoking-policy" class="w-full border rounded px-3 py-2">
+                                <option value="none" data-i18n="room_smoking_none">No smoking</option>
+                                <option value="allowed" data-i18n="room_smoking_allowed">Smoking allowed</option>
+                                <option value="nearby" data-i18n="room_smoking_nearby">Smoking area nearby</option>
+                            </select>
+                        </div>
+
+                        <!-- Distance to Smoking Area (conditional) -->
+                        <div id="room-smoking-distance-group" class="hidden">
+                            <label class="block text-sm font-medium mb-1" data-i18n="room_smoking_distance">Distance to Smoking Area</label>
+                            <select id="room-smoking-distance" class="w-full border rounded px-3 py-2">
+                                <option value="lt5" data-i18n="room_distance_lt5">< 5 m</option>
+                                <option value="5to15" data-i18n="room_distance_5to15">5-15 m</option>
+                                <option value="15to50" data-i18n="room_distance_15to50">15-50 m</option>
+                                <option value="gt50" data-i18n="room_distance_gt50">> 50 m</option>
+                            </select>
+                        </div>
+
+                        <!-- Known Issues (checkboxes) -->
+                        <div>
+                            <label class="block text-sm font-medium mb-2" data-i18n="room_known_issues">Known Issues</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="room-known-issue rounded" value="mold">
+                                    <span data-i18n="room_issue_mold">Known mold/moisture damage</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="room-known-issue rounded" value="renovation">
+                                    <span data-i18n="room_issue_renovation">Recent renovation (< 6 months)</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="room-known-issue rounded" value="kitchen_adjacent">
+                                    <span data-i18n="room_issue_kitchen">Adjacent to kitchen/cooking area</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="room-known-issue rounded" value="printer">
+                                    <span data-i18n="room_issue_printer">Printer/copier present</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" class="room-known-issue rounded" value="street_facing">
+                                    <span data-i18n="room_issue_street">Street-facing window (traffic exposure)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Typical Occupancy -->
+                        <div>
+                            <label class="block text-sm font-medium mb-1" data-i18n="room_occupancy">Typical Occupancy</label>
+                            <select id="room-occupancy" class="w-full border rounded px-3 py-2">
+                                <option value="1to2" data-i18n="room_occupancy_1to2">1-2 persons</option>
+                                <option value="3to5" data-i18n="room_occupancy_3to5">3-5 persons</option>
+                                <option value="6to10" data-i18n="room_occupancy_6to10">6-10 persons</option>
+                                <option value="10plus" data-i18n="room_occupancy_10plus">10+ persons</option>
+                                <option value="unoccupied" data-i18n="room_occupancy_unoccupied">Unoccupied</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1" data-i18n="room_notes">Notes (optional)</label>
+                    <textarea id="room-notes" rows="2" class="w-full border rounded px-3 py-2"></textarea>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6">
+                <button id="cancel-room-btn" class="px-4 py-2 border rounded hover:bg-gray-50" data-i18n="action_cancel">Cancel</button>
+                <button id="save-room-btn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" data-i18n="action_save">Save</button>
             </div>
         </div>
     </div>

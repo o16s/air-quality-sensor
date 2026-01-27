@@ -11,6 +11,7 @@ This is a browser-based WebUSB interface for Octanis environmental sensors (STM3
 - **WebUSB API** - Direct USB communication
 - **IndexedDB** - Browser-based log storage
 - **Vitest** - Unit testing framework
+- **i18n** - Custom vanilla JS internationalization (EN/DE)
 
 ### Browser Compatibility
 
@@ -82,6 +83,7 @@ docs/
 │   └── style.css          # Custom styles
 ├── js/
 │   ├── constants.js       # All configuration constants
+│   ├── i18n.js            # Internationalization (EN/DE translations)
 │   ├── utils.js           # Shared utility functions
 │   ├── protocol.js        # Firmware protocol & USB communication
 │   ├── webusb.js          # USB device connection management
@@ -101,6 +103,7 @@ docs/
 | Module | Purpose | Key Functions |
 |--------|---------|---------------|
 | **constants.js** | Single source of truth for all configuration | USB constants, buffer layouts, error messages, device capacity |
+| **i18n.js** | Internationalization (EN/DE) | `i18n.t()`, `setLanguage()`, `translatePage()` |
 | **utils.js** | Shared utilities used across modules | Device validation, buffer helpers, download helper, **duplicate detection** |
 | **protocol.js** | Firmware protocol implementation | USB vendor requests, data parsing, erase logs |
 | **webusb.js** | USB device lifecycle management | Connect, disconnect, auto-reconnect, callbacks |
@@ -444,6 +447,52 @@ const WIDGET_CONFIG = {
 
 **Key principle**: Widget visibility is set ONCE when device connects, not on every data update.
 
+### Internationalization (i18n)
+
+**Languages**: English (default), Swiss German (Schweizer Hochdeutsch)
+
+**Architecture**:
+- `i18n.js` - Core module with I18n class and ~170 translation keys
+- Static HTML: `data-i18n="key"` attributes, translated on page load
+- Dynamic JS: `i18n.t('key', {params})` for runtime strings
+- Language switcher in footer, persists to localStorage, page reloads on change
+
+**Key Design Decisions**:
+- Flat key structure: `nav_overview` not `nav.overview`
+- `{{variable}}` interpolation syntax
+- Pluralization with `_one`/`_other` suffixes
+- Page reload on language change (no runtime re-rendering)
+- Swiss German uses `ss` instead of `ß`, proper umlauts (ä, ö, ü)
+- BAFU-compliant terminology for environmental metrics
+
+**Usage in Static HTML**:
+```html
+<span data-i18n="nav_overview">Overview</span>
+<input data-i18n-placeholder="search_placeholder">
+<button data-i18n-title="tooltip_key" title="Default tooltip">
+```
+
+**Usage in JavaScript**:
+```javascript
+import { i18n } from '../i18n.js';
+
+// Simple translation
+i18n.t('nav_overview')  // "Overview" or "Übersicht"
+
+// With interpolation
+i18n.t('sync_progress', { current: 10, total: 50 })  // "10 / 50"
+
+// Pluralization (automatic based on count)
+i18n.t('measurements', { count: 1 })   // "1 measurement"
+i18n.t('measurements', { count: 5 })   // "5 measurements"
+```
+
+**Adding New Translation Keys**:
+1. Add key to both `en` and `de` objects in `i18n.js`
+2. Use descriptive flat key names: `category_item` or `category_subcategory_item`
+3. For plurals, add both `key_one` and `key_other` variants
+4. Missing keys log `console.warn` and return the key name as fallback
+
 ## Adding New Features
 
 ### Example: Adding a New Sensor Type
@@ -560,6 +609,8 @@ If UI shows "N/A" for sensor values:
 - Use buffer layout constants
 - Keep functions small and focused
 - Document complex logic
+- Use `i18n.t()` for all user-facing strings in JavaScript
+- Add `data-i18n` attributes for static HTML text
 
 **DON'T**:
 - Use magic numbers anywhere
@@ -568,10 +619,11 @@ If UI shows "N/A" for sensor values:
 - Skip writing tests
 - Modify buffer layouts without updating tests
 - Use inline USB constants
+- Hardcode user-facing strings in JavaScript (use `i18n.t()` instead)
 - **Use emojis in UI text** - Emojis are forbidden in all user-facing text, labels, and headings
 
 ---
 
 **Last Updated**: 2026-01-26
-**Total Tests**: 116 passing
+**Total Tests**: 165 passing
 **Supported Log Formats**: GPS, TSL2591, CO2
