@@ -193,7 +193,7 @@ export async function selectDevice(serial) {
     // Update device filter to match selected device
     state.set('currentDeviceFilter', serial);
     await updateLogTable(serial);
-    await updateHeatmap(serial, state.get('currentHeatmapMetric'));
+    await updateHeatmap(serial);
     await updateEventsTimeline(serial);
     // Update the device filter dropdown to match
     const deviceFilterEl = document.getElementById('device-filter');

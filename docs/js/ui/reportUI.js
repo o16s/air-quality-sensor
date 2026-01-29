@@ -24,6 +24,7 @@ import {
     generatePDF,
     getLogsForReport
 } from '../report.js';
+import { generateReportMarkdown, parseAnalysisResponse } from '../reportData.js';
 import * as state from './state.js';
 import { showError } from './utils.js';
 import { escapeHtmlAttr } from './utils.js';
@@ -45,9 +46,19 @@ export async function initReportPage() {
     await populateLocationSummary();
     initLogoUpload();
     loadSavedProviderData();
-    prefillIntroTextareas();
+    initEditableStateDefaults();
     // Compute initial stats and preview
     await handleReportSelectionChange();
+}
+
+/**
+ * Initialize default state values for editable report fields
+ */
+function initEditableStateDefaults() {
+    if (!state.get('reportIntro')) state.set('reportIntro', i18n.t('report_intro_default'));
+    if (!state.get('reportLegal')) state.set('reportLegal', i18n.t('report_intro_legal_default'));
+    if (!state.get('reportFindings')) state.set('reportFindings', []);
+    if (!state.get('reportRecommendations')) state.set('reportRecommendations', []);
 }
 
 /**
@@ -60,14 +71,6 @@ export function setupReportEventHandlers() {
 
     // GI 2.0 override change
     document.getElementById('report-gi2-override').addEventListener('change', updateReportPreview);
-
-    // Findings/Recommendations change
-    document.getElementById('report-findings').addEventListener('input', updateReportPreview);
-    document.getElementById('report-recommendations').addEventListener('input', updateReportPreview);
-
-    // Introduction/Legal text change
-    document.getElementById('report-intro').addEventListener('input', updateReportPreview);
-    document.getElementById('report-legal').addEventListener('input', updateReportPreview);
 
     // Provider fields change (with save to localStorage)
     document.getElementById('report-org').addEventListener('input', () => {
@@ -89,8 +92,98 @@ export function setupReportEventHandlers() {
     // Generate PDF button
     document.getElementById('generate-pdf-btn').addEventListener('click', handleGeneratePDF);
 
+    // AI Analysis button
+    document.getElementById('ai-analysis-btn').addEventListener('click', handleAIAnalysis);
+
     // Reset button
     document.getElementById('reset-report-btn').addEventListener('click', handleResetReport);
+
+    // Event delegation on report preview for inline editing
+    const preview = document.getElementById('report-preview');
+    if (preview) {
+        // Update state on input in contenteditable elements
+        preview.addEventListener('input', (e) => {
+            const el = e.target.closest('[data-editable]');
+            if (!el) return;
+            const field = el.dataset.editable;
+            if (field === 'report-intro') {
+                state.set('reportIntro', el.innerText);
+            } else if (field === 'report-legal') {
+                state.set('reportLegal', el.innerText);
+            } else if (field === 'report-summary') {
+                state.set('reportAISummary', el.innerText);
+            } else if (field === 'report-findings' || field === 'report-recommendations') {
+                const stateKey = field === 'report-findings' ? 'reportFindings' : 'reportRecommendations';
+                const cells = preview.querySelectorAll(`[data-editable="${field}"]`);
+                state.set(stateKey, Array.from(cells).map(c => c.innerText.trim()).filter(Boolean));
+            }
+        });
+
+        // Add/remove buttons
+        preview.addEventListener('click', (e) => {
+            const addBtn = e.target.closest('[data-add]');
+            if (addBtn) {
+                const field = addBtn.dataset.add;
+                const stateKey = field === 'report-findings' ? 'reportFindings' : 'reportRecommendations';
+                const arr = state.get(stateKey) || [];
+                arr.push('');
+                state.set(stateKey, arr);
+                updateReportPreview().then(() => {
+                    // Focus the new empty cell
+                    const cells = preview.querySelectorAll(`[data-editable="${field}"]`);
+                    const lastCell = cells[cells.length - 1];
+                    if (lastCell) lastCell.focus();
+                });
+                return;
+            }
+            const removeBtn = e.target.closest('[data-remove]');
+            if (removeBtn) {
+                const field = removeBtn.dataset.remove;
+                const index = parseInt(removeBtn.dataset.index, 10);
+                const stateKey = field === 'report-findings' ? 'reportFindings' : 'reportRecommendations';
+                const arr = state.get(stateKey) || [];
+                arr.splice(index, 1);
+                state.set(stateKey, arr);
+                updateReportPreview();
+                return;
+            }
+        });
+
+        // Force plain text on paste
+        preview.addEventListener('paste', (e) => {
+            if (e.target.closest('[contenteditable]')) {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+            }
+        });
+
+        // Prevent Enter in single-line fields (defensive)
+        preview.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.closest('[contenteditable]')) {
+                const el = e.target.closest('[data-editable]');
+                // Allow Enter in multi-line text fields (intro, legal)
+                if (el && (el.dataset.editable === 'report-intro' || el.dataset.editable === 'report-legal' || el.dataset.editable === 'report-summary')) {
+                    return;
+                }
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Help page: analysis server URL setting
+    const analysisUrlInput = document.getElementById('setting-analysis-url');
+    if (analysisUrlInput) {
+        analysisUrlInput.value = localStorage.getItem('reportAnalysisUrl') || '';
+        analysisUrlInput.addEventListener('input', () => {
+            const val = analysisUrlInput.value.trim();
+            if (val) {
+                localStorage.setItem('reportAnalysisUrl', val);
+            } else {
+                localStorage.removeItem('reportAnalysisUrl');
+            }
+        });
+    }
 }
 
 /**
@@ -298,9 +391,32 @@ export async function getSelectedDeviceNames() {
 }
 
 /**
+ * Capture current contenteditable values into state before re-render
+ */
+function captureEditableContent() {
+    const intro = document.querySelector('[data-editable="report-intro"]');
+    if (intro) state.set('reportIntro', intro.innerText);
+    const legal = document.querySelector('[data-editable="report-legal"]');
+    if (legal) state.set('reportLegal', legal.innerText);
+    const summary = document.querySelector('[data-editable="report-summary"]');
+    if (summary) state.set('reportAISummary', summary.innerText);
+    // Findings/recs: collect all cells
+    for (const field of ['report-findings', 'report-recommendations']) {
+        const cells = document.querySelectorAll(`[data-editable="${field}"]`);
+        if (cells.length > 0) {
+            const stateKey = field === 'report-findings' ? 'reportFindings' : 'reportRecommendations';
+            state.set(stateKey, Array.from(cells).map(c => c.innerText.trim()).filter(Boolean));
+        }
+    }
+}
+
+/**
  * Update report preview
  */
 export async function updateReportPreview() {
+    // Capture edits from DOM before replacing innerHTML
+    captureEditableContent();
+
     const previewContainer = document.getElementById('report-preview');
 
     const organization = document.getElementById('report-org').value;
@@ -310,19 +426,11 @@ export async function updateReportPreview() {
     const gi2Override = document.getElementById('report-gi2-override').value;
     const logoUrl = getLogoDataUrl();
 
-    // Parse findings and recommendations JSON
-    let findings = [];
-    let recommendations = [];
-    try {
-        findings = JSON.parse(document.getElementById('report-findings').value || '[]');
-    } catch (e) {
-        // Keep empty array if invalid JSON
-    }
-    try {
-        recommendations = JSON.parse(document.getElementById('report-recommendations').value || '[]');
-    } catch (e) {
-        // Keep empty array if invalid JSON
-    }
+    // Read from state
+    const introText = state.get('reportIntro') || '';
+    const legalText = state.get('reportLegal') || '';
+    const findings = state.get('reportFindings') || [];
+    const recommendations = state.get('reportRecommendations') || [];
 
     const { startDate, endDate } = getReportDateRange();
     const deviceNames = await getSelectedDeviceNames();
@@ -334,10 +442,6 @@ export async function updateReportPreview() {
 
     // Get building location data
     const buildingLocation = await getCurrentReportLocation();
-
-    // Read intro text fields
-    const introText = document.getElementById('report-intro')?.value || '';
-    const legalText = document.getElementById('report-legal')?.value || '';
 
     const html = renderReportPreview({
         organization,
@@ -355,6 +459,7 @@ export async function updateReportPreview() {
         gi2Override,
         findings,
         recommendations,
+        executiveSummaryExtra: state.get('reportAISummary') || '',
         dateStart: startDate.getTime(),
         dateEnd: endDate.getTime(),
         deviceNames,
@@ -380,6 +485,12 @@ export async function handleGeneratePDF() {
             throw new Error(i18n.t('report_noPreview'));
         }
 
+        // Clean up contenteditable and no-print elements for PDF
+        const editables = previewElement.querySelectorAll('[contenteditable]');
+        editables.forEach(el => el.removeAttribute('contenteditable'));
+        const noPrintEls = previewElement.querySelectorAll('.no-print');
+        noPrintEls.forEach(el => el.style.display = 'none');
+
         const title = document.getElementById('report-title').value || 'Air-Quality-Report';
         const filename = `${title.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
 
@@ -389,6 +500,10 @@ export async function handleGeneratePDF() {
             contact: document.getElementById('report-contact')?.value || '',
             city: buildingLocation?.city || ''
         });
+
+        // Restore contenteditable and no-print after PDF generation
+        editables.forEach(el => el.setAttribute('contenteditable', 'true'));
+        noPrintEls.forEach(el => el.style.display = '');
 
         btn.textContent = i18n.t('report_generated');
         setTimeout(() => {
@@ -405,17 +520,113 @@ export async function handleGeneratePDF() {
 }
 
 /**
+ * Handle AI Analysis button click - sends report data to analysis server
+ */
+export async function handleAIAnalysis() {
+    const btn = document.getElementById('ai-analysis-btn');
+    const originalHTML = btn.innerHTML;
+
+    const analysisUrl = localStorage.getItem('reportAnalysisUrl');
+    if (!analysisUrl) {
+        btn.textContent = i18n.t('report_aiNoUrl');
+        setTimeout(() => { btn.innerHTML = originalHTML; }, 3000);
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = i18n.t('report_aiAnalyzing');
+
+    try {
+        const selectedDevices = await getSelectedReportDevices();
+        const { startTimestamp, endTimestamp, startDate, endDate } = getReportDateRange();
+
+        const rawLogs = selectedDevices.length > 0
+            ? await getLogsForReport(selectedDevices, startTimestamp, endTimestamp)
+            : [];
+
+        const organization = document.getElementById('report-org').value;
+        const author = document.getElementById('report-author').value;
+        const contact = document.getElementById('report-contact').value;
+        const title = document.getElementById('report-title').value;
+        const gi2Override = document.getElementById('report-gi2-override').value;
+
+        const reportStats = state.get('reportStats');
+        const reportEventStats = state.get('reportEventStats');
+        const reportGI2Status = state.get('reportGI2Status');
+        const roomStats = state.get('reportRoomStats') || [];
+        const buildingLocation = await getCurrentReportLocation();
+
+        const markdown = generateReportMarkdown({
+            organization, author, contact, title, buildingLocation,
+            stats: reportStats,
+            eventStats: reportEventStats,
+            gi2Status: reportGI2Status,
+            gi2Override,
+            findings: [],
+            recommendations: [],
+            dateStart: startDate.getTime(),
+            dateEnd: endDate.getTime(),
+            roomStats,
+            rawLogs
+        });
+
+        const response = await fetch(analysisUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ markdown })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`);
+        }
+
+        const text = await response.text();
+        const result = parseAnalysisResponse(text);
+
+        // Store AI results into state
+        if (result.summary) {
+            state.set('reportAISummary', result.summary);
+        }
+        if (result.findings.length > 0) {
+            state.set('reportFindings', result.findings);
+        }
+        if (result.recommendations.length > 0) {
+            state.set('reportRecommendations', result.recommendations);
+        }
+
+        // Trigger preview update
+        await updateReportPreview();
+
+        btn.textContent = i18n.t('report_aiDone');
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+        }, 2000);
+
+    } catch (error) {
+        console.error('AI analysis failed:', error);
+        btn.textContent = i18n.t('report_aiError');
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+        }, 3000);
+    }
+}
+
+/**
  * Handle reset button click
  */
 export async function handleResetReport() {
     // Reset report-specific fields (not provider data which persists)
     document.getElementById('report-title').value = 'Indoor Air Quality Audit';
     document.getElementById('report-gi2-override').value = 'auto';
-    document.getElementById('report-findings').value = '["High CO2 events 14:00-17:00 daily", "Weekend air quality remains optimal"]';
-    document.getElementById('report-recommendations').value = '["Install CO2-driven ventilation control", "Re-test after 4 weeks"]';
 
-    // Reset intro textareas to i18n defaults
-    prefillIntroTextareas();
+    // Reset editable state to defaults
+    state.set('reportIntro', i18n.t('report_intro_default'));
+    state.set('reportLegal', i18n.t('report_intro_legal_default'));
+    state.set('reportFindings', []);
+    state.set('reportRecommendations', []);
+    state.set('reportAISummary', '');
 
     // Reset dates to defaults
     await setReportDateDefaults();
@@ -1147,17 +1358,3 @@ function removeBuildingPhoto() {
     if (uploadInput) uploadInput.value = '';
 }
 
-// ============================================
-// Introduction Text Functions
-// ============================================
-
-/**
- * Pre-fill introduction textareas with i18n defaults
- */
-function prefillIntroTextareas() {
-    const introEl = document.getElementById('report-intro');
-    const legalEl = document.getElementById('report-legal');
-
-    if (introEl) introEl.value = i18n.t('report_intro_default');
-    if (legalEl) legalEl.value = i18n.t('report_intro_legal_default');
-}

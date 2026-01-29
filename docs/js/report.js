@@ -257,6 +257,7 @@ export function renderReportPreview(config) {
         gi2Override,
         findings = [],
         recommendations = [],
+        executiveSummaryExtra = '',
         dateStart,
         dateEnd,
         deviceNames = [],
@@ -287,12 +288,14 @@ export function renderReportPreview(config) {
     let resultsSectionNum = 0;
 
     return `
-        <div class="bg-white p-8 min-h-[1120px]" style="width: 794px; font-family: 'Helvetica Neue', Arial, sans-serif;">
+        <div class="bg-white p-8 min-h-[1120px]" style="width: 794px; overflow: hidden; font-family: 'Helvetica Neue', Arial, sans-serif;">
             <style>
                 .report-section { page-break-inside: avoid; }
-                table { page-break-inside: auto; }
+                table { page-break-inside: auto; table-layout: fixed; width: 100%; word-wrap: break-word; }
                 tr { page-break-inside: avoid; page-break-after: auto; }
                 thead { display: table-header-group; }
+                td, th { overflow: hidden; text-overflow: ellipsis; }
+                img { max-width: 100%; height: auto; }
             </style>
 
             <!-- Header -->
@@ -318,26 +321,21 @@ export function renderReportPreview(config) {
             ${buildingPhotoUrl ? `
             <!-- Building Photo -->
             <div class="report-section mb-6">
-                <img src="${buildingPhotoUrl}" alt="" class="w-full max-h-64 object-contain rounded">
+                <img src="${buildingPhotoUrl}" alt="" style="max-width: 100%; max-height: 256px; display: block;" class="rounded">
             </div>
             ` : ''}
 
-            ${introText ? `
             <!-- Introduction -->
             <div class="report-section mb-6">
                 ${(() => { introSectionNum = nextSection(); return ''; })()}
                 <h2 class="text-sm font-bold uppercase tracking-wide text-gray-800 mb-2">${introSectionNum}. ${i18n.t('report_intro_title')}</h2>
-                <p class="text-xs text-gray-700">${escapeHtml(introText)}</p>
+                <p class="text-xs text-gray-700" contenteditable="true" data-editable="report-intro" data-placeholder="${escapeHtml(i18n.t('report_intro_title'))}">${escapeHtml(introText)}</p>
             </div>
-            ` : ''}
 
-            ${legalText ? `
             <div class="report-section mb-6">
-                ${introText ? '' : (() => { introSectionNum = nextSection(); return ''; })()}
-                <h3 class="text-xs font-semibold text-gray-700 mb-1">${introSectionNum ? introSectionNum + '.1 ' : ''}${i18n.t('report_intro_legal_title')}</h3>
-                <p class="text-xs text-gray-700">${escapeHtml(legalText)}</p>
+                <h3 class="text-xs font-semibold text-gray-700 mb-1">${introSectionNum}.1 ${i18n.t('report_intro_legal_title')}</h3>
+                <p class="text-xs text-gray-700" contenteditable="true" data-editable="report-legal" data-placeholder="${escapeHtml(i18n.t('report_intro_legal_title'))}">${escapeHtml(legalText)}</p>
             </div>
-            ` : ''}
 
             <!-- Executive Summary -->
             <div class="report-section mb-6">
@@ -349,6 +347,7 @@ export function renderReportPreview(config) {
                     ${complianceStatus === 'warning' ? i18n.t('report_executive_warning') : ''}
                     ${complianceStatus === 'fail' ? i18n.t('report_executive_fail') : ''}
                 </p>
+                <p class="text-xs text-gray-700 mt-1" contenteditable="true" data-editable="report-summary" data-placeholder="${escapeHtml(i18n.t('report_executive_summary'))}">${escapeHtml(executiveSummaryExtra)}</p>
             </div>
 
             ${buildingLocation ? `
@@ -629,37 +628,56 @@ export function renderReportPreview(config) {
             ` : ''}
 
             <!-- Findings -->
-            ${findings.length > 0 ? `
             <div class="report-section mb-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-gray-800 mb-2">${nextSection()}. ${i18n.t('report_findings_title')}</h2>
                 <table class="w-full text-xs">
                     <thead>
                         <tr class="border-b border-gray-200">
                             <th class="text-left py-1 text-gray-600 font-medium w-6">#</th>
-                            <th class="text-left py-1 text-gray-600 font-medium">Finding</th>
+                            <th class="text-left py-1 text-gray-600 font-medium">${i18n.t('report_findings_title')}</th>
+                            <th class="w-6 no-print"></th>
                         </tr>
                     </thead>
                     <tbody>
                         ${findings.map((finding, i) => `
                         <tr class="border-b border-gray-100">
                             <td class="py-1 text-gray-500">${i + 1}</td>
-                            <td class="py-1">${escapeHtml(finding)}</td>
+                            <td class="py-1" contenteditable="true" data-editable="report-findings" data-index="${i}">${escapeHtml(finding)}</td>
+                            <td class="py-1 w-6 no-print"><button data-remove="report-findings" data-index="${i}" class="text-gray-400 hover:text-red-500 text-xs leading-none" title="Remove">x</button></td>
                         </tr>
                         `).join('')}
+                        <tr class="no-print">
+                            <td colspan="3"><button data-add="report-findings" class="text-xs text-blue-500 hover:text-blue-700 py-1">${i18n.t('action_addFinding')}</button></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
-            ` : ''}
 
             <!-- Recommendations -->
-            ${recommendations.length > 0 ? `
             <div class="report-section mb-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-gray-800 mb-2">${nextSection()}. ${i18n.t('report_recommendations_title')}</h2>
-                <ol class="list-decimal list-inside space-y-1 text-xs text-gray-700">
-                    ${recommendations.map(rec => `<li>${escapeHtml(rec)}</li>`).join('')}
-                </ol>
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="border-b border-gray-200">
+                            <th class="text-left py-1 text-gray-600 font-medium w-6">#</th>
+                            <th class="text-left py-1 text-gray-600 font-medium">${i18n.t('report_recommendations_title')}</th>
+                            <th class="w-6 no-print"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${recommendations.map((rec, i) => `
+                        <tr class="border-b border-gray-100">
+                            <td class="py-1 text-gray-500">${i + 1}</td>
+                            <td class="py-1" contenteditable="true" data-editable="report-recommendations" data-index="${i}">${escapeHtml(rec)}</td>
+                            <td class="py-1 w-6 no-print"><button data-remove="report-recommendations" data-index="${i}" class="text-gray-400 hover:text-red-500 text-xs leading-none" title="Remove">x</button></td>
+                        </tr>
+                        `).join('')}
+                        <tr class="no-print">
+                            <td colspan="3"><button data-add="report-recommendations" class="text-xs text-blue-500 hover:text-blue-700 py-1">${i18n.t('action_addRecommendation')}</button></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            ` : ''}
         </div>
     `;
 }
@@ -692,7 +710,7 @@ export async function generatePDF(element, filename = 'air-quality-report.pdf', 
     }
 
     const opt = {
-        margin: [10, 10, 20, 10], // top, right, bottom (extra for footer), left — in mm
+        margin: [10, 0, 15, 0], // top margin for page 2+; left/right handled by element padding; bottom for footer
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: {

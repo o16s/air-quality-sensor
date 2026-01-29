@@ -4,16 +4,17 @@
  */
 
 import { i18n } from '../i18n.js';
-import { getAllLogs, getLogsByDevice } from '../storage.js';
+import { getAllLogs, getLogsByDevice, getDeviceMetadata } from '../storage.js';
 import { AIR_QUALITY_THRESHOLDS } from '../constants.js';
 import { generateHeatmapData, formatHeatmapTooltip } from '../heatmap.js';
 
+const ALL_METRICS = ['pm25', 'pm10', 'co2'];
+
 /**
- * Update heatmap with data for selected device and metric
+ * Update heatmap with data for selected device — renders one panel per metric
  * @param {string|null} deviceSerial - Filter by device serial, or null for all devices
- * @param {string} metric - Metric to display: 'pm25', 'pm10', 'co2'
  */
-export async function updateHeatmap(deviceSerial = null, metric = 'pm25') {
+export async function updateHeatmap(deviceSerial = null) {
     const container = document.getElementById('heatmap-container');
     if (!container) return;
 
@@ -24,13 +25,40 @@ export async function updateHeatmap(deviceSerial = null, metric = 'pm25') {
 
         if (logs.length < 10) {
             container.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">${i18n.t('heatmap_notEnoughData')}</p>`;
-            renderHeatmapLegend(metric);
             return;
         }
 
-        const data = generateHeatmapData(logs, metric, { days: 14 });
-        renderHeatmap(data);
-        renderHeatmapLegend(metric);
+        // Look up device display name for labels
+        let deviceName = i18n.t('history_allDevices');
+        if (deviceSerial) {
+            const metadata = await getDeviceMetadata(deviceSerial);
+            deviceName = metadata?.name || deviceSerial;
+        }
+
+        // Generate data for all metrics, keep only those with data
+        const panels = [];
+        for (const metric of ALL_METRICS) {
+            const data = generateHeatmapData(logs, metric);
+            if (data.grid.length > 0) {
+                panels.push({ data, metric });
+            }
+        }
+
+        if (panels.length === 0) {
+            container.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">${i18n.t('heatmap_notEnoughData')}</p>`;
+            return;
+        }
+
+        // Render side-by-side panels
+        container.innerHTML = panels
+            .map(({ data, metric }) => renderHeatmapPanel(data, metric, deviceName))
+            .join('');
+
+        // Update subtitle with day count from first panel
+        const subtitleEl = document.getElementById('heatmap-subtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = i18n.t('heatmap_subtitle_dynamic', { days: panels[0].data.numDays });
+        }
 
     } catch (error) {
         console.error('Failed to update heatmap:', error);
@@ -39,23 +67,26 @@ export async function updateHeatmap(deviceSerial = null, metric = 'pm25') {
 }
 
 /**
- * Render heatmap grid
- * Grid: rows = days, columns = hours
- * Uses CSS grid to fill container width with square cells
+ * Render a single heatmap panel (grid + legend + label) as an HTML string
  * @param {Object} data - Heatmap data from generateHeatmapData
+ * @param {string} metric - Metric key ('pm25', 'pm10', 'co2')
+ * @param {string} deviceName - Display name for the device
+ * @returns {string} HTML string for one panel
  */
-export function renderHeatmap(data) {
-    const container = document.getElementById('heatmap-container');
-    if (!container || !data.grid.length) return;
+function renderHeatmapPanel(data, metric, deviceName) {
+    const { grid, dayLabels, hourLabels, unit, label } = data;
+    const numCols = hourLabels.length;
 
-    const { grid, dayLabels, hourLabels, unit } = data;
-    const numCols = hourLabels.length; // 24
+    let html = '<div class="heatmap-panel flex-1 min-w-0">';
 
-    // CSS grid: date label column (auto) + 24 equal columns for hours
-    let html = `<div class="heatmap-grid text-xs" style="display: grid; grid-template-columns: auto repeat(${numCols}, 1fr); gap: 2px; align-items: center;">`;
+    // Label (above grid)
+    html += `<div class="text-xs text-gray-500 text-center mb-2">${label} — ${deviceName}</div>`;
+
+    // Grid
+    html += `<div class="heatmap-grid text-xs" style="display: grid; grid-template-columns: auto repeat(${numCols}, 12px); gap: 1px; align-items: center; width: fit-content; margin: 0 auto;">`;
 
     // Header row: empty cell + hour labels
-    html += '<div></div>'; // Empty corner
+    html += '<div></div>';
     for (const hour of hourLabels) {
         html += `<div class="text-center text-gray-400 text-[10px]">${hour.label}</div>`;
     }
@@ -78,33 +109,38 @@ export function renderHeatmap(data) {
     }
 
     html += '</div>';
-    container.innerHTML = html;
+
+    // Legend
+    html += renderHeatmapLegendHTML(metric);
+
+    html += '</div>';
+    return html;
 }
 
 /**
- * Render heatmap legend showing color scale
+ * Render heatmap legend as HTML string
  * @param {string} metric - Metric being displayed
+ * @returns {string} HTML string for the legend
  */
-export function renderHeatmapLegend(metric) {
-    const legendContainer = document.getElementById('heatmap-legend');
-    if (!legendContainer) return;
-
+function renderHeatmapLegendHTML(metric) {
     const config = AIR_QUALITY_THRESHOLDS[metric];
-    if (!config) return;
+    if (!config) return '';
 
     const levels = config.levels;
 
-    legendContainer.innerHTML = `
-        <span class="text-gray-400">${i18n.t('heatmap_less')}</span>
-        <div class="flex items-center gap-1">
+    return `
+        <div class="mt-3 flex items-center justify-center gap-1 text-xs text-gray-400">
+            <span>0</span>
             <div class="w-3 h-3 rounded-sm" style="background-color: #f3f4f6;" title="${i18n.t('heatmap_noData')}"></div>
             <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.good.color};" title="${i18n.t('heatmap_good')} (<${levels.good.max})"></div>
+            <span>${levels.good.max}</span>
             <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.yellow.color};" title="${i18n.t('heatmap_moderate')} (${levels.good.max}-${levels.yellow.max})"></div>
+            <span>${levels.yellow.max}</span>
             <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.orange.color};" title="${i18n.t('heatmap_poor')} (${levels.yellow.max}-${levels.orange.max})"></div>
+            <span>${levels.orange.max}</span>
             <div class="w-3 h-3 rounded-sm" style="background-color: ${levels.red.color};" title="${i18n.t('heatmap_unhealthy')} (>${levels.orange.max})"></div>
+            <span class="ml-1">${config.unit}</span>
         </div>
-        <span class="text-gray-400">${i18n.t('heatmap_more')}</span>
-        <span class="ml-4 text-gray-400">${config.unit}</span>
     `;
 }
 

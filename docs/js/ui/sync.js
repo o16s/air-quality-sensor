@@ -19,6 +19,7 @@ import { updateLiveData } from './liveData.js';
 import { updateBrowserLogCount, updateLogTable } from './logTable.js';
 import { updateDeviceFilter } from './deviceSwitcher.js';
 import { loadSparklinesFromStorage } from './sparklines.js';
+import { refreshHistoryChart } from './historyChartUI.js';
 
 /**
  * Synchronize device time with system time
@@ -263,6 +264,7 @@ export async function handleDownloadLogs() {
         await updateDeviceFilter();
         await updateLogTable();
         await loadSparklinesFromStorage();
+        await refreshHistoryChart();
         updateLastSyncTime();
 
     } catch (error) {

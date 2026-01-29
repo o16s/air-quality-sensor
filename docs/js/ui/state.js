@@ -15,7 +15,6 @@ const state = {
     // Filters
     currentDeviceFilter: null,    // Current device filter selection (null = all devices)
     currentEventsTimeFilter: '7d', // Events time filter: '24h', '7d', '30d', 'all'
-    currentHeatmapMetric: 'pm25', // Heatmap metric: 'pm25', 'pm10', 'co2'
 
     // Control
     autoRefreshInterval: null,
@@ -74,7 +73,6 @@ export function reset(keys = null) {
         currentLogType: null,
         currentDeviceFilter: null,
         currentEventsTimeFilter: '7d',
-        currentHeatmapMetric: 'pm25',
         autoRefreshInterval: null,
         isDownloading: false,
         reportStats: null,

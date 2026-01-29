@@ -466,3 +466,29 @@ a:focus-visible {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Inline-Editable Report Preview */
+[contenteditable="true"] {
+    outline: none;
+    border-radius: 2px;
+    cursor: text;
+}
+
+[contenteditable="true"]:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+[contenteditable="true"]:focus {
+    background-color: rgba(59, 130, 246, 0.1);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+[contenteditable="true"][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.no-print {
+    /* Add/remove buttons, only visible in preview */
+}

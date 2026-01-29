@@ -13,13 +13,11 @@ describe('Heatmap - Data Generation', () => {
     }
 
     describe('generateHeatmapData', () => {
-        it('should return grid with all empty cells for no data', () => {
+        it('should return empty grid for no data', () => {
             const result = generateHeatmapData([], 'pm25');
-            // Grid is still generated, but all cells should have count = 0
-            expect(result.grid.length).toBe(14); // 14 rows (days)
-            expect(result.grid[0].length).toBe(24); // 24 columns (hours)
-            const totalCount = result.grid.flat().reduce((sum, cell) => sum + cell.count, 0);
-            expect(totalCount).toBe(0);
+            // Auto-detect with no logs returns 0 rows
+            expect(result.grid.length).toBe(0);
+            expect(result.numDays).toBe(0);
         });
 
         it('should return error for unknown metric', () => {

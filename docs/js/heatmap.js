@@ -26,30 +26,68 @@ export function generateHeatmapData(logs, metric, options = {}) {
     const {
         startHour = 0,      // Midnight
         endHour = 24,       // Full 24 hours
-        days = 14           // Last 14 days
+        days                 // Optional override; default is auto-detect
     } = options;
 
     const config = AIR_QUALITY_THRESHOLDS[metric];
     if (!config) {
-        return { grid: [], dayLabels: [], hourLabels: [], metric, error: 'Unknown metric' };
+        return { grid: [], dayLabels: [], hourLabels: [], metric, numDays: 0, error: 'Unknown metric' };
     }
 
-    // Calculate time boundaries
-    const now = new Date();
-    const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - days + 1);
-    startDate.setHours(0, 0, 0, 0);
+    // Filter logs to valid values for this metric
+    const validLogs = logs.filter(log =>
+        log[metric] != null &&
+        !isNaN(log[metric]) &&
+        log.timestamp != null
+    );
+
+    // Auto-detect date range from data (or use explicit days override)
+    let numDays;
+    let startDate, endDate;
+
+    if (days != null) {
+        // Explicit override
+        numDays = days;
+        const now = new Date();
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+        startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - numDays + 1);
+        startDate.setHours(0, 0, 0, 0);
+    } else if (validLogs.length === 0) {
+        // No data → empty grid
+        return {
+            grid: [], dayLabels: [], hourLabels: [], metric,
+            unit: config.unit, label: config.label, numDays: 0
+        };
+    } else {
+        // Auto-detect from earliest/latest timestamps
+        let minTs = Infinity, maxTs = -Infinity;
+        for (const log of validLogs) {
+            if (log.timestamp < minTs) minTs = log.timestamp;
+            if (log.timestamp > maxTs) maxTs = log.timestamp;
+        }
+        const earliest = new Date(minTs * 1000);
+        const latest = new Date(maxTs * 1000);
+        startDate = new Date(earliest.getFullYear(), earliest.getMonth(), earliest.getDate(), 0, 0, 0);
+        endDate = new Date(latest.getFullYear(), latest.getMonth(), latest.getDate(), 23, 59, 59);
+        numDays = Math.round((endDate - startDate) / (24 * 3600 * 1000));
+        if (numDays < 1) numDays = 1;
+        if (numDays > 30) {
+            // Cap at 30 days, keep the latest 30
+            numDays = 30;
+            startDate = new Date(endDate);
+            startDate.setDate(startDate.getDate() - numDays + 1);
+            startDate.setHours(0, 0, 0, 0);
+        }
+    }
 
     const startTimestamp = Math.floor(startDate.getTime() / 1000);
     const endTimestamp = Math.floor(endDate.getTime() / 1000);
 
     // Filter logs to date range and valid values
-    const filteredLogs = logs.filter(log =>
+    const filteredLogs = validLogs.filter(log =>
         log.timestamp >= startTimestamp &&
-        log.timestamp <= endTimestamp &&
-        log[metric] != null &&
-        !isNaN(log[metric])
+        log.timestamp <= endTimestamp
     );
 
     // Group logs by day and hour
@@ -71,7 +109,7 @@ export function generateHeatmapData(logs, metric, options = {}) {
 
     // Generate day labels (rows - dates as short form "23.1.")
     const dayLabels = [];
-    for (let d = 0; d < days; d++) {
+    for (let d = 0; d < numDays; d++) {
         const date = new Date(startDate);
         date.setDate(date.getDate() + d);
         dayLabels.push({
@@ -126,7 +164,8 @@ export function generateHeatmapData(logs, metric, options = {}) {
         hourLabels,
         metric,
         unit: config.unit,
-        label: config.label
+        label: config.label,
+        numDays
     };
 }
 
