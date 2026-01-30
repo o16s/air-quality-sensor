@@ -165,6 +165,14 @@ const translations = {
 
         // Settings modal
         settings_title: "Device Settings",
+        settings_deviceSettings: "Device Settings",
+        settings_measurementInterval: "Measurement Interval",
+        settings_ledAlwaysOn: "LED Always-On",
+        settings_ledAlwaysOnHint: "Keep pollution LED on continuously (Green: 0-25, Red: 25-50, Blue: >50 µg/m³). Uses extra battery.",
+        settings_saveSettings: "Save Settings",
+        settings_settingsSaved: "Settings saved",
+        settings_settingsNote: "Settings persist through sleep but are lost on power cycle.",
+        settings_default: "(default)",
         settings_eraseWarning: "Erasing device memory is permanent and cannot be undone.",
         settings_eraseButton: "Erase Device Memory",
         settings_eraseNote: "This will delete all measurements stored on the device. Your downloaded data in the browser will not be affected.",
@@ -486,8 +494,11 @@ const translations = {
 
         // Help page
         help_settings: "Settings",
+        help_language: "Language",
         help_analysisServer: "Report Analysis Server",
         help_analysisServerHint: "Webhook URL for AI-powered report analysis. Leave empty to disable.",
+        help_experimentalFeatures: "Experimental Features",
+        help_experimentalHint: "Enable access to features still in development",
 
         // History chart
         chart_title: "Time Series",
@@ -662,6 +673,14 @@ const translations = {
 
         // Settings modal
         settings_title: "Geräteeinstellungen",
+        settings_deviceSettings: "Geräteeinstellungen",
+        settings_measurementInterval: "Messintervall",
+        settings_ledAlwaysOn: "LED Dauerbetrieb",
+        settings_ledAlwaysOnHint: "Schadstoff-LED dauerhaft an (Grün: 0-25, Rot: 25-50, Blau: >50 µg/m³). Verbraucht mehr Batterie.",
+        settings_saveSettings: "Einstellungen speichern",
+        settings_settingsSaved: "Einstellungen gespeichert",
+        settings_settingsNote: "Einstellungen bleiben im Schlafmodus erhalten, gehen aber bei Stromunterbrechung verloren.",
+        settings_default: "(Standard)",
         settings_eraseWarning: "Das Löschen des Gerätespeichers ist dauerhaft und kann nicht rückgängig gemacht werden.",
         settings_eraseButton: "Gerätespeicher löschen",
         settings_eraseNote: "Dadurch werden alle auf dem Gerät gespeicherten Messungen gelöscht. Ihre heruntergeladenen Daten im Browser bleiben erhalten.",
@@ -983,8 +1002,11 @@ const translations = {
 
         // Help page
         help_settings: "Einstellungen",
+        help_language: "Sprache",
         help_analysisServer: "Berichtsanalyse-Server",
         help_analysisServerHint: "Webhook-URL für die KI-gestützte Berichtsanalyse. Leer lassen zum Deaktivieren.",
+        help_experimentalFeatures: "Experimentelle Funktionen",
+        help_experimentalHint: "Zugriff auf Funktionen in Entwicklung aktivieren",
 
         // History chart
         chart_title: "Zeitreihen",

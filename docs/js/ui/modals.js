@@ -4,8 +4,12 @@
  */
 
 import { getDeviceMetadata, setDeviceMetadata } from '../storage.js';
+import { getSettings, setSettings } from '../protocol.js';
+import { MEASUREMENT_INTERVALS } from '../constants.js';
+import { i18n } from '../i18n.js';
+import { isDeviceConnected, getDevice } from '../webusb.js';
 import * as state from './state.js';
-import { showError } from './utils.js';
+import { showError, showSuccess } from './utils.js';
 import { updateDeviceFilter, updateSwitcherDisplay } from './deviceSwitcher.js';
 
 /**
@@ -103,5 +107,110 @@ export async function handleSaveDeviceMetadata() {
     } catch (error) {
         console.error('Failed to save device metadata:', error);
         showError('Failed to save device metadata: ' + error.message);
+    }
+}
+
+/**
+ * Populate the interval dropdown with options
+ */
+function populateIntervalDropdown() {
+    const select = document.getElementById('settings-interval');
+    if (!select) return;
+
+    select.innerHTML = '';
+    MEASUREMENT_INTERVALS.forEach(({ index, minutes, isDefault }) => {
+        const option = document.createElement('option');
+        option.value = index;
+        // Format label: "X min" or "X min (default)"
+        let label = `${minutes} min`;
+        if (isDefault) {
+            label += ` ${i18n.t('settings_default')}`;
+        }
+        option.textContent = label;
+        select.appendChild(option);
+    });
+}
+
+/**
+ * Load device settings and populate the settings section
+ * Called when settings modal opens
+ */
+export async function loadDeviceSettings() {
+    const section = document.getElementById('device-settings-section');
+    const intervalSelect = document.getElementById('settings-interval');
+    const ledCheckbox = document.getElementById('settings-led-always-on');
+
+    // Populate interval dropdown
+    populateIntervalDropdown();
+
+    // Show/hide settings section based on device connection
+    if (!isDeviceConnected()) {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    try {
+        const device = getDevice();
+        const settings = await getSettings(device);
+
+        // Set interval dropdown to current value
+        intervalSelect.value = settings.intervalIndex;
+
+        // Set LED checkbox
+        ledCheckbox.checked = settings.ledAlwaysOn;
+
+        console.log('Device settings loaded:', settings);
+    } catch (error) {
+        console.error('Failed to load device settings:', error);
+        // Still show section but with defaults
+        intervalSelect.value = 2; // Default: 3 minutes
+        ledCheckbox.checked = false;
+    }
+}
+
+/**
+ * Handle save settings button click
+ * Sends settings to device
+ */
+export async function handleSaveSettings() {
+    if (!isDeviceConnected()) return;
+
+    const intervalSelect = document.getElementById('settings-interval');
+    const ledCheckbox = document.getElementById('settings-led-always-on');
+    const saveBtn = document.getElementById('save-settings-btn');
+
+    const intervalIndex = parseInt(intervalSelect.value, 10);
+    const ledAlwaysOn = ledCheckbox.checked;
+
+    // Disable button during save
+    const originalText = saveBtn.textContent;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '...';
+
+    try {
+        const device = getDevice();
+        await setSettings(device, { intervalIndex, ledAlwaysOn });
+
+        // Show success feedback on button
+        saveBtn.textContent = i18n.t('settings_settingsSaved');
+        saveBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+        saveBtn.classList.add('bg-green-500');
+
+        // Revert after 2 seconds
+        setTimeout(() => {
+            saveBtn.textContent = originalText;
+            saveBtn.classList.remove('bg-green-500');
+            saveBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            saveBtn.disabled = false;
+        }, 2000);
+
+        console.log('Settings saved:', { intervalIndex, ledAlwaysOn });
+    } catch (error) {
+        console.error('Failed to save settings:', error);
+        showError('Failed to save settings: ' + error.message);
+        saveBtn.disabled = false;
+        saveBtn.textContent = originalText;
     }
 }

@@ -13,7 +13,7 @@
 .sidebar-logo {
     width: 40px;
     height: 40px;
-    background: #3b82f6;
+    background: #135BBA;
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -26,7 +26,7 @@
 }
 
 .sidebar-logo:hover {
-    background: #2563eb;
+    background: #0F4D9E;
 }
 
 .sidebar-nav {
@@ -62,7 +62,7 @@
 
 .nav-item.active {
     background: #2a2a2a;
-    color: #3b82f6;
+    color: #135BBA;
 }
 
 .nav-item svg {
@@ -180,7 +180,7 @@
 }
 
 #progress-bar-fill {
-    background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #2563eb 100%);
+    background: linear-gradient(90deg, #0F4D9E 0%, #135BBA 50%, #0F4D9E 100%);
     background-size: 1000px 100%;
     animation: shimmer 2s infinite linear;
 }
@@ -249,7 +249,7 @@ table tbody tr {
 
 .loading-spinner {
     border: 2px solid #f3f4f6;
-    border-top: 2px solid #2563eb;
+    border-top: 2px solid #135BBA;
     border-radius: 50%;
     width: 20px;
     height: 20px;
@@ -386,7 +386,7 @@ table tbody tr {
 /* Accessibility Improvements */
 button:focus-visible,
 a:focus-visible {
-    outline: 2px solid #2563eb;
+    outline: 2px solid #135BBA;
     outline-offset: 2px;
 }
 
@@ -475,12 +475,12 @@ a:focus-visible {
 }
 
 [contenteditable="true"]:hover {
-    background-color: rgba(59, 130, 246, 0.05);
+    background-color: rgba(19, 91, 186, 0.05);
 }
 
 [contenteditable="true"]:focus {
-    background-color: rgba(59, 130, 246, 0.1);
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+    background-color: rgba(19, 91, 186, 0.1);
+    box-shadow: 0 0 0 1px rgba(19, 91, 186, 0.3);
 }
 
 [contenteditable="true"][data-placeholder]:empty::before {
@@ -491,4 +491,56 @@ a:focus-visible {
 
 .no-print {
     /* Add/remove buttons, only visible in preview */
+}
+
+/* Custom Blue Color Overrides (#135BBA) */
+/* Override Tailwind's default blue with Octanis brand blue */
+.bg-blue-500 {
+    background-color: #135BBA !important;
+}
+
+.bg-blue-600,
+.hover\:bg-blue-600:hover {
+    background-color: #0F4D9E !important;
+}
+
+.bg-blue-50,
+.hover\:bg-blue-50:hover {
+    background-color: #E8F0FA !important;
+}
+
+.text-blue-500,
+.hover\:text-blue-500:hover {
+    color: #135BBA !important;
+}
+
+.text-blue-600,
+.hover\:text-blue-600:hover {
+    color: #135BBA !important;
+}
+
+.text-blue-700 {
+    color: #0F4D9E !important;
+}
+
+.text-blue-800,
+.hover\:text-blue-800:hover {
+    color: #0C3D7E !important;
+}
+
+.text-blue-900 {
+    color: #092D5E !important;
+}
+
+.border-blue-400,
+.hover\:border-blue-400:hover {
+    border-color: #4A7CC9 !important;
+}
+
+.border-blue-500 {
+    border-color: #135BBA !important;
+}
+
+.focus\:ring-blue-500:focus {
+    --tw-ring-color: #135BBA !important;
 }

@@ -9,6 +9,7 @@ import { getDeviceStatus, formatGPSFix, createMapsURL } from '../protocol.js';
 import { LOG_TYPE, CO2_THRESHOLDS, TIME_SYNC } from '../constants.js';
 import * as state from './state.js';
 import { showError } from './utils.js';
+import { track } from './init.js';
 
 /**
  * Update live sensor data from connected device
@@ -59,6 +60,23 @@ export async function updateLiveData() {
         } else {
             document.getElementById('measured-age').textContent = i18n.t('time_hoursOld', { hours: Math.floor(ageSeconds / 3600) });
         }
+
+        // Track sensor reading
+        const formatName = currentLogType === LOG_TYPE.CO2 ? 'co2' : currentLogType === LOG_TYPE.TSL2591 ? 'tsl2591' : 'gps';
+        const trackData = {
+            format: formatName,
+            temp: Math.round(status.temperature * 10) / 10,
+            humidity: Math.round(status.humidity),
+            battery_mv: status.batteryVoltage,
+            charging: status.charging ? 1 : 0
+        };
+        if (currentLogType === LOG_TYPE.CO2) {
+            trackData.co2 = Math.round(status.co2);
+        } else {
+            trackData.pm25 = Math.round(status.pm25 * 10) / 10;
+            trackData.pm10 = Math.round(status.pm10 * 10) / 10;
+        }
+        track('sensor_reading', trackData);
 
     } catch (error) {
         console.error('Failed to update live data:', error);

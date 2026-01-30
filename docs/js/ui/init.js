@@ -4,6 +4,17 @@
  */
 
 import { i18n } from '../i18n.js';
+
+/** Track event safely - fails silently if offline or umami unavailable */
+export function track(event, data) {
+    try {
+        if (typeof umami !== 'undefined') {
+            umami.track(event, data);
+        }
+    } catch (e) {
+        // Fail silently - analytics should never break the app
+    }
+}
 import { autoReconnect, isDeviceConnected, onConnect, onDisconnect, getDevice } from '../webusb.js';
 import { getDatabaseStats, clearAllLogs } from '../storage.js';
 import { eraseLogs } from '../protocol.js';
@@ -41,7 +52,9 @@ import {
     openSettingsModal,
     closeSettingsModal,
     closeEditDeviceModal,
-    handleSaveDeviceMetadata
+    handleSaveDeviceMetadata,
+    loadDeviceSettings,
+    handleSaveSettings
 } from './modals.js';
 import { handleExportCSV, handleExportJSON } from './export.js';
 import { initReportPage, setupReportEventHandlers } from './reportUI.js';
@@ -234,6 +247,20 @@ export function configureWidgetsForLogType(logType) {
 }
 
 /**
+ * Update visibility of experimental features based on localStorage setting
+ */
+export function updateExperimentalFeatures() {
+    const enabled = localStorage.getItem('experimentalFeaturesEnabled') === 'true';
+    document.querySelectorAll('[data-experimental="true"]').forEach(el => {
+        if (enabled) {
+            el.classList.remove('hidden');
+        } else {
+            el.classList.add('hidden');
+        }
+    });
+}
+
+/**
  * Initialize sidebar navigation
  * Sets up click handlers for page switching
  */
@@ -254,6 +281,9 @@ function initSidebar() {
  * @param {string} pageId - The page to switch to (overview, history, report, help)
  */
 export function switchPage(pageId) {
+    // Track page view
+    track('page_view', { page: pageId });
+
     // Update nav items
     document.querySelectorAll('.nav-item').forEach(nav => {
         nav.classList.remove('active');
@@ -305,14 +335,20 @@ function setupEventHandlers() {
     // Disconnect button (in header)
     document.getElementById('disconnect-btn-header').addEventListener('click', handleDisconnect);
 
-    // Settings button
-    document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
+    // Settings button - load settings before opening modal
+    document.getElementById('settings-btn').addEventListener('click', async () => {
+        await loadDeviceSettings();
+        openSettingsModal();
+    });
 
     // Modal close button
     document.getElementById('close-modal-btn').addEventListener('click', closeSettingsModal);
 
     // Erase device button (in modal)
     document.getElementById('erase-device-btn').addEventListener('click', handleEraseDevice);
+
+    // Save settings button (in modal)
+    document.getElementById('save-settings-btn').addEventListener('click', handleSaveSettings);
 
     // Close modal when clicking outside
     document.getElementById('settings-modal').addEventListener('click', (e) => {
@@ -406,7 +442,19 @@ function setupEventHandlers() {
         // Set current language in dropdown
         langSwitcher.value = i18n.getLanguage();
         langSwitcher.addEventListener('change', (e) => {
+            track('setting_changed', { setting: 'language', value: e.target.value });
             i18n.setLanguage(e.target.value);
+        });
+    }
+
+    // Experimental features checkbox
+    const experimentalCheckbox = document.getElementById('setting-experimental-features');
+    if (experimentalCheckbox) {
+        experimentalCheckbox.checked = localStorage.getItem('experimentalFeaturesEnabled') === 'true';
+        experimentalCheckbox.addEventListener('change', () => {
+            track('setting_changed', { setting: 'experimental', value: experimentalCheckbox.checked });
+            localStorage.setItem('experimentalFeaturesEnabled', experimentalCheckbox.checked);
+            updateExperimentalFeatures();
         });
     }
 }
@@ -425,6 +473,7 @@ export async function initUI() {
     }
 
     initSidebar();
+    updateExperimentalFeatures();
     setupEventHandlers();
     await attemptAutoReconnect();
     await updateBrowserLogCount();

@@ -427,5 +427,57 @@ export async function triggerAcquisition(device) {
     }
 }
 
+/**
+ * Get device settings (measurement interval, LED mode)
+ * @param {USBDevice} device - The USB device
+ * @returns {Promise<{intervalIndex: number, intervalMinutes: number, ledAlwaysOn: boolean}>}
+ */
+export async function getSettings(device) {
+    validateDevice(device);
+
+    const data = await sendControlTransfer(device, COMMANDS.GET_SETTINGS, 0, 8);
+    const view = new DataView(data.buffer);
+
+    return {
+        intervalIndex: view.getUint8(0),
+        intervalMinutes: view.getUint16(1, true),
+        ledAlwaysOn: view.getUint8(3) === 1
+    };
+}
+
+/**
+ * Set device settings (measurement interval, LED mode)
+ * Host-to-Device OUT transfer
+ * @param {USBDevice} device - The USB device
+ * @param {Object} settings - Settings to change
+ * @param {number} [settings.intervalIndex] - Interval index (0-10), or undefined to leave unchanged
+ * @param {boolean} [settings.ledAlwaysOn] - LED always-on mode, or undefined to leave unchanged
+ * @returns {Promise<void>}
+ */
+export async function setSettings(device, { intervalIndex, ledAlwaysOn }) {
+    validateDevice(device);
+
+    // Build settings buffer
+    // Byte 0: interval index (0xFF = unchanged)
+    // Byte 1: LED always-on (0=off, 1=on, 0xFF=unchanged)
+    // Bytes 2-3: Reserved
+    const buffer = new Uint8Array([
+        intervalIndex ?? 0xFF,
+        ledAlwaysOn === undefined ? 0xFF : (ledAlwaysOn ? 1 : 0),
+        0,
+        0
+    ]);
+
+    await device.controlTransferOut({
+        requestType: 'vendor',
+        recipient: 'device',
+        request: USB.VENDOR_CODE,
+        value: 0,
+        index: COMMANDS.SET_SETTINGS
+    }, buffer);
+
+    console.log('Device settings updated');
+}
+
 // Export utility functions that are used by UI
 export { formatGPSFix, createMapsURL };

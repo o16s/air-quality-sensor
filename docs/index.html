@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Octanis ICS</title>
+    <script defer src="https://radar.octanis.ch/script.js" data-website-id="71d54115-00e8-4241-a490-cd6d86474e98"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="css/style.css">
@@ -26,7 +27,7 @@
                 <svg viewBox="0 0 24 24"><path d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 <span class="nav-label" data-i18n="nav_history">History</span>
             </a>
-            <a href="#report" data-page="report" class="nav-item" data-i18n-title="nav_report">
+            <a href="#report" data-page="report" data-experimental="true" class="nav-item hidden" data-i18n-title="nav_report">
                 <svg viewBox="0 0 24 24"><path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                 <span class="nav-label" data-i18n="nav_report">Report</span>
             </a>
@@ -120,7 +121,7 @@
 
                 <!-- Right: Actions -->
                 <div class="flex items-center gap-2">
-                    <button id="sync-data-btn-header" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1.5 px-3 rounded-lg transition duration-200" data-i18n="action_syncData">
+                    <button id="sync-data-btn-header" data-umami-event="sync_data" class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-1.5 px-3 rounded-lg transition duration-200" data-i18n="action_syncData">
                         Sync Data
                     </button>
                     <button id="settings-btn" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition duration-200" data-i18n-title="device_settings">
@@ -167,7 +168,7 @@
         <div id="connect-section" class="hidden">
             <div class="bg-white rounded-lg shadow-md p-12 mb-6 text-center">
                 <img src="img/logo.png" alt="Octanis" class="h-12 mx-auto mb-6 opacity-40">
-                <button id="connect-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-200" data-i18n="action_connect">
+                <button id="connect-btn" data-umami-event="connect_device" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition duration-200" data-i18n="action_connect">
                     Connect Device
                 </button>
                 <p id="electron-connect-hint" class="hidden text-gray-600 mt-4" data-i18n="connect_hint_electron">
@@ -187,7 +188,7 @@
                             <h2 class="widget-header" data-i18n="live_title">Live Sensor Data</h2>
                             <p class="widget-subtitle" data-i18n="live_subtitle">Current readings from connected device</p>
                         </div>
-                        <button id="refresh-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200" data-i18n="action_measureNow">
+                        <button id="refresh-btn" data-umami-event="measure_now" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200" data-i18n="action_measureNow">
                             Measure Now
                         </button>
                     </div>
@@ -369,7 +370,7 @@
                         </div>
                     </div>
                     <div class="flex gap-4 items-center">
-                        <button id="export-csv-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200" data-i18n="action_exportCSV">
+                        <button id="export-csv-btn" data-umami-event="export_csv" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200" data-i18n="action_exportCSV">
                             Export CSV
                         </button>
                         <button id="clear-logs-btn" class="text-gray-500 hover:text-red-600 hover:underline text-sm font-medium transition duration-200" data-i18n="action_clear">
@@ -536,10 +537,10 @@
 
                     <!-- Action Buttons -->
                     <div class="space-y-2">
-                        <button id="generate-pdf-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition" data-i18n="action_generatePDF">
+                        <button id="generate-pdf-btn" data-umami-event="generate_pdf" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition" data-i18n="action_generatePDF">
                             Generate PDF Report
                         </button>
-                        <button id="ai-analysis-btn" class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition flex items-center justify-center gap-2" data-i18n="action_aiAnalysis">
+                        <button id="ai-analysis-btn" data-umami-event="ai_analysis" class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition flex items-center justify-center gap-2" data-i18n="action_aiAnalysis">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M16 14a4 4 0 0 0-8 0v4h8v-4z"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/><path d="M9 22h6"/></svg>
                             AI Analysis
                         </button>
@@ -576,69 +577,29 @@
                         <input id="setting-analysis-url" type="url" class="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://...">
                         <p class="text-xs text-gray-400 mt-1" data-i18n="help_analysisServerHint">Webhook URL for AI-powered report analysis. Leave empty to disable.</p>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Footer Logo (shown when connected) -->
-    <div id="footer-logo" class="hidden px-6 py-4">
-        <div class="flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200" data-i18n="footer_company">
-                    Octanis Instruments GmbH, Switzerland
-                </a>
-                <select id="language-switcher" class="text-xs text-gray-500 bg-transparent border border-gray-300 rounded px-2 py-1 cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="en">English</option>
-                    <option value="de">Deutsch</option>
-                </select>
-            </div>
-            <img src="img/logo.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
-        </div>
-    </div>
-    </main>
+                    <!-- Language Selection -->
+                    <div class="mb-4">
+                        <label for="language-switcher" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1" data-i18n="help_language">Language</label>
+                        <select id="language-switcher" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="en">English</option>
+                            <option value="de">Deutsch</option>
+                        </select>
+                    </div>
 
-    <!-- Settings Modal -->
-    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between p-6 border-b">
-                <h3 class="text-xl font-semibold text-gray-900" data-i18n="settings_title">Device Settings</h3>
-                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
-
-            <!-- Modal Body -->
-            <div class="p-6 space-y-4">
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <p class="text-sm text-yellow-700">
-                                <strong>Warning:</strong> <span data-i18n="settings_eraseWarning">Erasing device memory is permanent and cannot be undone.</span>
-                            </p>
-                        </div>
+                    <!-- Experimental Features -->
+                    <div class="mb-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="setting-experimental-features" class="w-4 h-4 text-blue-600 rounded">
+                            <span class="ml-2 text-sm text-gray-700" data-i18n="help_experimentalFeatures">Experimental Features</span>
+                        </label>
+                        <p class="text-xs text-gray-400 mt-1 ml-6" data-i18n="help_experimentalHint">Enable access to features still in development</p>
                     </div>
                 </div>
 
-                <button id="erase-device-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200" data-i18n="settings_eraseButton">
-                    Erase Device Memory
-                </button>
-
-                <p class="text-xs text-gray-500 text-center" data-i18n="settings_eraseNote">
-                    This will delete all measurements stored on the device. Your downloaded data in the browser will not be affected.
-                </p>
-
-                <!-- Sensor Datasheets Section -->
-                <div class="border-t pt-4 mt-4">
-                    <h4 class="text-sm font-medium text-gray-700 mb-3" data-i18n="settings_datasheets">Sensor Datasheets</h4>
+                <!-- Sensor Datasheets -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="settings_datasheets">Sensor Datasheets</h2>
                     <div class="space-y-2 text-sm">
                         <a href="https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf"
                            target="_blank" rel="noopener"
@@ -667,15 +628,95 @@
                     </div>
                 </div>
 
-                <!-- Event Detection Thresholds (dynamically rendered from constants.js) -->
-                <div class="border-t pt-4 mt-4">
-                    <h4 class="text-sm font-medium text-gray-700 mb-3" data-i18n="settings_thresholds">Event Detection Thresholds</h4>
-                    <p class="text-xs text-gray-500 mb-3" data-i18n="settings_thresholdsNote">Values that trigger events in the timeline (based on WHO/EPA guidelines)</p>
+                <!-- Event Detection Thresholds -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="settings_thresholds">Event Detection Thresholds</h2>
+                    <p class="text-sm text-gray-500 mb-4" data-i18n="settings_thresholdsNote">Values that trigger events in the timeline (based on WHO/EPA guidelines)</p>
                     <div id="threshold-table">
                         <!-- Populated by renderThresholdTable() in ui.js -->
                     </div>
-                    <p class="text-xs text-gray-400 mt-2" data-i18n="settings_thresholdsFooter">Yellow events require 5+ min duration. Anomaly spikes (z-score) also detected.</p>
+                    <p class="text-xs text-gray-400 mt-3" data-i18n="settings_thresholdsFooter">Yellow events require 5+ min duration. Anomaly spikes (z-score) also detected.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Logo (shown when connected) -->
+    <div id="footer-logo" class="hidden px-6 py-4">
+        <div class="flex justify-between items-center">
+            <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200" data-i18n="footer_company">
+                Octanis Instruments GmbH, Switzerland
+            </a>
+            <img src="img/logo.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
+        </div>
+    </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b">
+                <h3 class="text-xl font-semibold text-gray-900" data-i18n="settings_title">Device Settings</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <!-- Device Settings Section (shown only when device connected) -->
+                <div id="device-settings-section" class="hidden">
+                    <!-- Measurement Interval -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="settings_measurementInterval">Measurement Interval</label>
+                        <select id="settings-interval" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+
+                    <!-- LED Always-On Toggle -->
+                    <div class="mb-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="settings-led-always-on" class="w-4 h-4 text-blue-600 rounded">
+                            <span class="ml-2 text-sm text-gray-700" data-i18n="settings_ledAlwaysOn">LED Always-On</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6" data-i18n="settings_ledAlwaysOnHint">Keep pollution LED on continuously (Green: 0-25, Red: 25-50, Blue: >50 µg/m³)</p>
+                    </div>
+
+                    <!-- Save Button -->
+                    <button id="save-settings-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition duration-200" data-i18n="settings_saveSettings">
+                        Save Settings
+                    </button>
+
+                    <!-- Note -->
+                    <p class="text-xs text-gray-400 mt-3 mb-6 text-center" data-i18n="settings_settingsNote">Settings persist through sleep but are lost on power cycle.</p>
+                </div>
+
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">
+                                <strong>Warning:</strong> <span data-i18n="settings_eraseWarning">Erasing device memory is permanent and cannot be undone.</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="erase-device-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200" data-i18n="settings_eraseButton">
+                    Erase Device Memory
+                </button>
+
+                <p class="text-xs text-gray-500 text-center" data-i18n="settings_eraseNote">
+                    This will delete all measurements stored on the device. Your downloaded data in the browser will not be affected.
+                </p>
             </div>
         </div>
     </div>

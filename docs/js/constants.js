@@ -26,8 +26,26 @@ export const COMMANDS = {
     GET_PRINT_BUFFER: 0x07, // Get debug print buffer
     SET_TIME: 0x08,         // Set device RTC (Host-to-Device OUT transfer)
     ACQUIRE: 0x09,          // Trigger immediate sensor measurement (Host-to-Device OUT)
-    GET_LOG_TYPE: 0x0A      // Get log format type (0=GPS, 1=TSL2591)
+    GET_LOG_TYPE: 0x0A,     // Get log format type (0=GPS, 1=TSL2591)
+    GET_SETTINGS: 0x0B,     // Get device settings (interval, LED mode)
+    SET_SETTINGS: 0x0C      // Set device settings (Host-to-Device OUT)
 };
+
+// Measurement Interval Options
+// index is sent to firmware, minutes is display value
+export const MEASUREMENT_INTERVALS = [
+    { index: 0, minutes: 1 },
+    { index: 1, minutes: 2 },
+    { index: 2, minutes: 3, isDefault: true },
+    { index: 3, minutes: 5 },
+    { index: 4, minutes: 10 },
+    { index: 5, minutes: 15 },
+    { index: 6, minutes: 20 },
+    { index: 7, minutes: 30 },
+    { index: 8, minutes: 60 },
+    { index: 9, minutes: 120 },
+    { index: 10, minutes: 180 }
+];
 
 // Log Format Types
 export const LOG_TYPE = {

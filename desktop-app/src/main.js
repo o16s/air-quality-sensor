@@ -2,6 +2,7 @@
 if (require('electron-squirrel-startup')) require('electron').app.quit();
 
 const { app, BrowserWindow, session } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
 // Store granted USB devices for reconnection
@@ -83,6 +84,11 @@ function setupUSBHandlers() {
 app.whenReady().then(() => {
   setupUSBHandlers();
   createWindow();
+
+  // Check for updates (only in packaged app)
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
