@@ -4,7 +4,7 @@
  */
 
 import { getDeviceMetadata, setDeviceMetadata } from '../storage.js';
-import { getSettings, setSettings } from '../protocol.js';
+import { getSettings, setSettings, setRecording } from '../protocol.js';
 import { MEASUREMENT_INTERVALS } from '../constants.js';
 import { i18n } from '../i18n.js';
 import { isDeviceConnected, getDevice } from '../webusb.js';
@@ -167,6 +167,29 @@ export async function loadDeviceSettings() {
         // Still show section but with defaults
         intervalSelect.value = 2; // Default: 3 minutes
         ledCheckbox.checked = false;
+    }
+}
+
+/**
+ * Handle recording toggle change
+ * Sends recording state to device immediately
+ * @param {Event} event - Change event from checkbox
+ */
+export async function handleRecordingToggle(event) {
+    if (!isDeviceConnected()) return;
+
+    const checkbox = event.target;
+    const enabled = checkbox.checked;
+
+    try {
+        const device = getDevice();
+        await setRecording(device, enabled);
+        console.log(`Recording ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+        console.error('Failed to set recording:', error);
+        showError(`Failed to set recording: ${error.message}`);
+        // Revert checkbox state on error
+        checkbox.checked = !enabled;
     }
 }
 

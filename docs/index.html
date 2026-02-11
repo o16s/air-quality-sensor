@@ -686,6 +686,15 @@
                         <p class="text-xs text-gray-500 mt-1 ml-6" data-i18n="settings_ledAlwaysOnHint">Keep pollution LED on continuously (Green: 0-25, Red: 25-50, Blue: >50 µg/m³)</p>
                     </div>
 
+                    <!-- Recording Toggle -->
+                    <div class="mb-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="settings-recording" class="w-4 h-4 text-blue-600 rounded" checked>
+                            <span class="ml-2 text-sm text-gray-700" data-i18n="settings_recording">Recording</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-6" data-i18n="settings_recordingHint">When disabled, device stops automatic measurements</p>
+                    </div>
+
                     <!-- Save Button -->
                     <button id="save-settings-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition duration-200" data-i18n="settings_saveSettings">
                         Save Settings

@@ -412,11 +412,12 @@ export async function triggerAcquisition(device) {
 
     try {
         // Send Host-to-Device OUT transfer with 0 bytes
+        // value=1 (short press): trigger measurement + enable recording
         await device.controlTransferOut({
             requestType: 'vendor',
             recipient: 'device',
             request: USB.VENDOR_CODE,
-            value: 0,
+            value: 1,
             index: COMMANDS.ACQUIRE
         }, new Uint8Array(0));
 
@@ -424,6 +425,31 @@ export async function triggerAcquisition(device) {
 
     } catch (error) {
         throw new Error(`Failed to trigger acquisition: ${error.message}`);
+    }
+}
+
+/**
+ * Set device recording mode (start/stop automatic measurements)
+ * @param {USBDevice} device - The USB device
+ * @param {boolean} enabled - true to enable recording, false to disable
+ */
+export async function setRecording(device, enabled) {
+    validateDevice(device);
+
+    try {
+        // value=1 (short press): enables recording + triggers measurement
+        // value=0 (long press): disables recording
+        await device.controlTransferOut({
+            requestType: 'vendor',
+            recipient: 'device',
+            request: USB.VENDOR_CODE,
+            value: enabled ? 1 : 0,
+            index: COMMANDS.ACQUIRE
+        }, new Uint8Array(0));
+
+        console.log(`Recording ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+        throw new Error(`Failed to set recording: ${error.message}`);
     }
 }
 

@@ -54,7 +54,8 @@ import {
     closeEditDeviceModal,
     handleSaveDeviceMetadata,
     loadDeviceSettings,
-    handleSaveSettings
+    handleSaveSettings,
+    handleRecordingToggle
 } from './modals.js';
 import { handleExportCSV, handleExportJSON } from './export.js';
 import { initReportPage, setupReportEventHandlers } from './reportUI.js';
@@ -349,6 +350,9 @@ function setupEventHandlers() {
 
     // Save settings button (in modal)
     document.getElementById('save-settings-btn').addEventListener('click', handleSaveSettings);
+
+    // Recording toggle (in modal) - sends immediately on change
+    document.getElementById('settings-recording').addEventListener('change', handleRecordingToggle);
 
     // Close modal when clicking outside
     document.getElementById('settings-modal').addEventListener('click', (e) => {
