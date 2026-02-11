@@ -1,0 +1,37 @@
+{
+  "name": "octanis-ics",
+  "version": "1.0.0",
+  "description": "WebUSB interface for Octanis environmental sensors",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
+  },
+  "keywords": [
+    "webusb",
+    "sensor",
+    "air-quality",
+    "stm32"
+  ],
+  "author": "o16s",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.0.4",
+    "@vitest/ui": "^1.0.4",
+    "fake-indexeddb": "^5.0.2",
+    "happy-dom": "^12.10.3",
+    "vite": "^6.1.0",
+    "vitest": "^1.0.4"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "echarts": "^6.0.0",
+    "html2pdf.js": "^0.14.0",
+    "tailwindcss": "^4.1.18"
+  }
+}

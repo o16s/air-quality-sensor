@@ -1,1 +1,5 @@
+# docs/ is Vite build output for GitHub Pages
 node_modules/
+coverage/
+.DS_Store
+.claude/

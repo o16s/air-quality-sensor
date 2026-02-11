@@ -1,0 +1,250 @@
+/**
+ * History Chart UI Module
+ * Fetches and aggregates data, wires events, calls ECharts renderer
+ */
+
+import { i18n } from '../i18n.js';
+import { getLogsByDateRange } from '../storage.js';
+import * as state from './state.js';
+import { initEChart, updateChart, resizeChart, getChartInstance } from './historyChart.js';
+
+// All possible metrics and their i18n label keys
+const ALL_METRICS = [
+    { key: 'temperature', i18nKey: 'sensor_temperature', field: 'temperature' },
+    { key: 'humidity',    i18nKey: 'sensor_humidity',    field: 'humidity' },
+    { key: 'pm25',        i18nKey: 'sensor_pm25',        field: 'pm25' },
+    { key: 'pm10',        i18nKey: 'sensor_pm10',        field: 'pm10' },
+    { key: 'co2',         i18nKey: 'sensor_co2',         field: 'co2' },
+    { key: 'lux',         i18nKey: 'sensor_light',       field: 'lux' },
+    { key: 'pressure',    i18nKey: 'sensor_pressure',    field: 'pressure' },
+    { key: 'gasResistance', i18nKey: 'sensor_gasResistance', field: 'gasResistance' }
+];
+
+const BUCKET_SECONDS = 900; // 15 minutes
+const MAX_POINTS = 1000;
+
+const METRIC_LABEL_MAP = {
+    temperature: 'Temp', humidity: 'Humidity', pm25: 'PM2.5', pm10: 'PM10',
+    co2: 'CO2', lux: 'Light', pressure: 'Pressure', gasResistance: 'Gas Res.'
+};
+
+// Module state
+let activeMetrics = new Set(['temperature', 'humidity']);
+let currentTimeRange = '7d';
+let cachedTraces = null;  // Map<metric, {timestamps[], values[]}>
+let cacheKey = null;
+let resizeRAF = null;
+
+/**
+ * Initialize the history chart: create ECharts instance, wire events, initial render
+ */
+export async function initHistoryChart() {
+    initEChart('chart-container');
+    wireEvents();
+    await refreshHistoryChart();
+}
+
+/**
+ * Refresh chart: re-fetch data + re-render. Called from init.js and sync.js
+ */
+export async function refreshHistoryChart() {
+    invalidateCache();
+    await fetchAndRender();
+}
+
+/**
+ * Wire up DOM events: time range buttons, legend sync, resize
+ */
+function wireEvents() {
+    // Time range pill buttons (event delegation)
+    const btnGroup = document.getElementById('chart-time-range-group');
+    if (btnGroup) {
+        btnGroup.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.time-range-btn');
+            if (!btn) return;
+            const range = btn.dataset.range;
+            if (range === currentTimeRange) return;
+
+            btnGroup.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            currentTimeRange = range;
+            invalidateCache();
+            await fetchAndRender();
+        });
+    }
+
+    // Sync ECharts legend selection back to activeMetrics
+    const chart = getChartInstance();
+    if (chart) {
+        chart.on('legendselectchanged', (params) => {
+            const labelToKey = {};
+            for (const m of ALL_METRICS) {
+                labelToKey[METRIC_LABEL_MAP[m.key] || m.key] = m.key;
+            }
+            activeMetrics.clear();
+            for (const [label, selected] of Object.entries(params.selected)) {
+                if (selected && labelToKey[label]) {
+                    activeMetrics.add(labelToKey[label]);
+                }
+            }
+        });
+    }
+
+    // Responsive resize
+    const container = document.getElementById('chart-container');
+    if (container && typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => {
+            if (resizeRAF) cancelAnimationFrame(resizeRAF);
+            resizeRAF = requestAnimationFrame(() => resizeChart());
+        });
+        observer.observe(container);
+    }
+}
+
+/**
+ * Fetch data, aggregate into 15-min buckets, cache, and render
+ */
+async function fetchAndRender() {
+    const deviceFilter = state.get('currentDeviceFilter');
+    const newCacheKey = `${deviceFilter || 'all'}|${currentTimeRange}`;
+
+    if (cacheKey === newCacheKey && cachedTraces) {
+        renderFromCache();
+        return;
+    }
+
+    try {
+        const logs = await fetchLogs(deviceFilter, currentTimeRange);
+        cachedTraces = aggregateTo15Min(logs);
+        cacheKey = newCacheKey;
+    } catch (err) {
+        console.error('History chart data fetch failed:', err);
+        cachedTraces = new Map();
+        cacheKey = newCacheKey;
+    }
+
+    renderFromCache();
+}
+
+/**
+ * Render from cached data — build all available traces, let ECharts legend handle toggling
+ */
+function renderFromCache() {
+    const container = document.getElementById('chart-container');
+    const emptyState = document.getElementById('chart-empty-state');
+    if (!container || !emptyState) return;
+
+    const traces = [];
+    if (cachedTraces) {
+        for (const [metric, data] of cachedTraces) {
+            if (data && data.timestamps.length >= 2) {
+                traces.push({ metric, timestamps: data.timestamps, values: data.values });
+            }
+        }
+    }
+
+    if (traces.length === 0) {
+        container.style.display = 'none';
+        emptyState.classList.remove('hidden');
+        if (cachedTraces && cachedTraces.size > 0) {
+            emptyState.textContent = i18n.t('chart_noData');
+        } else {
+            emptyState.textContent = i18n.t('chart_noDataAvailable');
+        }
+        return;
+    }
+
+    container.style.display = '';
+    emptyState.classList.add('hidden');
+
+    // Build legend selected state from activeMetrics
+    const selected = {};
+    for (const t of traces) {
+        selected[t.metric] = activeMetrics.has(t.metric);
+    }
+
+    updateChart(traces, { selected, timeRange: currentTimeRange });
+}
+
+/**
+ * Fetch logs from storage based on device filter and time range
+ */
+async function fetchLogs(deviceFilter, timeRange) {
+    const now = Math.floor(Date.now() / 1000);
+    let startTimestamp;
+
+    if (timeRange === '24h') {
+        startTimestamp = now - 24 * 3600;
+    } else if (timeRange === '7d') {
+        startTimestamp = now - 7 * 24 * 3600;
+    } else if (timeRange === '30d') {
+        startTimestamp = now - 30 * 24 * 3600;
+    } else {
+        startTimestamp = 0;
+    }
+
+    return getLogsByDateRange(startTimestamp, now, deviceFilter || null);
+}
+
+/**
+ * Aggregate logs into 15-minute buckets, averaging values per metric
+ * @param {Array} logs - Raw log records
+ * @returns {Map<string, {timestamps: number[], values: number[]}>}
+ */
+function aggregateTo15Min(logs) {
+    if (!logs || logs.length === 0) return new Map();
+
+    const buckets = new Map();
+
+    for (const log of logs) {
+        if (!log.timestamp) continue;
+        const bucketKey = Math.floor(log.timestamp / BUCKET_SECONDS) * BUCKET_SECONDS;
+
+        for (const m of ALL_METRICS) {
+            const val = log[m.field];
+            if (val === undefined || val === null) continue;
+
+            if (!buckets.has(m.key)) buckets.set(m.key, new Map());
+            const metricBuckets = buckets.get(m.key);
+
+            if (!metricBuckets.has(bucketKey)) metricBuckets.set(bucketKey, []);
+            metricBuckets.get(bucketKey).push(val);
+        }
+    }
+
+    const result = new Map();
+
+    for (const [metric, metricBuckets] of buckets) {
+        const entries = Array.from(metricBuckets.entries()).sort((a, b) => a[0] - b[0]);
+        let timestamps = entries.map(e => e[0]);
+        let values = entries.map(e => {
+            const arr = e[1];
+            return arr.reduce((s, v) => s + v, 0) / arr.length;
+        });
+
+        if (timestamps.length > MAX_POINTS) {
+            const stride = Math.ceil(timestamps.length / MAX_POINTS);
+            const sampledT = [];
+            const sampledV = [];
+            for (let i = 0; i < timestamps.length; i += stride) {
+                sampledT.push(timestamps[i]);
+                sampledV.push(values[i]);
+            }
+            timestamps = sampledT;
+            values = sampledV;
+        }
+
+        result.set(metric, { timestamps, values });
+    }
+
+    return result;
+}
+
+/**
+ * Invalidate the cache so next render re-fetches
+ */
+function invalidateCache() {
+    cachedTraces = null;
+    cacheKey = null;
+}

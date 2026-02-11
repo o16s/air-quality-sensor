@@ -1,0 +1,572 @@
+@import "tailwindcss";
+
+/**
+ * Octanis ICS - Custom Styles
+ * Supplements Tailwind CSS with custom styling
+ */
+
+/* Sidebar */
+.sidebar {
+    width: 72px;
+    background: #1a1a1a;
+    border-right: 1px solid #2a2a2a;
+}
+
+.sidebar-logo {
+    width: 40px;
+    height: 40px;
+    background: #135BBA;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sidebar-logo:hover {
+    background: #0F4D9E;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 8px;
+    flex: 1;
+}
+
+.nav-item {
+    width: 56px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 0;
+    transition: all 0.2s;
+    text-decoration: none;
+    margin: 0 auto;
+}
+
+.nav-item:hover {
+    background: #2a2a2a;
+    color: #bbb;
+}
+
+.nav-item.active {
+    background: #2a2a2a;
+    color: #135BBA;
+}
+
+.nav-item svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    fill: none;
+}
+
+.nav-label {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+}
+
+.sidebar-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 8px;
+    border-top: 1px solid #2a2a2a;
+    padding-top: 12px;
+    margin-top: auto;
+}
+
+/* Page Header */
+.page-header {
+    padding: 24px 32px;
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 4px 0;
+}
+
+.page-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* Page System */
+.page {
+    display: none;
+}
+
+.page.active {
+    display: block;
+}
+
+.page-content {
+    padding: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Widget Headers - consistent styling for dashboard sections */
+.widget-header {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.widget-subtitle {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+/* Sensor Cards */
+.sensor-card {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    transition: all 0.3s ease;
+}
+
+.sensor-card:hover {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Connection Status Pulse Animation */
+@keyframes pulse-green {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.bg-green-500 {
+    animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Progress Bar Animation */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+#progress-bar-fill {
+    background: linear-gradient(90deg, #0F4D9E 0%, #135BBA 50%, #0F4D9E 100%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+}
+
+/* Battery Bar Color Transitions */
+#battery-bar {
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* AQI Color Indicators */
+.aqi-good {
+    color: #10b981;
+}
+
+.aqi-moderate {
+    color: #f59e0b;
+}
+
+.aqi-unhealthy-sensitive {
+    color: #f97316;
+}
+
+.aqi-unhealthy {
+    color: #ef4444;
+}
+
+.aqi-very-unhealthy {
+    color: #9333ea;
+}
+
+.aqi-hazardous {
+    color: #7c2d12;
+}
+
+/* Button Hover Effects */
+button {
+    transition: all 0.2s ease;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Table Styling */
+table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+/* Loading Spinner */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-spinner {
+    border: 2px solid #f3f4f6;
+    border-top: 2px solid #135BBA;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+/* Fade In Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#main-content {
+    animation: fadeIn 0.5s ease;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Responsive Font Sizes */
+@media (max-width: 640px) {
+    .sensor-card .text-2xl {
+        font-size: 1.5rem;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.25rem;
+    }
+
+    h3 {
+        font-size: 1rem;
+    }
+}
+
+/* Print Styles */
+@media print {
+    #connect-btn,
+    #refresh-btn,
+    #download-logs-btn,
+    #export-csv-btn,
+    #export-json-btn,
+    #clear-logs-btn,
+    #browser-warning,
+    #instructions {
+        display: none;
+    }
+
+    body {
+        background: white;
+    }
+
+    .bg-white {
+        box-shadow: none;
+        border: 1px solid #e5e7eb;
+    }
+
+    table {
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+}
+
+/* Dark Mode Support (Optional) */
+@media (prefers-color-scheme: dark) {
+    /*
+     * Uncomment to enable dark mode
+     * Currently using Tailwind's default light theme
+     */
+
+    /*
+    body {
+        background-color: #111827;
+        color: #f9fafb;
+    }
+
+    .bg-white {
+        background-color: #1f2937;
+    }
+
+    .bg-gray-50 {
+        background-color: #111827;
+    }
+
+    .text-gray-800 {
+        color: #f9fafb;
+    }
+
+    .text-gray-600 {
+        color: #d1d5db;
+    }
+
+    .sensor-card {
+        background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    }
+
+    .sensor-card:hover {
+        background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+    }
+    */
+}
+
+/* Accessibility Improvements */
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid #135BBA;
+    outline-offset: 2px;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* GPS Map Link Styling */
+#gps-map-link {
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+#gps-map-link:hover {
+    text-decoration: underline;
+    gap: 0.5rem;
+}
+
+/* Download Progress Bar Container */
+#download-progress-bar {
+    transition: opacity 0.3s ease;
+}
+
+/* Status Indicator Glow Effect */
+.bg-green-500.rounded-full {
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+/* Error and Success Message Styling (Future Enhancement) */
+.toast-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    z-index: 1000;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast-success {
+    background-color: #10b981;
+    color: white;
+}
+
+.toast-error {
+    background-color: #ef4444;
+    color: white;
+}
+
+/* Time Range Pill Buttons */
+.time-range-btn {
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: none;
+    background: transparent;
+    line-height: 1.5;
+}
+
+.time-range-btn:hover {
+    color: #374151;
+}
+
+.time-range-btn.active {
+    background: white;
+    color: #1f2937;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Utility Classes */
+.text-mono {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Inline-Editable Report Preview */
+[contenteditable="true"] {
+    outline: none;
+    border-radius: 2px;
+    cursor: text;
+}
+
+[contenteditable="true"]:hover {
+    background-color: rgba(19, 91, 186, 0.05);
+}
+
+[contenteditable="true"]:focus {
+    background-color: rgba(19, 91, 186, 0.1);
+    box-shadow: 0 0 0 1px rgba(19, 91, 186, 0.3);
+}
+
+[contenteditable="true"][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.no-print {
+    /* Add/remove buttons, only visible in preview */
+}
+
+/* Custom Blue Color Overrides (#135BBA) */
+/* Override Tailwind's default blue with Octanis brand blue */
+.bg-blue-500 {
+    background-color: #135BBA !important;
+}
+
+.bg-blue-600,
+.hover\:bg-blue-600:hover {
+    background-color: #0F4D9E !important;
+}
+
+.bg-blue-50,
+.hover\:bg-blue-50:hover {
+    background-color: #E8F0FA !important;
+}
+
+.text-blue-500,
+.hover\:text-blue-500:hover {
+    color: #135BBA !important;
+}
+
+.text-blue-600,
+.hover\:text-blue-600:hover {
+    color: #135BBA !important;
+}
+
+.text-blue-700 {
+    color: #0F4D9E !important;
+}
+
+.text-blue-800,
+.hover\:text-blue-800:hover {
+    color: #0C3D7E !important;
+}
+
+.text-blue-900 {
+    color: #092D5E !important;
+}
+
+.border-blue-400,
+.hover\:border-blue-400:hover {
+    border-color: #4A7CC9 !important;
+}
+
+.border-blue-500 {
+    border-color: #135BBA !important;
+}
+
+.focus\:ring-blue-500:focus {
+    --tw-ring-color: #135BBA !important;
+}
