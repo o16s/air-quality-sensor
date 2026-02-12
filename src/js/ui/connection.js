@@ -15,7 +15,7 @@ import {
     getFirmwareVersion,
     getLogType
 } from '../protocol.js';
-import { getDeviceMetadata, setDeviceMetadata, getLogCount as getStorageLogCount } from '../storage.js';
+import { getDeviceMetadata, setDeviceMetadata } from '../storage.js';
 import { LOG_TYPE } from '../constants.js';
 import * as state from './state.js';
 import { showError } from './utils.js';
@@ -68,18 +68,7 @@ export async function handleDeviceConnected(device) {
     // Update hidden fields for existing code compatibility
     document.getElementById('device-serial').textContent = info.serialNumber;
 
-    // Hide connect section, show main content
-    const connectSection = document.getElementById('connect-section');
-    connectSection.classList.add('hidden');
-
-    // Show main content and hide instructions (both versions)
-    document.getElementById('instructions').classList.add('hidden');
-    document.getElementById('instructions-electron').classList.add('hidden');
-    document.getElementById('main-content').classList.remove('hidden');
-    document.getElementById('live-data-section').classList.remove('hidden');
-
-    // Show footer logo when connected
-    document.getElementById('footer-logo').classList.remove('hidden');
+    // View updates handled by updateOverviewVisibility() via selectedDeviceSerial subscription
 
     // Get firmware version and parse model
     let currentDeviceModel = null;
@@ -165,42 +154,6 @@ export async function handleDeviceConnected(device) {
 }
 
 /**
- * Show appropriate content when disconnected (instructions or measurement history)
- */
-export async function showAppropriateDisconnectedContent() {
-    // Use environment-specific instructions
-    const instructions = document.getElementById(runningInElectron ? 'instructions-electron' : 'instructions');
-    const otherInstructions = document.getElementById(runningInElectron ? 'instructions' : 'instructions-electron');
-
-    // Always hide the wrong instructions
-    otherInstructions.classList.add('hidden');
-
-    try {
-        const logCount = await getStorageLogCount();
-        const hasLogs = logCount > 0;
-
-        // Show instructions OR main content (measurement history)
-        instructions.classList.toggle('hidden', hasLogs);
-        document.getElementById('main-content').classList.toggle('hidden', !hasLogs);
-
-        if (hasLogs) {
-            // Hide live data section when disconnected
-            document.getElementById('live-data-section').classList.add('hidden');
-            // Show footer when we have data
-            document.getElementById('footer-logo').classList.remove('hidden');
-        } else {
-            // Hide footer when no data
-            document.getElementById('footer-logo').classList.add('hidden');
-        }
-    } catch (error) {
-        // Error checking logs - default to showing instructions
-        instructions.classList.remove('hidden');
-        document.getElementById('main-content').classList.add('hidden');
-        document.getElementById('footer-logo').classList.add('hidden');
-    }
-}
-
-/**
  * Handle device disconnected event
  */
 export async function handleDeviceDisconnected() {
@@ -209,28 +162,19 @@ export async function handleDeviceDisconnected() {
     // Stop auto-refresh first
     stopAutoRefresh();
 
-    // Clear connected device state (but keep selected device).
-    // Each setKey fires only its own subscribers:
-    //   - connectedDeviceSerial=null → deviceSwitcher, modals
-    //   - currentLogType=null → configureWidgetsForLogType(GPS)
-    state.set('connectedDeviceSerial', null);
-    state.set('currentLogType', null);
-    state.set('currentDeviceModel', null);
-
-    // Show connect section
-    document.getElementById('connect-section').classList.remove('hidden');
-
     // Reset connect button state
     const connectBtn = document.getElementById('connect-btn');
     connectBtn.disabled = false;
     connectBtn.textContent = 'Connect Device';
 
-    // Show measurement history if available, otherwise show instructions
-    await showAppropriateDisconnectedContent();
-
-    // Hide status indicators
-    document.getElementById('storage-status-inline').classList.add('hidden');
-    document.getElementById('battery-status-inline').classList.add('hidden');
+    // Clear connected device state (but keep selected device).
+    // Each setKey fires only its own subscribers:
+    //   - connectedDeviceSerial=null → deviceSwitcher, modals
+    //   - currentLogType=null → configureWidgetsForLogType(GPS)
+    // View updates handled by updateOverviewVisibility() via fleetView subscriptions
+    state.set('connectedDeviceSerial', null);
+    state.set('currentLogType', null);
+    state.set('currentDeviceModel', null);
 }
 
 /**

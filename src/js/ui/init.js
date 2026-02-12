@@ -16,7 +16,7 @@ export function track(event, data) {
     }
 }
 import { autoReconnect, isDeviceConnected, onConnect, onDisconnect, getDevice } from '../webusb.js';
-import { getDatabaseStats, clearAllLogs } from '../storage.js';
+import { clearAllLogs } from '../storage.js';
 import { eraseLogs } from '../protocol.js';
 import { LOG_TYPE } from '../constants.js';
 import { getDeviceTypeById, getAllKnownMetrics, DEVICE_TYPES } from '../deviceTypes.js';
@@ -28,9 +28,9 @@ import {
     handleDeviceConnected,
     handleDeviceDisconnected,
     handleDisconnect,
-    showAppropriateDisconnectedContent,
     isRunningInElectron
 } from './connection.js';
+import { updateOverviewVisibility, navigateToFleetView } from './fleetView.js';
 import { showError, showSuccess } from './utils.js';
 import { updateDeviceLogCount } from './sync.js';
 import {
@@ -41,8 +41,8 @@ import {
 import { updateLogTable, updateBrowserLogCount } from './logTable.js';
 import { renderThresholdTable } from './heatmapUI.js';
 import {
+    getAllKnownDevices,
     updateDeviceFilter,
-    updateSwitcherVisibility,
     toggleDeviceDropdown,
     closeDeviceDropdown,
 } from './deviceSwitcher.js';
@@ -182,6 +182,14 @@ export function configureWidgetsForLogType(logType) {
 
 listenKeys($state, ['currentLogType'], (value) => {
     configureWidgetsForLogType(value.currentLogType ?? LOG_TYPE.GPS);
+});
+
+// Persist last-used device for auto-select on next load
+listenKeys($state, ['selectedDeviceSerial'], () => {
+    const serial = state.get('selectedDeviceSerial');
+    if (serial) {
+        localStorage.setItem('lastSelectedDevice', serial);
+    }
 });
 
 /**
@@ -364,6 +372,14 @@ function setupEventHandlers() {
         }
     });
 
+    // Fleet view buttons
+    document.getElementById('fleet-back-btn')?.addEventListener('click', () => {
+        navigateToFleetView();
+    });
+    document.getElementById('fleet-connect-btn')?.addEventListener('click', () => {
+        handleConnect();
+    });
+
     // WebUSB connection callbacks
     onConnect(handleDeviceConnected);
     onDisconnect(handleDeviceDisconnected);
@@ -418,25 +434,24 @@ export async function initUI() {
     loadLastSyncTime();
     renderThresholdTable();
 
-    // Initialize device switcher
-    await updateSwitcherVisibility();
-
     // Initialize report page
     await initReportPage();
 
-    // Show appropriate section based on connection state
-    if (isDeviceConnected()) {
-        document.getElementById('connect-section').classList.add('hidden');
-    } else {
-        document.getElementById('connect-section').classList.remove('hidden');
-        await showAppropriateDisconnectedContent();
+    // Auto-select device on startup (if not already connected)
+    if (!state.get('connectedDeviceSerial')) {
+        const { allSerials } = await getAllKnownDevices();
+
+        if (allSerials.size === 1) {
+            // Single device — go straight to device view
+            // Setting state triggers updateOverviewVisibility() via subscription
+            state.set('selectedDeviceSerial', [...allSerials][0]);
+        }
+        // 2+ devices: selectedDeviceSerial stays null → fleet table shown
+        // 0 devices: selectedDeviceSerial stays null → connect section shown
     }
 
-    // If we have stored devices but none connected, select the first one.
-    // Setting selectedDeviceSerial triggers widget subscriptions (table, heatmap,
-    // sparklines, chart, events, device switcher) automatically.
-    const stats = await getDatabaseStats();
-    if (stats.devices.length > 0 && !state.get('connectedDeviceSerial')) {
-        state.set('selectedDeviceSerial', stats.devices[0]);
-    }
+    // Explicit call needed because listenKeys only fires on state *changes*.
+    // When no state changed above (0 or 2+ devices, no USB), the subscription
+    // never fires, leaving the page in its default HTML state.
+    await updateOverviewVisibility();
 }

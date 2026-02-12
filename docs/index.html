@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Octanis ICS</title>
     <script defer src="https://radar.octanis.ch/script.js" data-website-id="71d54115-00e8-4241-a490-cd6d86474e98"></script>
-  <script type="module" crossorigin src="/assets/index-Czz1TaI_.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-GkgayycM.css">
+  <script type="module" crossorigin src="/assets/index-DmWV3rbX.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-t-wxehAi.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Sidebar Navigation -->
@@ -159,6 +159,50 @@
                     <p class="text-sm text-red-700">
                         <strong data-i18n="warning_lowBattery">Low Battery:</strong> <span data-i18n="warning_lowBatteryMsg">Please charge the device for 30 minutes before data transfer will work properly.</span>
                     </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fleet Breadcrumb (shown when viewing a device and 2+ devices exist) -->
+        <div id="fleet-breadcrumb" class="hidden mb-4">
+            <button id="fleet-back-btn" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span data-i18n="fleet_title">Devices</span>
+            </button>
+        </div>
+
+        <!-- Device Fleet View (the device table) -->
+        <div id="device-fleet-view" class="hidden">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="widget-header" data-i18n="fleet_title">Devices</h2>
+                        <p id="fleet-subtitle" class="widget-subtitle" data-i18n="fleet_subtitle">All connected and stored devices</p>
+                    </div>
+                    <button id="fleet-connect-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200" data-i18n="fleet_connectNew">
+                        Connect New Device
+                    </button>
+                </div>
+                <table id="fleet-table" class="w-full">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-500 uppercase border-b">
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_device">Device</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_type">Type</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_status">Status</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_measurements">Measurements</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_lastSeen">Last Seen</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_tags">Tags</th>
+                            <th class="pb-2 font-medium"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="fleet-device-tbody">
+                    </tbody>
+                </table>
+                <!-- Empty state (no devices at all) -->
+                <div id="fleet-empty" class="hidden text-center py-8">
+                    <p class="text-sm text-gray-500" data-i18n="fleet_noDevices">No devices found</p>
                 </div>
             </div>
         </div>
@@ -338,6 +382,18 @@
                             <button class="time-range-btn active" data-range="7d">7d</button>
                             <button class="time-range-btn" data-range="30d">30d</button>
                             <button class="time-range-btn" data-range="all">All</button>
+                        </div>
+                        <div class="inline-flex gap-1">
+                            <button id="chart-zoom-btn" class="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" title="Drag to zoom">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/><path d="M11 8v6"/><path d="M8 11h6"/>
+                                </svg>
+                            </button>
+                            <button id="chart-zoom-reset-btn" class="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" title="Reset zoom">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 12a9 9 0 1 1 3 6.36"/><polyline points="3 22 3 16 9 16"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -616,7 +672,7 @@
             <a href="https://www.octanis.ch" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-400 hover:text-gray-600 transition-colors duration-200" data-i18n="footer_company">
                 Octanis Instruments GmbH, Switzerland
             </a>
-            <img src="/assets/logo-pwHeKt4o.png" alt="Octanis" class="h-8 opacity-30 hover:opacity-50 transition-opacity duration-200">
+            <img src="/assets/logo-pwHeKt4o.png" alt="Octanis" style="height: 24px; width: auto;" class="opacity-30 hover:opacity-50 transition-opacity duration-200">
         </div>
     </div>
     </main>

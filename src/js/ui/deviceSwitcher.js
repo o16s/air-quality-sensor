@@ -23,12 +23,34 @@ import * as state from './state.js';
 import { openEditDeviceModalForSerial } from './modals.js';
 
 /**
+ * Get all known devices from all sources.
+ * Single source of truth for "which devices exist."
+ * @returns {Promise<{allSerials: Set<string>, metadataMap: Object, pairedSerials: Set<string>}>}
+ */
+export async function getAllKnownDevices() {
+    const stats = await getDatabaseStats();
+    const metadataList = await getAllDeviceMetadata();
+    const pairedDevices = await getPairedDevices();
+
+    const metadataMap = {};
+    metadataList.forEach(m => { metadataMap[m.serial] = m; });
+
+    const pairedSerials = new Set(pairedDevices.map(d => d.serialNumber));
+
+    const allSerials = new Set(stats.devices);
+    metadataList.forEach(m => allSerials.add(m.serial));
+    pairedDevices.forEach(d => allSerials.add(d.serialNumber));
+
+    return { allSerials, metadataMap, pairedSerials };
+}
+
+/**
  * Show/hide device header bar based on whether we have any device data
  */
 export async function updateSwitcherVisibility() {
-    const stats = await getDatabaseStats();
+    const { allSerials } = await getAllKnownDevices();
     const connectedDeviceSerial = state.get('connectedDeviceSerial');
-    const hasDevices = stats.devices.length > 0 || connectedDeviceSerial;
+    const hasDevices = allSerials.size > 0 || connectedDeviceSerial;
     document.getElementById('device-header-bar').classList.toggle('hidden', !hasDevices);
 }
 
@@ -36,23 +58,9 @@ export async function updateSwitcherVisibility() {
  * Populate dropdown with all known devices
  */
 export async function populateDeviceDropdown() {
-    const stats = await getDatabaseStats();
-    const metadataList = await getAllDeviceMetadata();
-    const pairedDevices = await getPairedDevices();
+    const { allSerials: allDevices, metadataMap, pairedSerials: availableSerials } = await getAllKnownDevices();
 
-    // Build metadata lookup map
-    const metadataMap = {};
-    metadataList.forEach(m => {
-        metadataMap[m.serial] = m;
-    });
-
-    // Build set of available (plugged in) device serials
-    const availableSerials = new Set(pairedDevices.map(d => d.serialNumber));
-
-    // Combine known devices from storage and all paired (plugged-in) devices
     const connectedDeviceSerial = state.get('connectedDeviceSerial');
-    const allDevices = new Set(stats.devices);
-    pairedDevices.forEach(d => allDevices.add(d.serialNumber));
 
     const deviceList = document.getElementById('device-list');
     deviceList.innerHTML = '';
@@ -312,10 +320,11 @@ export async function updateDeviceDetailsBar() {
  */
 export async function updateDeviceFilter() {
     try {
-        const stats = await getDatabaseStats();
         const select = document.getElementById('device-filter');
 
         if (!select) return;
+
+        const { allSerials: allDevices, metadataMap } = await getAllKnownDevices();
 
         // Get currently connected device serial (if any)
         let connectedSerial = null;
@@ -324,24 +333,12 @@ export async function updateDeviceFilter() {
             connectedSerial = info?.serialNumber;
         }
 
-        // Get device metadata for friendly names
-        const metadataList = await getAllDeviceMetadata();
-        const metadataMap = {};
-        metadataList.forEach(m => {
-            metadataMap[m.serial] = m;
-        });
-
         // Preserve current selection
         const currentValue = select.value;
         const selectedDevice = state.get('selectedDeviceSerial');
 
         // Clear existing options
         select.innerHTML = '';
-
-        // Include paired (plugged-in) devices so they appear even without logs
-        const pairedDevices = await getPairedDevices();
-        const allDevices = new Set(stats.devices);
-        pairedDevices.forEach(d => allDevices.add(d.serialNumber));
 
         if (allDevices.size === 0) {
             // No devices yet — show placeholder
@@ -403,7 +400,7 @@ listenKeys($state, ['selectedDeviceSerial', 'currentDeviceModel'], () => {
 });
 
 listenKeys($state, ['connectedDeviceSerial'], () => {
-    updateSwitcherVisibility();
+    // device-header-bar visibility now handled by updateOverviewVisibility() in fleetView.js
     updateSwitcherDisplay();
     updateDeviceDetailsBar();
 });

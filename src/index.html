@@ -162,6 +162,50 @@
             </div>
         </div>
 
+        <!-- Fleet Breadcrumb (shown when viewing a device and 2+ devices exist) -->
+        <div id="fleet-breadcrumb" class="hidden mb-4">
+            <button id="fleet-back-btn" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 19l-7-7 7-7"/>
+                </svg>
+                <span data-i18n="fleet_title">Devices</span>
+            </button>
+        </div>
+
+        <!-- Device Fleet View (the device table) -->
+        <div id="device-fleet-view" class="hidden">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="widget-header" data-i18n="fleet_title">Devices</h2>
+                        <p id="fleet-subtitle" class="widget-subtitle" data-i18n="fleet_subtitle">All connected and stored devices</p>
+                    </div>
+                    <button id="fleet-connect-btn" class="border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium py-2 px-4 rounded-lg transition duration-200" data-i18n="fleet_connectNew">
+                        Connect New Device
+                    </button>
+                </div>
+                <table id="fleet-table" class="w-full">
+                    <thead>
+                        <tr class="text-left text-xs text-gray-500 uppercase border-b">
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_device">Device</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_type">Type</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_status">Status</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_measurements">Measurements</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_lastSeen">Last Seen</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_tags">Tags</th>
+                            <th class="pb-2 font-medium"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="fleet-device-tbody">
+                    </tbody>
+                </table>
+                <!-- Empty state (no devices at all) -->
+                <div id="fleet-empty" class="hidden text-center py-8">
+                    <p class="text-sm text-gray-500" data-i18n="fleet_noDevices">No devices found</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Connect Section (shown when no device has been connected yet) -->
         <div id="connect-section" class="hidden">
             <div class="bg-white rounded-lg shadow-md p-12 mb-6 text-center">

@@ -71,10 +71,11 @@ const translations = {
         sensor_battery: "Battery",
 
         // Time strings
-        time_fresh: "fresh",
-        time_secondsOld: "{{seconds}}s old",
-        time_minutesOld: "{{minutes}}m old",
-        time_hoursOld: "{{hours}}h old",
+        time_fresh: "Just now",
+        time_secondsOld: "{{seconds}}s ago",
+        time_minutesOld: "{{minutes}}m ago",
+        time_hoursOld: "{{hours}}h ago",
+        time_daysAgo: "{{days}}d ago",
         time_lastSynced: "Last synced: {{time}}",
         time_neverSynced: "Never synced",
 
@@ -515,6 +516,21 @@ const translations = {
         chart_noData: "Select metrics above to visualize trends",
         chart_noDataAvailable: "No data for selected time range",
 
+        // Fleet view
+        fleet_title: "Devices",
+        fleet_subtitle: "All connected and stored devices",
+        fleet_connectNew: "Connect New Device",
+        fleet_col_device: "Device",
+        fleet_col_type: "Type",
+        fleet_col_status: "Status",
+        fleet_col_measurements: "Measurements",
+        fleet_col_tags: "Tags",
+        fleet_col_lastSeen: "Last Seen",
+        fleet_noDevices: "No devices found",
+        fleet_online: "Online",
+        fleet_offline: "Offline",
+        fleet_never: "Never",
+
         // Footer
         footer_company: "Octanis Instruments GmbH, Switzerland"
     },
@@ -585,10 +601,11 @@ const translations = {
         sensor_battery: "Batterie",
 
         // Time strings
-        time_fresh: "aktuell",
-        time_secondsOld: "{{seconds}}s alt",
-        time_minutesOld: "{{minutes}}m alt",
-        time_hoursOld: "{{hours}}h alt",
+        time_fresh: "Gerade eben",
+        time_secondsOld: "vor {{seconds}}s",
+        time_minutesOld: "vor {{minutes}}m",
+        time_hoursOld: "vor {{hours}}h",
+        time_daysAgo: "vor {{days}}d",
         time_lastSynced: "Zuletzt synchronisiert: {{time}}",
         time_neverSynced: "Nie synchronisiert",
 
@@ -1028,6 +1045,21 @@ const translations = {
         chart_range_all: "Gesamter Zeitraum",
         chart_noData: "Metriken oben auswählen, um Trends anzuzeigen",
         chart_noDataAvailable: "Keine Daten für den Zeitraum verfügbar",
+
+        // Fleet view
+        fleet_title: "Geräte",
+        fleet_subtitle: "Alle verbundenen und gespeicherten Geräte",
+        fleet_connectNew: "Neues Gerät verbinden",
+        fleet_col_device: "Gerät",
+        fleet_col_type: "Typ",
+        fleet_col_status: "Status",
+        fleet_col_measurements: "Messungen",
+        fleet_col_tags: "Tags",
+        fleet_col_lastSeen: "Zuletzt gesehen",
+        fleet_noDevices: "Keine Geräte gefunden",
+        fleet_online: "Online",
+        fleet_offline: "Offline",
+        fleet_never: "Nie",
 
         // Footer
         footer_company: "Octanis Instruments GmbH, Schweiz"
