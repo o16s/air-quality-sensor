@@ -56,9 +56,9 @@ describe('Device Types Registry', () => {
             expect(keys).toEqual(['temperature', 'humidity', 'pm25', 'pm10']);
         });
 
-        it('should have lat, lon, fix extra fields', () => {
+        it('should have lat, lon, fix, batteryVoltage, charging extra fields', () => {
             const extraKeys = DEVICE_TYPES.GPS.extraFields.map(f => f.key);
-            expect(extraKeys).toEqual(['lat', 'lon', 'fix']);
+            expect(extraKeys).toEqual(['lat', 'lon', 'fix', 'batteryVoltage', 'charging']);
         });
     });
 
@@ -68,9 +68,39 @@ describe('Device Types Registry', () => {
             expect(keys).toEqual(['temperature', 'humidity', 'pm25', 'pm10', 'lux']);
         });
 
-        it('should have tslCH0, tslCH1, overflow extra fields', () => {
+        it('should have tslCH0, tslCH1, overflow, batteryVoltage, charging extra fields', () => {
             const extraKeys = DEVICE_TYPES.TSL2591.extraFields.map(f => f.key);
-            expect(extraKeys).toEqual(['tslCH0', 'tslCH1', 'overflow']);
+            expect(extraKeys).toEqual(['tslCH0', 'tslCH1', 'overflow', 'batteryVoltage', 'charging']);
+        });
+    });
+
+    describe('SPECTRAL device type', () => {
+        it('should have 12 spectral channel metrics', () => {
+            const keys = getMetricKeys(DEVICE_TYPES.SPECTRAL);
+            expect(keys).toEqual([
+                'f1_415nm', 'f2_445nm', 'f3_480nm', 'f4_515nm',
+                'clear1', 'nir1',
+                'f5_555nm', 'f6_590nm', 'f7_630nm', 'f8_680nm',
+                'clear2', 'nir2',
+            ]);
+        });
+
+        it('should NOT have temperature or humidity metrics', () => {
+            const keys = getMetricKeys(DEVICE_TYPES.SPECTRAL);
+            expect(keys).not.toContain('temperature');
+            expect(keys).not.toContain('humidity');
+        });
+
+        it('should return undefined for getMetricDef with temperature', () => {
+            expect(getMetricDef(DEVICE_TYPES.SPECTRAL, 'temperature')).toBeUndefined();
+        });
+
+        it('should return undefined for getMetricDef with humidity', () => {
+            expect(getMetricDef(DEVICE_TYPES.SPECTRAL, 'humidity')).toBeUndefined();
+        });
+
+        it('should have no extra fields', () => {
+            expect(DEVICE_TYPES.SPECTRAL.extraFields).toEqual([]);
         });
     });
 
@@ -131,7 +161,14 @@ describe('Device Types Registry', () => {
             expect(keys).toContain('lux');
             expect(keys).toContain('pressure');
             expect(keys).toContain('gasResistance');
-            expect(all.length).toBe(8);
+            expect(keys).toContain('trafficCount');
+            expect(keys).toContain('engageCount');
+            expect(keys).toContain('presencePct');
+            expect(keys).toContain('f1_415nm');
+            expect(keys).toContain('f8_680nm');
+            expect(keys).toContain('clear1');
+            expect(keys).toContain('nir2');
+            expect(all.length).toBe(23);
         });
 
         it('should not have duplicates', () => {

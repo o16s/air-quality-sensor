@@ -9,7 +9,8 @@ import { i18n } from '../i18n.js';
 import {
     getRecentLogs,
     getLogsByDevice,
-    getLogCount as getStorageLogCount
+    getLogCount as getStorageLogCount,
+    getDeviceMetadata
 } from '../storage.js';
 import { LOG_TYPE } from '../constants.js';
 import { getDeviceTypeById } from '../deviceTypes.js';
@@ -28,6 +29,7 @@ export function getLogTypeLabel(logType) {
         case LOG_TYPE.GPS: return i18n.t('logType_gps');
         case LOG_TYPE.TSL2591: return i18n.t('logType_tsl');
         case LOG_TYPE.CO2: return i18n.t('logType_co2');
+        case LOG_TYPE.SPECTRAL: return i18n.t('logType_spectral');
         default: return '—';
     }
 }
@@ -59,9 +61,6 @@ function formatSyncedOn(syncedOn) {
     });
 }
 
-function formatBattery(batteryVoltage) {
-    return batteryVoltage ? (batteryVoltage / 1000).toFixed(2) + 'V' : '-';
-}
 
 /**
  * Build common columns for "All Devices" or mixed device types
@@ -86,7 +85,7 @@ function buildCommonData(logs) {
         formatTimestamp(log.timestamp),
         log.temperature?.toFixed(1) ?? '-',
         log.humidity?.toFixed(1) ?? '-',
-        formatBattery(log.batteryVoltage),
+        log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(2) + 'V' : '-',
         getLogTypeLabel(log.logType),
         log.deviceSerial || '-',
         formatSyncedOn(log.syncedOn),
@@ -95,16 +94,15 @@ function buildCommonData(logs) {
 
 /**
  * Build typed columns from device type registry
+ * @param {Object} deviceType - Device type from registry
+ * @param {Object} [options]
+ * @param {boolean} [options.includeTypeColumn] - Add a "Type" column (for mixed log types)
  */
-function buildTypedColumns(deviceType) {
-    const metricColumns = deviceType
-        ? deviceType.metrics.filter(m => m.key !== 'temperature' && m.key !== 'humidity')
-        : [];
+function buildTypedColumns(deviceType, { includeTypeColumn } = {}) {
+    const metricColumns = deviceType ? deviceType.metrics : [];
 
     const columns = [
         { name: 'Timestamp', sort: true },
-        { name: 'Temp (\u00B0C)', sort: true },
-        { name: 'Humidity (%)', sort: true },
     ];
 
     for (const m of metricColumns) {
@@ -127,23 +125,33 @@ function buildTypedColumns(deviceType) {
         }
     }
 
-    columns.push(
-        { name: 'Battery', sort: true },
-        { name: 'Synced On', sort: true },
-    );
+    // Add extra fields that have a tableHeader (e.g. battery)
+    const tableExtras = (deviceType?.extraFields || []).filter(f => f.tableHeader);
+    for (const f of tableExtras) {
+        columns.push({ name: f.tableHeader, sort: true });
+    }
 
-    return { columns, metricColumns };
+    if (includeTypeColumn) {
+        columns.push({ name: 'Type', sort: true });
+    }
+
+    columns.push({ name: 'Synced On', sort: true });
+
+    return { columns, metricColumns, tableExtras };
 }
 
 /**
  * Build typed data rows from device type registry
+ * @param {Object[]} logs
+ * @param {Object[]} metricColumns
+ * @param {Object[]} tableExtras
+ * @param {Object} [options]
+ * @param {boolean} [options.includeTypeColumn] - Add log type label per row
  */
-function buildTypedData(logs, metricColumns) {
+function buildTypedData(logs, metricColumns, tableExtras, { includeTypeColumn } = {}) {
     return logs.map(log => {
         const row = [
             formatTimestamp(log.timestamp),
-            log.temperature?.toFixed(1) ?? '-',
-            log.humidity?.toFixed(1) ?? '-',
         ];
 
         for (const m of metricColumns) {
@@ -155,10 +163,16 @@ function buildTypedData(logs, metricColumns) {
             }
         }
 
-        row.push(
-            formatBattery(log.batteryVoltage),
-            formatSyncedOn(log.syncedOn),
-        );
+        for (const f of tableExtras) {
+            const val = log[f.key];
+            row.push(f.format ? f.format(val) : (val ?? '-'));
+        }
+
+        if (includeTypeColumn) {
+            row.push(getLogTypeLabel(log.logType));
+        }
+
+        row.push(formatSyncedOn(log.syncedOn));
 
         return row;
     });
@@ -190,17 +204,25 @@ export async function updateLogTable(deviceSerial = null) {
         } else {
             const logTypes = new Set(logs.map(l => l.logType).filter(t => t !== undefined));
             const isMixed = logTypes.size > 1;
-            const showCommon = deviceSerial === null || isMixed;
 
-            if (showCommon) {
+            if (deviceSerial === null) {
+                // "All Devices" view → common columns
                 columns = buildCommonColumns();
                 data = buildCommonData(logs);
+            } else if (isMixed) {
+                // Reflash scenario: use metadata deviceType for columns + Type column
+                const metadata = await getDeviceMetadata(deviceSerial);
+                const currentType = metadata?.deviceType ?? logs[0]?.logType;
+                const deviceType = getDeviceTypeById(currentType);
+                const result = buildTypedColumns(deviceType, { includeTypeColumn: true });
+                columns = result.columns;
+                data = buildTypedData(logs, result.metricColumns, result.tableExtras, { includeTypeColumn: true });
             } else {
                 const logType = logs[0]?.logType;
                 const deviceType = getDeviceTypeById(logType);
                 const result = buildTypedColumns(deviceType);
                 columns = result.columns;
-                data = buildTypedData(logs, result.metricColumns);
+                data = buildTypedData(logs, result.metricColumns, result.tableExtras);
             }
         }
 

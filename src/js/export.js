@@ -37,7 +37,7 @@ export function exportToCSV(logs, deviceMetadataMap = {}) {
     for (const f of deviceType.extraFields) {
         headers.push(f.csvHeader);
     }
-    headers.push('Battery (V)', 'Charging', 'Device Serial', 'Device Name', 'Device Tags', 'Downloaded At');
+    headers.push('Device Serial', 'Device Name', 'Device Tags', 'Downloaded At');
 
     // Build CSV content
     const rows = [headers.join(',')];
@@ -69,7 +69,9 @@ export function exportToCSV(logs, deviceMetadataMap = {}) {
         // Extra fields
         for (const f of deviceType.extraFields) {
             const val = log[f.key];
-            if (val == null) {
+            if (f.csvFormat) {
+                row.push(f.csvFormat(val));
+            } else if (val == null) {
                 row.push('');
             } else if (f.key === 'fix') {
                 row.push(formatGPSFix(val));
@@ -82,8 +84,6 @@ export function exportToCSV(logs, deviceMetadataMap = {}) {
 
         // Common trailer
         row.push(
-            log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
-            log.charging ? '1' : '0',
             log.deviceSerial || '',
             deviceName,
             deviceTags,
@@ -141,15 +141,18 @@ export function exportToJSON(logs, deviceMetadataMap = {}) {
         logs: logs.map(log => {
             const metadata = log.deviceSerial ? deviceMetadataMap[log.deviceSerial] : null;
 
+            const hasBattery = deviceType.extraFields.some(f => f.key === 'batteryVoltage');
             const baseLog = {
                 timestamp: log.timestamp,
                 dateTime: new Date(log.timestamp * 1000).toISOString(),
                 sensors: {},
-                battery: {
-                    voltage: log.batteryVoltage,
-                    voltageUnit: 'mV',
-                    charging: log.charging
-                },
+                ...(hasBattery && {
+                    battery: {
+                        voltage: log.batteryVoltage,
+                        voltageUnit: 'mV',
+                        charging: log.charging
+                    }
+                }),
                 device: {
                     serial: log.deviceSerial,
                     name: metadata?.name || null,

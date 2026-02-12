@@ -5,18 +5,8 @@
 
 import { i18n } from '../i18n.js';
 
-/** Track event safely - fails silently if offline or umami unavailable */
-export function track(event, data) {
-    try {
-        if (typeof umami !== 'undefined') {
-            umami.track(event, data);
-        }
-    } catch (e) {
-        // Fail silently - analytics should never break the app
-    }
-}
-import { autoReconnect, isDeviceConnected, onConnect, onDisconnect, getDevice } from '../webusb.js';
-import { clearAllLogs } from '../storage.js';
+import { autoReconnect, isDeviceConnected, onConnect, onDisconnect, onDeviceListChange, getDevice } from '../webusb.js';
+import { clearAllLogs, getDeviceMetadata } from '../storage.js';
 import { eraseLogs } from '../protocol.js';
 import { LOG_TYPE } from '../constants.js';
 import { getDeviceTypeById, getAllKnownMetrics, DEVICE_TYPES } from '../deviceTypes.js';
@@ -31,7 +21,7 @@ import {
     isRunningInElectron
 } from './connection.js';
 import { updateOverviewVisibility, navigateToFleetView } from './fleetView.js';
-import { showError, showSuccess } from './utils.js';
+import { showError, showSuccess, track } from './utils.js';
 import { updateDeviceLogCount } from './sync.js';
 import {
     handleRefresh,
@@ -39,7 +29,7 @@ import {
     loadLastSyncTime
 } from './sync.js';
 import { updateLogTable, updateBrowserLogCount } from './logTable.js';
-import { renderThresholdTable } from './heatmapUI.js';
+import { initHelpPage } from './helpPage.js';
 import {
     getAllKnownDevices,
     updateDeviceFilter,
@@ -184,27 +174,22 @@ listenKeys($state, ['currentLogType'], (value) => {
     configureWidgetsForLogType(value.currentLogType ?? LOG_TYPE.GPS);
 });
 
-// Persist last-used device for auto-select on next load
-listenKeys($state, ['selectedDeviceSerial'], () => {
+// When selected device changes, persist choice and load device type from metadata
+listenKeys($state, ['selectedDeviceSerial'], async () => {
     const serial = state.get('selectedDeviceSerial');
-    if (serial) {
-        localStorage.setItem('lastSelectedDevice', serial);
+    if (!serial) return;
+
+    localStorage.setItem('lastSelectedDevice', serial);
+
+    // Always load device type from metadata so widgets configure correctly.
+    // This handles both offline devices AND switching back to a connected device
+    // after viewing an offline one (which would have changed currentLogType).
+    const metadata = await getDeviceMetadata(serial);
+    if (metadata?.deviceType != null) {
+        state.set('currentLogType', metadata.deviceType);
     }
 });
 
-/**
- * Update visibility of experimental features based on localStorage setting
- */
-export function updateExperimentalFeatures() {
-    const enabled = localStorage.getItem('experimentalFeaturesEnabled') === 'true';
-    document.querySelectorAll('[data-experimental="true"]').forEach(el => {
-        if (enabled) {
-            el.classList.remove('hidden');
-        } else {
-            el.classList.add('hidden');
-        }
-    });
-}
 
 /**
  * Initialize sidebar navigation
@@ -244,9 +229,14 @@ export function switchPage(pageId) {
     const activePage = document.getElementById(`page-${pageId}`);
     if (activePage) activePage.classList.add('active');
 
-    // Re-render history chart when navigating to History page
-    // (canvas may not have rendered while the page was display:none)
+    // History page: ensure a device is selected (the dropdown always has one)
     if (pageId === 'history') {
+        if (!state.get('selectedDeviceSerial')) {
+            const deviceFilter = document.getElementById('device-filter');
+            if (deviceFilter?.value) {
+                state.set('selectedDeviceSerial', deviceFilter.value);
+            }
+        }
         refreshHistoryChart();
     }
 }
@@ -384,30 +374,15 @@ function setupEventHandlers() {
     onConnect(handleDeviceConnected);
     onDisconnect(handleDeviceDisconnected);
 
+    // When any matching USB device is plugged/unplugged, refresh device lists
+    onDeviceListChange(() => {
+        bumpDataVersion();
+        updateOverviewVisibility();
+    });
+
     // Report page event handlers
     setupReportEventHandlers();
 
-    // Language switcher
-    const langSwitcher = document.getElementById('language-switcher');
-    if (langSwitcher) {
-        // Set current language in dropdown
-        langSwitcher.value = i18n.getLanguage();
-        langSwitcher.addEventListener('change', (e) => {
-            track('setting_changed', { setting: 'language', value: e.target.value });
-            i18n.setLanguage(e.target.value);
-        });
-    }
-
-    // Experimental features checkbox
-    const experimentalCheckbox = document.getElementById('setting-experimental-features');
-    if (experimentalCheckbox) {
-        experimentalCheckbox.checked = localStorage.getItem('experimentalFeaturesEnabled') === 'true';
-        experimentalCheckbox.addEventListener('change', () => {
-            track('setting_changed', { setting: 'experimental', value: experimentalCheckbox.checked });
-            localStorage.setItem('experimentalFeaturesEnabled', experimentalCheckbox.checked);
-            updateExperimentalFeatures();
-        });
-    }
 }
 
 /**
@@ -424,7 +399,7 @@ export async function initUI() {
     }
 
     initSidebar();
-    updateExperimentalFeatures();
+    initHelpPage();
     setupEventHandlers();
     await attemptAutoReconnect();
     await updateBrowserLogCount();
@@ -432,7 +407,6 @@ export async function initUI() {
     await updateLogTable();
     await initHistoryChart();
     loadLastSyncTime();
-    renderThresholdTable();
 
     // Initialize report page
     await initReportPage();

@@ -338,7 +338,8 @@ table tbody tr {
 .gridjs-wrapper {
     border-radius: 0;
     border: none;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .gridjs-summary {
