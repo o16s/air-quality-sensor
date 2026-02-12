@@ -31,7 +31,9 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
     "echarts": "^6.0.0",
+    "gridjs": "^6.2.0",
     "html2pdf.js": "^0.14.0",
+    "nanostores": "^1.1.0",
     "tailwindcss": "^4.1.18"
   }
 }

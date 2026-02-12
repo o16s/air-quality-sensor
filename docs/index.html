@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Octanis ICS</title>
     <script defer src="https://radar.octanis.ch/script.js" data-website-id="71d54115-00e8-4241-a490-cd6d86474e98"></script>
-  <script type="module" crossorigin src="/assets/index-BYvX3gCc.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DECNQQam.css">
+  <script type="module" crossorigin src="/assets/index-Czz1TaI_.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-GkgayycM.css">
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Sidebar Navigation -->
@@ -332,7 +332,6 @@
                     <h2 class="widget-header" data-i18n="chart_title">Time Series</h2>
                     <div class="flex items-center gap-3">
                         <select id="device-filter" class="text-sm border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="" data-i18n="history_allDevices">All Devices</option>
                         </select>
                         <div id="chart-time-range-group" class="inline-flex bg-gray-100 rounded-lg p-0.5">
                             <button class="time-range-btn" data-range="24h">24h</button>
@@ -370,27 +369,7 @@
                 </div>
 
                 <!-- Log Table -->
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Temp (°C)</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Humidity (%)</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM2.5</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PM10</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Battery</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Synced On</th>
-                            </tr>
-                        </thead>
-                        <tbody id="log-table-body" class="bg-white divide-y divide-gray-200">
-                            <tr>
-                                <td colspan="8" class="px-4 py-8 text-center text-gray-500">No logs downloaded yet</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <div id="log-table-container"></div>
             </div>
         </div>
     </div>

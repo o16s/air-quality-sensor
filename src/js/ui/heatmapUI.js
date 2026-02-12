@@ -6,9 +6,12 @@
 import { i18n } from '../i18n.js';
 import { getAllLogs, getLogsByDevice, getDeviceMetadata } from '../storage.js';
 import { AIR_QUALITY_THRESHOLDS } from '../constants.js';
+import { getDetectableMetrics } from '../deviceTypes.js';
 import { generateHeatmapData, formatHeatmapTooltip } from '../heatmap.js';
+import { listenKeys } from 'nanostores';
+import { $state, $dataVersion } from './state.js';
 
-const ALL_METRICS = ['pm25', 'pm10', 'co2'];
+const ALL_METRICS = getDetectableMetrics();
 
 /**
  * Update heatmap with data for selected device — renders one panel per metric
@@ -32,7 +35,7 @@ export async function updateHeatmap(deviceSerial = null) {
         let deviceName = i18n.t('history_allDevices');
         if (deviceSerial) {
             const metadata = await getDeviceMetadata(deviceSerial);
-            deviceName = metadata?.name || deviceSerial;
+            deviceName = metadata?.name || (metadata?.model ? `${metadata.model} (${deviceSerial})` : deviceSerial);
         }
 
         // Generate data for all metrics, keep only those with data
@@ -182,3 +185,13 @@ export function renderThresholdTable() {
 
     container.innerHTML = html;
 }
+
+// ── Reactive subscriptions ────────────────────────────────────────────
+
+listenKeys($state, ['selectedDeviceSerial'], (value) => {
+    updateHeatmap(value.selectedDeviceSerial);
+});
+
+$dataVersion.listen(() => {
+    updateHeatmap($state.get().selectedDeviceSerial);
+});

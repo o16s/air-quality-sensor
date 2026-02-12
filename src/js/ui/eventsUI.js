@@ -6,6 +6,9 @@
 import { i18n } from '../i18n.js';
 import { getAllLogs, getLogsByDevice } from '../storage.js';
 import { detectEvents, formatEventDuration, formatEventTimeRange } from '../events.js';
+import { getMetricLabelsMap } from '../deviceTypes.js';
+import { listenKeys } from 'nanostores';
+import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';
 
 /**
@@ -143,6 +146,18 @@ export function renderEventCard(event) {
  * @returns {string} Human-readable label
  */
 export function getMetricLabel(metric) {
-    const labels = { pm25: 'PM2.5', pm10: 'PM10', co2: 'CO₂' };
+    const labels = getMetricLabelsMap();
+    // Use subscript variant for CO2 in event display
+    if (metric === 'co2') return 'CO\u2082';
     return labels[metric] || metric;
 }
+
+// ── Reactive subscriptions ────────────────────────────────────────────
+
+listenKeys($state, ['selectedDeviceSerial', 'currentEventsTimeFilter'], (value) => {
+    updateEventsTimeline(value.selectedDeviceSerial);
+});
+
+$dataVersion.listen(() => {
+    updateEventsTimeline($state.get().selectedDeviceSerial);
+});

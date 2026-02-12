@@ -238,13 +238,6 @@ export const MIME_TYPES = {
     TEXT: 'text/plain'
 };
 
-// CSV Column Headers (Added Nov 6, 2025)
-export const CSV_HEADERS = {
-    GPS: 'Timestamp,Temperature_C,Humidity_Pct,PM25_ugm3,PM10_ugm3,Latitude,Longitude,GPS_Fix,Battery_Pct',
-    TSL: 'Timestamp,Temperature_C,Humidity_Pct,PM25_ugm3,PM10_ugm3,Lux,TSL_CH0,TSL_CH1,Overflow,Battery_Pct',
-    CO2: 'Timestamp,Temperature_C,Humidity_Pct,CO2_ppm,Pressure_hPa,GasRes_Ohm,Lux,Battery_Pct'
-};
-
 /**
  * Air Quality Thresholds (Single Source of Truth)
  * Based on WHO/EPA guidelines

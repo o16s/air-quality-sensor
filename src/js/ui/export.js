@@ -15,7 +15,7 @@ import { showError, showSuccess } from './utils.js';
  */
 export async function handleExportCSV() {
     try {
-        const currentDeviceFilter = state.get('currentDeviceFilter');
+        const currentDeviceFilter = state.get('selectedDeviceSerial');
         const logs = currentDeviceFilter
             ? await getLogsByDevice(currentDeviceFilter)
             : await getAllLogs();
@@ -50,7 +50,7 @@ export async function handleExportCSV() {
  */
 export async function handleExportJSON() {
     try {
-        const currentDeviceFilter = state.get('currentDeviceFilter');
+        const currentDeviceFilter = state.get('selectedDeviceSerial');
         const logs = currentDeviceFilter
             ? await getLogsByDevice(currentDeviceFilter)
             : await getAllLogs();

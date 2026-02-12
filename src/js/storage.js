@@ -445,9 +445,10 @@ export async function getDeviceMetadata(serial) {
  * @param {string} metadata.name - Custom device name/alias
  * @param {string[]} metadata.tags - Array of tags
  * @param {string} metadata.model - Device model name (e.g., "OAQ-1-2")
+ * @param {number} [metadata.deviceType] - LOG_TYPE integer (0=GPS, 1=TSL2591, 2=CO2)
  * @returns {Promise<void>}
  */
-export async function setDeviceMetadata(serial, { name, tags, model }) {
+export async function setDeviceMetadata(serial, { name, tags, model, deviceType }) {
     const db = await ensureDB();
 
     return new Promise((resolve, reject) => {
@@ -461,6 +462,11 @@ export async function setDeviceMetadata(serial, { name, tags, model }) {
             model: model || '',
             updatedAt: Math.floor(Date.now() / 1000)
         };
+
+        // Persist device type if provided (schemaless store, no version bump needed)
+        if (deviceType != null) {
+            record.deviceType = deviceType;
+        }
 
         const request = store.put(record);
 

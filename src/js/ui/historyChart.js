@@ -9,46 +9,24 @@ import {
     TooltipComponent,
     LegendComponent,
     GridComponent,
-    DataZoomComponent
+    DataZoomComponent,
+    ToolboxComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import { getMetricColorsMap, getMetricUnitsMap, getMetricLabelsMap } from '../deviceTypes.js';
 
-echarts.use([LineChart, TooltipComponent, LegendComponent, GridComponent, DataZoomComponent, CanvasRenderer]);
+echarts.use([LineChart, TooltipComponent, LegendComponent, GridComponent, DataZoomComponent, ToolboxComponent, CanvasRenderer]);
 
-/** Distinct color per metric */
-export const METRIC_COLORS = {
-    temperature: '#ef4444',
-    humidity:    '#3b82f6',
-    pm25:        '#f59e0b',
-    pm10:        '#8b5cf6',
-    co2:         '#10b981',
-    lux:         '#f97316',
-    pressure:    '#6366f1',
-    gasResistance: '#ec4899'
-};
+let zoomActive = false;
 
-/** Unit string per metric */
-export const METRIC_UNITS = {
-    temperature: '\u00B0C',
-    humidity:    '%',
-    pm25:        '\u00B5g/m\u00B3',
-    pm10:        '\u00B5g/m\u00B3',
-    co2:         'ppm',
-    lux:         'lux',
-    pressure:    'hPa',
-    gasResistance: '\u03A9'
-};
+/** Distinct color per metric (generated from device type registry) */
+export const METRIC_COLORS = getMetricColorsMap();
 
-const METRIC_LABELS = {
-    temperature: 'Temp',
-    humidity:    'Humidity',
-    pm25:        'PM2.5',
-    pm10:        'PM10',
-    co2:         'CO2',
-    lux:         'Light',
-    pressure:    'Pressure',
-    gasResistance: 'Gas Res.'
-};
+/** Unit string per metric (generated from device type registry) */
+export const METRIC_UNITS = getMetricUnitsMap();
+
+/** Short display label per metric (generated from device type registry) */
+const METRIC_LABELS = getMetricLabelsMap();
 
 let chartInstance = null;
 
@@ -148,6 +126,13 @@ export function updateChart(traces, options = {}) {
                 return html;
             }
         },
+        toolbox: {
+            show: true,
+            top: -9999,
+            feature: {
+                dataZoom: { yAxisIndex: 'none' }
+            }
+        },
         legend: {
             type: 'scroll',
             bottom: 0,
@@ -156,28 +141,20 @@ export function updateChart(traces, options = {}) {
         grid: {
             left: 50,
             right: yAxisConfigs.length > 1 ? 50 + Math.max(0, yAxisConfigs.length - 2) * 60 : 20,
-            top: 15,
+            top: 0,
             bottom: 80
         },
         xAxis: {
             type: 'time',
             axisLabel: {
                 fontSize: 11,
-                formatter(value) {
-                    const d = new Date(value);
-                    const hh = String(d.getHours()).padStart(2, '0');
-                    const mm = String(d.getMinutes()).padStart(2, '0');
-                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const tr = options.timeRange;
-                    if (tr === '24h') {
-                        return `${hh}:${mm}`;
-                    } else if (tr === '7d') {
-                        return `${dayNames[d.getDay()]}\n${hh}:${mm}`;
-                    } else if (tr === '30d') {
-                        return `${monthNames[d.getMonth()]} ${d.getDate()}`;
-                    }
-                    return `${monthNames[d.getMonth()]} ${d.getDate()}\n${d.getFullYear()}`;
+                formatter: {
+                    year: '{yyyy}',
+                    month: '{MMM} {yyyy}',
+                    day: '{MMM} {d}',
+                    hour: '{MMM} {d}, {HH}:{mm}',
+                    minute: '{HH}:{mm}',
+                    second: '{HH}:{mm}:{ss}'
                 }
             }
         },
@@ -205,6 +182,35 @@ export function disposeChart() {
         chartInstance.dispose();
         chartInstance = null;
     }
+}
+
+/**
+ * Toggle brush-zoom mode on/off
+ * @returns {boolean} Whether zoom mode is now active
+ */
+export function toggleZoomMode() {
+    if (!chartInstance) return false;
+    zoomActive = !zoomActive;
+    chartInstance.dispatchAction({
+        type: 'takeGlobalCursor',
+        key: 'dataZoomSelect',
+        dataZoomSelectActive: zoomActive
+    });
+    return zoomActive;
+}
+
+/**
+ * Reset zoom to show full data range
+ */
+export function resetZoom() {
+    if (!chartInstance) return;
+    zoomActive = false;
+    chartInstance.dispatchAction({
+        type: 'takeGlobalCursor',
+        key: 'dataZoomSelect',
+        dataZoomSelectActive: false
+    });
+    chartInstance.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
 }
 
 /**

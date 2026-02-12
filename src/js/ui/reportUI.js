@@ -386,7 +386,7 @@ export async function getSelectedDeviceNames() {
 
     return selectedDevices.map(serial => {
         const metadata = metadataMap[serial];
-        return metadata?.name || serial;
+        return metadata?.name || (metadata?.model ? `${metadata.model} (${serial})` : serial);
     });
 }
 

@@ -5,31 +5,22 @@
 
 import { i18n } from '../i18n.js';
 import { getLogsByDateRange } from '../storage.js';
+import { getAllKnownMetrics, getMetricLabelsMap } from '../deviceTypes.js';
+import { listenKeys } from 'nanostores';
+import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';
-import { initEChart, updateChart, resizeChart, getChartInstance } from './historyChart.js';
+import { initEChart, updateChart, resizeChart, getChartInstance, toggleZoomMode, resetZoom } from './historyChart.js';
 
-// All possible metrics and their i18n label keys
-const ALL_METRICS = [
-    { key: 'temperature', i18nKey: 'sensor_temperature', field: 'temperature' },
-    { key: 'humidity',    i18nKey: 'sensor_humidity',    field: 'humidity' },
-    { key: 'pm25',        i18nKey: 'sensor_pm25',        field: 'pm25' },
-    { key: 'pm10',        i18nKey: 'sensor_pm10',        field: 'pm10' },
-    { key: 'co2',         i18nKey: 'sensor_co2',         field: 'co2' },
-    { key: 'lux',         i18nKey: 'sensor_light',       field: 'lux' },
-    { key: 'pressure',    i18nKey: 'sensor_pressure',    field: 'pressure' },
-    { key: 'gasResistance', i18nKey: 'sensor_gasResistance', field: 'gasResistance' }
-];
+// All possible metrics (generated from device type registry)
+const ALL_METRICS = getAllKnownMetrics();
 
 const BUCKET_SECONDS = 900; // 15 minutes
 const MAX_POINTS = 1000;
 
-const METRIC_LABEL_MAP = {
-    temperature: 'Temp', humidity: 'Humidity', pm25: 'PM2.5', pm10: 'PM10',
-    co2: 'CO2', lux: 'Light', pressure: 'Pressure', gasResistance: 'Gas Res.'
-};
+const METRIC_LABEL_MAP = getMetricLabelsMap();
 
 // Module state
-let activeMetrics = new Set(['temperature', 'humidity']);
+let activeMetrics = new Set(ALL_METRICS.map(m => m.key));
 let currentTimeRange = '7d';
 let cachedTraces = null;  // Map<metric, {timestamps[], values[]}>
 let cacheKey = null;
@@ -74,6 +65,29 @@ function wireEvents() {
         });
     }
 
+    // Zoom toggle button
+    const zoomBtn = document.getElementById('chart-zoom-btn');
+    if (zoomBtn) {
+        zoomBtn.addEventListener('click', () => {
+            const active = toggleZoomMode();
+            zoomBtn.classList.toggle('bg-blue-50', active);
+            zoomBtn.classList.toggle('text-blue-600', active);
+            zoomBtn.classList.toggle('text-gray-400', !active);
+        });
+    }
+
+    // Zoom reset button
+    const resetBtn = document.getElementById('chart-zoom-reset-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            resetZoom();
+            if (zoomBtn) {
+                zoomBtn.classList.remove('bg-blue-50', 'text-blue-600');
+                zoomBtn.classList.add('text-gray-400');
+            }
+        });
+    }
+
     // Sync ECharts legend selection back to activeMetrics
     const chart = getChartInstance();
     if (chart) {
@@ -103,11 +117,21 @@ function wireEvents() {
 }
 
 /**
- * Fetch data, aggregate into 15-min buckets, cache, and render
+ * Fetch data, aggregate into 15-min buckets, cache, and render.
+ * Always requires a device filter — never mixes data from different devices.
  */
 async function fetchAndRender() {
-    const deviceFilter = state.get('currentDeviceFilter');
-    const newCacheKey = `${deviceFilter || 'all'}|${currentTimeRange}`;
+    const deviceFilter = state.get('selectedDeviceSerial');
+
+    // Never render without a device selected
+    if (!deviceFilter) {
+        cachedTraces = new Map();
+        cacheKey = null;
+        renderFromCache();
+        return;
+    }
+
+    const newCacheKey = `${deviceFilter}|${currentTimeRange}`;
 
     if (cacheKey === newCacheKey && cachedTraces) {
         renderFromCache();
@@ -184,7 +208,7 @@ async function fetchLogs(deviceFilter, timeRange) {
         startTimestamp = 0;
     }
 
-    return getLogsByDateRange(startTimestamp, now, deviceFilter || null);
+    return getLogsByDateRange(startTimestamp, now, deviceFilter);
 }
 
 /**
@@ -202,7 +226,7 @@ function aggregateTo15Min(logs) {
         const bucketKey = Math.floor(log.timestamp / BUCKET_SECONDS) * BUCKET_SECONDS;
 
         for (const m of ALL_METRICS) {
-            const val = log[m.field];
+            const val = log[m.key];
             if (val === undefined || val === null) continue;
 
             if (!buckets.has(m.key)) buckets.set(m.key, new Map());
@@ -248,3 +272,15 @@ function invalidateCache() {
     cachedTraces = null;
     cacheKey = null;
 }
+
+// ── Reactive subscriptions ────────────────────────────────────────────
+
+listenKeys($state, ['selectedDeviceSerial'], () => {
+    // Reset toggled metrics when switching devices so stale selections don't persist
+    activeMetrics = new Set(ALL_METRICS.map(m => m.key));
+    refreshHistoryChart();
+});
+
+$dataVersion.listen(() => {
+    refreshHistoryChart();
+});

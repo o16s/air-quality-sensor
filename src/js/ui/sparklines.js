@@ -5,7 +5,10 @@
 
 import { getLogsByDateRange, getRecentLogs } from '../storage.js';
 import { SPARKLINE_THRESHOLDS } from '../constants.js';
+import { getDeviceTypeById, DEVICE_TYPES } from '../deviceTypes.js';
 import { METRIC_COLORS } from './historyChart.js';
+import { listenKeys } from 'nanostores';
+import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';
 
 /**
@@ -33,66 +36,31 @@ export async function loadSparklinesFromStorage() {
 
         // Sort chronologically (oldest first)
         const logsChronological = recentLogs.sort((a, b) => a.timestamp - b.timestamp);
-
-        // Detect log format from stored data
-        const hasCO2Data = logsChronological.some(log => log.co2 !== undefined && log.co2 !== null);
-        const hasLuxData = logsChronological.some(log => log.lux !== undefined && log.lux !== null);
-        const hasPMData = logsChronological.some(log => log.pm25 !== undefined && log.pm25 !== null);
-
-        // Extract timestamps and sensor values
         const timestamps = logsChronological.map(log => log.timestamp);
-        const tempValues = logsChronological.map(log => log.temperature).filter(v => v !== undefined && v !== null);
-        const humidityValues = logsChronological.map(log => log.humidity).filter(v => v !== undefined && v !== null);
 
-        // Update common sparklines (temp and humidity are on all formats)
-        const tempConfig = { ...SPARKLINE_THRESHOLDS.temperature, timestamps };
-        const humidityConfig = { ...SPARKLINE_THRESHOLDS.humidity, timestamps };
-        updateSparkline('temp-sparkline', tempValues, tempConfig, 'temperature');
-        updateSparkline('humidity-sparkline', humidityValues, humidityConfig, 'humidity');
+        // Determine device type from log data or current state
+        const logType = logsChronological[0]?.logType;
+        const deviceType = getDeviceTypeById(logType) || getDeviceTypeById(state.get('currentLogType')) || DEVICE_TYPES.GPS;
 
-        // Update format-specific sparklines (visibility handled by configureWidgetsForLogType)
-        if (hasCO2Data) {
-            // CO2 format: update CO2 sparkline
-            const co2Values = logsChronological.map(log => log.co2).filter(v => v !== undefined && v !== null);
-            const co2Config = { ...SPARKLINE_THRESHOLDS.co2, timestamps };
-            updateSparkline('co2-sparkline', co2Values, co2Config, 'co2');
-        }
+        // Update sparklines for every metric declared on this device type
+        for (const metric of deviceType.metrics) {
+            const values = logsChronological.map(log => log[metric.key]).filter(v => v != null);
+            if (values.length < 2) continue;
 
-        if (hasPMData) {
-            // GPS/TSL2591 format: update PM sparklines
-            const pm25Values = logsChronological.map(log => log.pm25).filter(v => v !== undefined && v !== null);
-            const pm10Values = logsChronological.map(log => log.pm10).filter(v => v !== undefined && v !== null);
-            const pm25Config = { ...SPARKLINE_THRESHOLDS.pm25, timestamps };
-            const pm10Config = { ...SPARKLINE_THRESHOLDS.pm10, timestamps };
-            updateSparkline('pm25-sparkline', pm25Values, pm25Config, 'pm25');
-            updateSparkline('pm10-sparkline', pm10Values, pm10Config, 'pm10');
-        }
+            const thresholdConfig = SPARKLINE_THRESHOLDS[metric.key];
+            if (thresholdConfig) {
+                const config = { ...thresholdConfig, timestamps };
+                updateSparkline(metric.sparklineId, values, config, metric.key);
+            }
 
-        if (hasLuxData) {
-            // TSL2591 and CO2 formats have lux data
-            const luxValues = logsChronological.map(log => log.lux).filter(v => v !== undefined && v !== null);
-            const luxConfig = { ...SPARKLINE_THRESHOLDS.lux, timestamps };
-            updateSparkline('lux-sparkline', luxValues, luxConfig, 'lux');
-        }
-
-        // Pressure and gas resistance: populate from most recent log (not in live status)
-        const hasPressureData = logsChronological.some(log => log.pressure !== undefined && log.pressure !== null);
-        if (hasPressureData) {
-            const pressureValues = logsChronological.map(log => log.pressure).filter(v => v !== undefined && v !== null);
-            const pressureConfig = { ...SPARKLINE_THRESHOLDS.pressure, timestamps };
-            updateSparkline('pressure-sparkline', pressureValues, pressureConfig, 'pressure');
-
-            const latestPressure = pressureValues[pressureValues.length - 1];
-            const pressureEl = document.getElementById('pressure-value');
-            if (pressureEl) pressureEl.textContent = `${latestPressure.toFixed(1)} hPa`;
-        }
-
-        const hasGasResData = logsChronological.some(log => log.gasResistance !== undefined && log.gasResistance !== null);
-        if (hasGasResData) {
-            const gasResValues = logsChronological.map(log => log.gasResistance).filter(v => v !== undefined && v !== null);
-            const latestGasRes = gasResValues[gasResValues.length - 1];
-            const gasResEl = document.getElementById('gasResistance-value');
-            if (gasResEl) gasResEl.textContent = `${Math.round(latestGasRes)} \u03A9`;
+            // For pressure and gasResistance, also update the value display from latest reading
+            if (metric.key === 'pressure') {
+                const el = document.getElementById('pressure-value');
+                if (el) el.textContent = `${values[values.length - 1].toFixed(1)} hPa`;
+            } else if (metric.key === 'gasResistance') {
+                const el = document.getElementById('gasResistance-value');
+                if (el) el.textContent = `${Math.round(values[values.length - 1])} \u03A9`;
+            }
         }
     } catch (error) {
         console.error('Failed to load sparklines from storage:', error);
@@ -258,3 +226,13 @@ export function updateSparkline(canvasId, dataPoints, config = {}, metric = null
         ctx.restore();
     }
 }
+
+// ── Reactive subscriptions ────────────────────────────────────────────
+
+listenKeys($state, ['selectedDeviceSerial'], () => {
+    loadSparklinesFromStorage();
+});
+
+$dataVersion.listen(() => {
+    loadSparklinesFromStorage();
+});

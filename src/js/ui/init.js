@@ -19,6 +19,9 @@ import { autoReconnect, isDeviceConnected, onConnect, onDisconnect, getDevice } 
 import { getDatabaseStats, clearAllLogs } from '../storage.js';
 import { eraseLogs } from '../protocol.js';
 import { LOG_TYPE } from '../constants.js';
+import { getDeviceTypeById, getAllKnownMetrics, DEVICE_TYPES } from '../deviceTypes.js';
+import { listenKeys } from 'nanostores';
+import { $state, bumpDataVersion } from './state.js';
 import * as state from './state.js';
 import {
     handleConnect,
@@ -29,7 +32,6 @@ import {
     isRunningInElectron
 } from './connection.js';
 import { showError, showSuccess } from './utils.js';
-import { updateLiveData } from './liveData.js';
 import { updateDeviceLogCount } from './sync.js';
 import {
     handleRefresh,
@@ -37,16 +39,12 @@ import {
     loadLastSyncTime
 } from './sync.js';
 import { updateLogTable, updateBrowserLogCount } from './logTable.js';
-import { loadSparklinesFromStorage } from './sparklines.js';
-import { updateHeatmap, renderThresholdTable } from './heatmapUI.js';
+import { renderThresholdTable } from './heatmapUI.js';
 import {
     updateDeviceFilter,
     updateSwitcherVisibility,
-    updateSwitcherDisplay,
-    updateDeviceDetailsBar,
     toggleDeviceDropdown,
     closeDeviceDropdown,
-    selectDevice
 } from './deviceSwitcher.js';
 import {
     openSettingsModal,
@@ -59,7 +57,6 @@ import {
 } from './modals.js';
 import { handleExportCSV, handleExportJSON } from './export.js';
 import { initReportPage, setupReportEventHandlers } from './reportUI.js';
-import { updateEventsTimeline } from './eventsUI.js';
 import { initHistoryChart, refreshHistoryChart } from './historyChartUI.js';
 
 /**
@@ -72,9 +69,7 @@ async function handleClearLogs() {
 
     try {
         await clearAllLogs();
-        await updateBrowserLogCount();
-        await updateDeviceFilter();
-        await updateLogTable();
+        bumpDataVersion();
         showSuccess(i18n.t('clear_success'));
     } catch (error) {
         console.error('Clear failed:', error);
@@ -127,125 +122,67 @@ async function handleEraseDevice() {
 }
 
 /**
- * Widget Configuration per Log Type
- * Defines which sensor cards are visible and their labels for each device format
- */
-const WIDGET_CONFIG = {
-    [LOG_TYPE.GPS]: {
-        pm25: { visible: true, label: 'PM2.5', valueId: 'pm25-value', sparklineId: 'pm25-sparkline' },
-        pm10: { visible: true, label: 'PM10', valueId: 'pm10-value', sparklineId: 'pm10-sparkline' },
-        co2:  { visible: false },
-        lux:  { visible: false },
-        pressure: { visible: false },
-        gasResistance: { visible: false }
-    },
-    [LOG_TYPE.TSL2591]: {
-        pm25: { visible: true, label: 'PM2.5', valueId: 'pm25-value', sparklineId: 'pm25-sparkline' },
-        pm10: { visible: true, label: 'PM10', valueId: 'pm10-value', sparklineId: 'pm10-sparkline' },
-        co2:  { visible: false },
-        lux:  { visible: true, label: 'Light', valueId: 'lux-value', sparklineId: 'lux-sparkline' },
-        pressure: { visible: false },
-        gasResistance: { visible: false }
-    },
-    [LOG_TYPE.CO2]: {
-        pm25: { visible: false },
-        pm10: { visible: false },
-        co2:  { visible: true, label: 'CO2', valueId: 'co2-value', sparklineId: 'co2-sparkline' },
-        lux:  { visible: false },
-        pressure: { visible: true, label: 'Pressure', valueId: 'pressure-value', sparklineId: 'pressure-sparkline' },
-        gasResistance: { visible: true, label: 'Gas Resistance', valueId: 'gasResistance-value', sparklineId: 'gasResistance-sparkline' }
-    }
-};
-
-/**
- * Configure widget visibility and labels based on device log type
- * Called when device connects and log type is detected
+ * Configure widget visibility and labels based on device log type.
+ * Uses the device type registry to determine which sensor cards to show.
+ * Called when device connects and log type is detected.
  * @param {number} logType - LOG_TYPE.GPS, LOG_TYPE.TSL2591, or LOG_TYPE.CO2
  */
 export function configureWidgetsForLogType(logType) {
-    const config = WIDGET_CONFIG[logType] || WIDGET_CONFIG[LOG_TYPE.GPS];
+    const deviceType = getDeviceTypeById(logType) || DEVICE_TYPES.GPS;
+    const activeMetricKeys = new Set(deviceType.metrics.map(m => m.key));
 
-    // Configure PM2.5 card
-    const pm25Card = document.getElementById('pm25-value')?.closest('.sensor-card');
-    if (pm25Card) {
-        if (config.pm25.visible) {
-            pm25Card.classList.remove('hidden');
-            const label = pm25Card.querySelector('.text-gray-600');
-            if (label) label.textContent = config.pm25.label;
-            document.getElementById('pm25-value').textContent = '--';
+    // For every known metric, show or hide its card
+    for (const metric of getAllKnownMetrics()) {
+        // temperature and humidity cards are always visible (no cardId toggle)
+        if (!metric.cardId) continue;
+
+        const visible = activeMetricKeys.has(metric.key);
+        const card = document.getElementById(metric.cardId);
+        if (!card) continue;
+
+        if (visible) {
+            card.classList.remove('hidden');
+            // Reset value to placeholder
+            const valueEl = document.getElementById(metric.valueId);
+            if (valueEl) valueEl.textContent = '--';
         } else {
-            pm25Card.classList.add('hidden');
+            card.classList.add('hidden');
         }
     }
 
-    // Configure PM10 card
-    const pm10Card = document.getElementById('pm10-value')?.closest('.sensor-card');
-    if (pm10Card) {
-        if (config.pm10.visible) {
-            pm10Card.classList.remove('hidden');
-            const label = pm10Card.querySelector('.text-gray-600');
-            if (label) label.textContent = config.pm10.label;
-            document.getElementById('pm10-value').textContent = '--';
-        } else {
-            pm10Card.classList.add('hidden');
-        }
-    }
+    // Also handle pm25/pm10 cards which use closest('.sensor-card') instead of a cardId
+    for (const key of ['pm25', 'pm10']) {
+        const valueEl = document.getElementById(`${key}-value`);
+        const card = valueEl?.closest('.sensor-card');
+        if (!card) continue;
 
-    // Configure CO2 card
-    const co2Card = document.getElementById('co2-card');
-    if (co2Card) {
-        if (config.co2.visible) {
-            co2Card.classList.remove('hidden');
-            document.getElementById('co2-value').textContent = '-- ppm';
+        if (activeMetricKeys.has(key)) {
+            card.classList.remove('hidden');
+            valueEl.textContent = '--';
         } else {
-            co2Card.classList.add('hidden');
-        }
-    }
-
-    // Configure Lux card
-    const luxCard = document.getElementById('lux-card');
-    if (luxCard) {
-        if (config.lux.visible) {
-            luxCard.classList.remove('hidden');
-            document.getElementById('lux-value').textContent = '-- lux';
-        } else {
-            luxCard.classList.add('hidden');
-        }
-    }
-
-    // Configure Pressure card
-    const pressureCard = document.getElementById('pressure-card');
-    if (pressureCard) {
-        if (config.pressure.visible) {
-            pressureCard.classList.remove('hidden');
-            document.getElementById('pressure-value').textContent = '-- hPa';
-        } else {
-            pressureCard.classList.add('hidden');
-        }
-    }
-
-    // Configure Gas Resistance card
-    const gasResCard = document.getElementById('gasResistance-card');
-    if (gasResCard) {
-        if (config.gasResistance.visible) {
-            gasResCard.classList.remove('hidden');
-            document.getElementById('gasResistance-value').textContent = '--';
-        } else {
-            gasResCard.classList.add('hidden');
+            card.classList.add('hidden');
         }
     }
 
     // Clear all sparkline canvases to avoid stale data
-    ['pm25-sparkline', 'pm10-sparkline', 'co2-sparkline', 'lux-sparkline', 'pressure-sparkline', 'gasResistance-sparkline'].forEach(id => {
-        const canvas = document.getElementById(id);
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const metric of getAllKnownMetrics()) {
+        if (metric.sparklineId) {
+            const canvas = document.getElementById(metric.sparklineId);
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
         }
-    });
+    }
 
-    console.log(`Widgets configured for log type: ${logType === LOG_TYPE.CO2 ? 'CO2' : logType === LOG_TYPE.TSL2591 ? 'TSL2591' : 'GPS'}`);
+    console.log(`Widgets configured for log type: ${deviceType.name}`);
 }
+
+// ── Reactive subscriptions ────────────────────────────────────────────
+
+listenKeys($state, ['currentLogType'], (value) => {
+    configureWidgetsForLogType(value.currentLogType ?? LOG_TYPE.GPS);
+});
 
 /**
  * Update visibility of experimental features based on localStorage setting
@@ -398,21 +335,15 @@ function setupEventHandlers() {
 
     // Device filter dropdown (on History page)
     document.getElementById('device-filter').addEventListener('change', (e) => {
-        const newFilter = e.target.value || null;
-        state.set('currentDeviceFilter', newFilter);
-        // Also update selected device in switcher
+        const newFilter = e.target.value;
+        if (!newFilter) return; // Ignore empty selection
+        // Setting state triggers widget subscriptions automatically
         state.set('selectedDeviceSerial', newFilter);
-        updateSwitcherDisplay();
-        updateDeviceDetailsBar();
-        updateLogTable(newFilter);
-        updateHeatmap(newFilter);
-        refreshHistoryChart();
     });
 
-    // Events time filter dropdown
+    // Events time filter dropdown — subscription in eventsUI handles the refresh
     document.getElementById('events-time-filter').addEventListener('change', (e) => {
         state.set('currentEventsTimeFilter', e.target.value);
-        updateEventsTimeline(state.get('currentDeviceFilter'));
     });
 
     // Device Switcher events
@@ -501,16 +432,11 @@ export async function initUI() {
         await showAppropriateDisconnectedContent();
     }
 
-    // If we have stored devices but none connected, select the first one
+    // If we have stored devices but none connected, select the first one.
+    // Setting selectedDeviceSerial triggers widget subscriptions (table, heatmap,
+    // sparklines, chart, events, device switcher) automatically.
     const stats = await getDatabaseStats();
     if (stats.devices.length > 0 && !state.get('connectedDeviceSerial')) {
         state.set('selectedDeviceSerial', stats.devices[0]);
-        await updateSwitcherDisplay();
-        await updateDeviceDetailsBar();
     }
-
-    // Load sparklines and heatmap after device selection is resolved
-    const selectedDevice = state.get('selectedDeviceSerial');
-    await loadSparklinesFromStorage();
-    await updateHeatmap(selectedDevice || null);
 }

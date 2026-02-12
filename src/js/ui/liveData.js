@@ -7,6 +7,7 @@ import { i18n } from '../i18n.js';
 import { isDeviceConnected, getDevice } from '../webusb.js';
 import { getDeviceStatus, formatGPSFix, createMapsURL } from '../protocol.js';
 import { LOG_TYPE, CO2_THRESHOLDS, TIME_SYNC } from '../constants.js';
+import { getDeviceTypeById } from '../deviceTypes.js';
 import * as state from './state.js';
 import { showError } from './utils.js';
 import { track } from './init.js';
@@ -33,16 +34,20 @@ export async function updateLiveData() {
             `${status.humidity.toFixed(1)}%`;
 
         // Update format-specific values (widget visibility handled by configureWidgetsForLogType)
-        if (currentLogType === LOG_TYPE.CO2) {
-            // CO2 format: update CO2 value (lux hidden for CO2 — pressure/gasResistance from sync)
-            updateCO2Value('co2-value', status.co2);
-        } else {
-            // GPS/TSL2591 format: update PM values
-            updatePMValue('pm25-value', status.pm25);
-            updatePMValue('pm10-value', status.pm10);
-            // Update Lux for TSL2591 format
-            if (currentLogType === LOG_TYPE.TSL2591) {
-                updateLux(status.lux);
+        const deviceType = getDeviceTypeById(currentLogType);
+        if (deviceType) {
+            for (const metric of deviceType.metrics) {
+                if (metric.key === 'temperature' || metric.key === 'humidity') continue; // already handled above
+                const val = status[metric.key];
+                if (val == null) continue;
+                if (metric.key === 'co2') {
+                    updateCO2Value(metric.valueId, val);
+                } else if (metric.key === 'pm25' || metric.key === 'pm10') {
+                    updatePMValue(metric.valueId, val);
+                } else if (metric.key === 'lux') {
+                    updateLux(val);
+                }
+                // pressure/gasResistance: populated from sparklines sync, not live status
             }
         }
 

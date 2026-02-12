@@ -21,14 +21,6 @@ import * as state from './state.js';
 import { showError } from './utils.js';
 import { updateLiveData } from './liveData.js';
 import { updateDeviceLogCount, startAutoRefresh, stopAutoRefresh, syncDeviceTime } from './sync.js';
-import { loadSparklinesFromStorage } from './sparklines.js';
-import {
-    updateDeviceFilter,
-    updateSwitcherVisibility,
-    updateSwitcherDisplay,
-    updateDeviceDetailsBar
-} from './deviceSwitcher.js';
-import { configureWidgetsForLogType } from './init.js';
 
 // Environment detection (set once at module load)
 const runningInElectron = navigator.userAgent.toLowerCase().includes('electron');
@@ -70,7 +62,6 @@ export async function handleDeviceConnected(device) {
 
     // Get device info
     const info = getDeviceInfo();
-    state.set('currentDeviceSerial', info.serialNumber);
     state.set('connectedDeviceSerial', info.serialNumber);
     state.set('selectedDeviceSerial', info.serialNumber);
 
@@ -111,7 +102,8 @@ export async function handleDeviceConnected(device) {
         await setDeviceMetadata(info.serialNumber, {
             name: existingMetadata?.name || '',
             tags: existingMetadata?.tags || [],
-            model: currentDeviceModel
+            model: currentDeviceModel,
+            deviceType: existingMetadata?.deviceType,
         });
     } catch (error) {
         state.set('currentDeviceModel', 'N/A');
@@ -138,10 +130,21 @@ export async function handleDeviceConnected(device) {
         currentLogType = LOG_TYPE.GPS;
     }
 
+    // Setting currentLogType triggers configureWidgetsForLogType via subscription
     state.set('currentLogType', currentLogType);
 
-    // Configure sensor widgets based on detected log type
-    configureWidgetsForLogType(currentLogType);
+    // Persist device type to metadata so offline devices can be identified
+    try {
+        const existingMeta = await getDeviceMetadata(info.serialNumber);
+        await setDeviceMetadata(info.serialNumber, {
+            name: existingMeta?.name || '',
+            tags: existingMeta?.tags || [],
+            model: existingMeta?.model || state.get('currentDeviceModel') || '',
+            deviceType: currentLogType,
+        });
+    } catch (e) {
+        console.log('Failed to persist device type:', e.message);
+    }
 
     // Set device time to current system time
     try {
@@ -154,18 +157,7 @@ export async function handleDeviceConnected(device) {
     // Get device log count
     await updateDeviceLogCount();
 
-    // Load sparklines from storage
-    await loadSparklinesFromStorage();
-
-    // Update device filter dropdown
-    await updateDeviceFilter();
-
-    // Update device switcher
-    await updateSwitcherVisibility();
-    await updateSwitcherDisplay();
-    await updateDeviceDetailsBar();
-
-    // Start auto-refresh
+    // Start auto-refresh (live data + sparklines every 10s)
     startAutoRefresh();
 
     // Initial data fetch
@@ -214,10 +206,15 @@ export async function showAppropriateDisconnectedContent() {
 export async function handleDeviceDisconnected() {
     console.log('Device disconnected');
 
-    // Clear connected device state (but keep selected device)
+    // Stop auto-refresh first
+    stopAutoRefresh();
+
+    // Clear connected device state (but keep selected device).
+    // Each setKey fires only its own subscribers:
+    //   - connectedDeviceSerial=null → deviceSwitcher, modals
+    //   - currentLogType=null → configureWidgetsForLogType(GPS)
     state.set('connectedDeviceSerial', null);
     state.set('currentLogType', null);
-    state.set('currentDeviceSerial', null);
     state.set('currentDeviceModel', null);
 
     // Show connect section
@@ -228,28 +225,12 @@ export async function handleDeviceDisconnected() {
     connectBtn.disabled = false;
     connectBtn.textContent = 'Connect Device';
 
-    // Reset widgets to GPS format (default)
-    configureWidgetsForLogType(LOG_TYPE.GPS);
-
     // Show measurement history if available, otherwise show instructions
     await showAppropriateDisconnectedContent();
 
     // Hide status indicators
     document.getElementById('storage-status-inline').classList.add('hidden');
     document.getElementById('battery-status-inline').classList.add('hidden');
-
-    // Footer visibility is handled by showAppropriateDisconnectedContent
-
-    // Update device filter to remove connected indicator
-    await updateDeviceFilter();
-
-    // Update device switcher - keep visible, show offline state
-    await updateSwitcherVisibility();
-    await updateSwitcherDisplay();
-    await updateDeviceDetailsBar();
-
-    // Stop auto-refresh
-    stopAutoRefresh();
 }
 
 /**

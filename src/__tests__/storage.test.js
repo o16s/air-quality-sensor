@@ -346,7 +346,7 @@ describe('Storage - Duplicate Detection', () => {
     expect(allLogs).toHaveLength(1);
   });
 
-  it('should skip fuzzy duplicate logs (±2s timestamp, matching values)', async () => {
+  it('should NOT skip logs with different timestamps even if values match', async () => {
     const log1 = createMockLog({
       timestamp: 1699000000,
       temperature: 23.5,
@@ -356,25 +356,21 @@ describe('Storage - Duplicate Detection', () => {
     });
 
     const log2 = createMockLog({
-      timestamp: 1699000001,  // 1 second later
+      timestamp: 1699000001,  // 1 second later, same values
       temperature: 23.5,
       humidity: 45.6,
       pm25: 12.5,
       pm10: 18.3
     });
 
-    // Store first log
     await storeLogs([log1], 'TEST-DEVICE-001');
-
-    // Try to store fuzzy duplicate
     const result = await storeLogs([log2], 'TEST-DEVICE-001');
 
-    expect(result.success).toBe(0);
-    expect(result.skipped).toBe(1);
+    expect(result.success).toBe(1);
+    expect(result.skipped).toBe(0);
 
-    // Verify only one log in database
     const allLogs = await getAllLogs();
-    expect(allLogs).toHaveLength(1);
+    expect(allLogs).toHaveLength(2);
   });
 
   it('should store logs with different sensor values (not duplicates)', async () => {
@@ -468,42 +464,14 @@ describe('Storage - Duplicate Detection', () => {
     expect(result.total).toBe(0);
   });
 
-  it('should detect duplicate with timestamp drift within tolerance', async () => {
-    const log1 = createMockLog({
-      timestamp: 1699000000,
-      temperature: 23.5,
-      humidity: 45.0,
-      pm25: 12.0,
-      pm10: 18.0
-    });
-
-    // Same values, 2 seconds later (edge of tolerance)
-    const log2 = createMockLog({
-      timestamp: 1699000002,
-      temperature: 23.5,
-      humidity: 45.0,
-      pm25: 12.0,
-      pm10: 18.0
-    });
-
-    await storeLogs([log1], 'TEST-DEVICE-001');
-    const result = await storeLogs([log2], 'TEST-DEVICE-001');
-
-    expect(result.skipped).toBe(1);
-
-    const allLogs = await getAllLogs();
-    expect(allLogs).toHaveLength(1);
-  });
-
-  it('should NOT detect duplicate with 3 second timestamp difference', async () => {
+  it('should NOT skip logs with 2 second timestamp difference', async () => {
     const log1 = createMockLog({
       timestamp: 1699000000,
       temperature: 23.5
     });
 
-    // Same values, 3 seconds later (outside tolerance)
     const log2 = createMockLog({
-      timestamp: 1699000003,
+      timestamp: 1699000002,
       temperature: 23.5
     });
 

@@ -123,6 +123,10 @@ const translations = {
         // History page
         history_storedLocally: "measurements stored locally",
         history_noLogs: "No logs downloaded yet",
+        history_showing: "Showing",
+        history_to: "to",
+        history_of: "of",
+        history_results: "records",
         history_deviceFilter: "Device:",
         history_allDevices: "All Devices",
 
@@ -633,6 +637,10 @@ const translations = {
         // History page
         history_storedLocally: "Messungen lokal gespeichert",
         history_noLogs: "Noch keine Daten heruntergeladen",
+        history_showing: "Zeige",
+        history_to: "bis",
+        history_of: "von",
+        history_results: "Datenpunkte",
         history_deviceFilter: "Gerät:",
         history_allDevices: "Alle Geräte",
 

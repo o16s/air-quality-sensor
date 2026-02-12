@@ -4,6 +4,7 @@
  */
 
 import { AIR_QUALITY_THRESHOLDS } from './constants.js';
+import { getDetectableMetrics, getMetricUnitsMap, getMetricLabelsMap } from './deviceTypes.js';
 
 // Event detection configuration
 const EVENT_CONFIG = {
@@ -49,14 +50,16 @@ export function detectEvents(logs) {
 
     const events = [];
 
+    const detectableMetrics = getDetectableMetrics();
+
     // 1. MAD-based anomaly detection (finds relative spikes)
-    for (const metric of ['pm25', 'pm10', 'co2']) {
+    for (const metric of detectableMetrics) {
         const anomalies = detectAnomalies(sortedLogs, metric);
         events.push(...anomalies);
     }
 
     // 2. Threshold violations (absolute health limits)
-    for (const metric of ['pm25', 'pm10', 'co2']) {
+    for (const metric of detectableMetrics) {
         const violations = detectThresholdViolations(sortedLogs, metric);
         events.push(...violations);
     }
@@ -318,20 +321,13 @@ function medianAbsoluteDeviation(values) {
 }
 
 function getMetricUnit(metric) {
-    const units = {
-        pm25: 'μg/m³',
-        pm10: 'μg/m³',
-        co2: 'ppm'
-    };
-    return units[metric] || '';
+    return getMetricUnitsMap()[metric] || '';
 }
 
 function getMetricLabel(metric) {
-    const labels = {
-        pm25: 'PM2.5',
-        pm10: 'PM10',
-        co2: 'CO₂'
-    };
+    const labels = getMetricLabelsMap();
+    // Use subscript variant for CO2 in event display
+    if (metric === 'co2') return 'CO\u2082';
     return labels[metric] || metric;
 }
 

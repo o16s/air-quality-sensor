@@ -8,6 +8,8 @@ import { getSettings, setSettings, setRecording } from '../protocol.js';
 import { MEASUREMENT_INTERVALS } from '../constants.js';
 import { i18n } from '../i18n.js';
 import { isDeviceConnected, getDevice } from '../webusb.js';
+import { listenKeys } from 'nanostores';
+import { $state } from './state.js';
 import * as state from './state.js';
 import { showError, showSuccess } from './utils.js';
 import { updateDeviceFilter, updateSwitcherDisplay } from './deviceSwitcher.js';
@@ -30,9 +32,9 @@ export function closeSettingsModal() {
  * Open edit device modal with current values (for connected device)
  */
 export async function openEditDeviceModal() {
-    const currentDeviceSerial = state.get('currentDeviceSerial');
-    if (!currentDeviceSerial) return;
-    await openEditDeviceModalForSerial(currentDeviceSerial);
+    const connectedDeviceSerial = state.get('connectedDeviceSerial');
+    if (!connectedDeviceSerial) return;
+    await openEditDeviceModalForSerial(connectedDeviceSerial);
 }
 
 /**
@@ -73,8 +75,8 @@ export function closeEditDeviceModal() {
  */
 export async function handleSaveDeviceMetadata() {
     const modal = document.getElementById('edit-device-modal');
-    const currentDeviceSerial = state.get('currentDeviceSerial');
-    const serial = modal.dataset.editingSerial || currentDeviceSerial;
+    const connectedDeviceSerial = state.get('connectedDeviceSerial');
+    const serial = modal.dataset.editingSerial || connectedDeviceSerial;
 
     if (!serial) return;
 
@@ -237,3 +239,12 @@ export async function handleSaveSettings() {
         saveBtn.textContent = originalText;
     }
 }
+
+// ── Reactive subscriptions ────────────────────────────────────────────
+
+// Close settings modal when device disconnects (stale device context)
+listenKeys($state, ['connectedDeviceSerial'], (value) => {
+    if (value.connectedDeviceSerial === null) {
+        closeSettingsModal();
+    }
+});

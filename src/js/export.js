@@ -5,6 +5,7 @@
 
 import { EXPORT_FILENAMES, MIME_TYPES, ERRORS } from './constants.js';
 import { downloadFile, formatGPSFix } from './utils.js';
+import { getDeviceTypeById, DEVICE_TYPES } from './deviceTypes.js';
 
 /**
  * Format date as ISO string for Excel compatibility (YYYY-MM-DD HH:MM:SS)
@@ -25,64 +26,18 @@ export function exportToCSV(logs, deviceMetadataMap = {}) {
         throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
 
-    // Detect format from first log
-    const isCO2 = logs[0].hasOwnProperty('co2');
-    const isTSL = logs[0].hasOwnProperty('lux') && !isCO2;
+    // Resolve device type from registry; fall back to field-sniffing for legacy data
+    const deviceType = getDeviceTypeById(logs[0].logType) || sniffDeviceType(logs[0]);
 
-    // CSV headers based on format
-    let headers;
-    if (isCO2) {
-        headers = [
-            'DateTime',
-            'Temperature (°C)',
-            'Humidity (%)',
-            'CO2 (ppm)',
-            'Pressure (hPa)',
-            'Gas Resistance (Ohm)',
-            'Lux',
-            'Battery (V)',
-            'Charging',
-            'Device Serial',
-            'Device Name',
-            'Device Tags',
-            'Downloaded At'
-        ];
-    } else if (isTSL) {
-        headers = [
-            'DateTime',
-            'Temperature (°C)',
-            'Humidity (%)',
-            'PM2.5 (μg/m³)',
-            'PM10 (μg/m³)',
-            'Lux',
-            'TSL CH0',
-            'TSL CH1',
-            'Overflow',
-            'Battery (V)',
-            'Charging',
-            'Device Serial',
-            'Device Name',
-            'Device Tags',
-            'Downloaded At'
-        ];
-    } else {
-        headers = [
-            'DateTime',
-            'Temperature (°C)',
-            'Humidity (%)',
-            'PM2.5 (μg/m³)',
-            'PM10 (μg/m³)',
-            'Latitude',
-            'Longitude',
-            'GPS Fix',
-            'Battery (V)',
-            'Charging',
-            'Device Serial',
-            'Device Name',
-            'Device Tags',
-            'Downloaded At'
-        ];
+    // Build CSV headers from device type: DateTime + metrics + extraFields + common trailer
+    const headers = ['DateTime'];
+    for (const m of deviceType.metrics) {
+        headers.push(m.csvHeader);
     }
+    for (const f of deviceType.extraFields) {
+        headers.push(f.csvHeader);
+    }
+    headers.push('Battery (V)', 'Charging', 'Device Serial', 'Device Name', 'Device Tags', 'Downloaded At');
 
     // Build CSV content
     const rows = [headers.join(',')];
@@ -91,64 +46,49 @@ export function exportToCSV(logs, deviceMetadataMap = {}) {
         const date = new Date(log.timestamp * 1000);
         const downloadDate = log.downloadedAt ? new Date(log.downloadedAt * 1000) : null;
 
-        // Look up device metadata for this log's serial
         const metadata = log.deviceSerial ? deviceMetadataMap[log.deviceSerial] : null;
         const deviceName = metadata?.name || '';
         const deviceTags = metadata?.tags?.join(';') || '';
 
-        let row;
-        if (isCO2) {
-            row = [
-                formatDateTimeISO(date),
-                log.temperature?.toFixed(3) || '',
-                log.humidity?.toFixed(3) || '',
-                log.co2 || '',
-                log.pressure?.toFixed(1) || '',
-                log.gasResistance || '',
-                log.lux?.toFixed(1) || '',
-                log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
-                log.charging ? '1' : '0',
-                log.deviceSerial || '',
-                deviceName,
-                deviceTags,
-                downloadDate ? downloadDate.toISOString() : ''
-            ];
-        } else if (isTSL) {
-            row = [
-                formatDateTimeISO(date),
-                log.temperature?.toFixed(3) || '',
-                log.humidity?.toFixed(3) || '',
-                log.pm25?.toFixed(1) || '',
-                log.pm10?.toFixed(1) || '',
-                log.lux?.toFixed(1) || '',
-                log.tslCH0 || '',
-                log.tslCH1 || '',
-                log.overflow || '0',
-                log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
-                log.charging ? '1' : '0',
-                log.deviceSerial || '',
-                deviceName,
-                deviceTags,
-                downloadDate ? downloadDate.toISOString() : ''
-            ];
-        } else {
-            row = [
-                formatDateTimeISO(date),
-                log.temperature?.toFixed(3) || '',
-                log.humidity?.toFixed(3) || '',
-                log.pm25?.toFixed(1) || '',
-                log.pm10?.toFixed(1) || '',
-                log.lat?.toFixed(7) || '',
-                log.lon?.toFixed(7) || '',
-                formatGPSFix(log.fix),
-                log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
-                log.charging ? '1' : '0',
-                log.deviceSerial || '',
-                deviceName,
-                deviceTags,
-                downloadDate ? downloadDate.toISOString() : ''
-            ];
+        const row = [formatDateTimeISO(date)];
+
+        // Metric values
+        for (const m of deviceType.metrics) {
+            const val = log[m.key];
+            if (val == null) {
+                row.push('');
+            } else if (m.csvPrecision != null && m.csvPrecision > 0) {
+                row.push(val.toFixed(m.csvPrecision));
+            } else if (m.csvPrecision === 0) {
+                row.push(String(Math.round(val)));
+            } else {
+                row.push(String(val));
+            }
         }
+
+        // Extra fields
+        for (const f of deviceType.extraFields) {
+            const val = log[f.key];
+            if (val == null) {
+                row.push('');
+            } else if (f.key === 'fix') {
+                row.push(formatGPSFix(val));
+            } else if (f.csvPrecision != null && f.csvPrecision > 0) {
+                row.push(val.toFixed(f.csvPrecision));
+            } else {
+                row.push(String(val));
+            }
+        }
+
+        // Common trailer
+        row.push(
+            log.batteryVoltage ? (log.batteryVoltage / 1000).toFixed(3) : '',
+            log.charging ? '1' : '0',
+            log.deviceSerial || '',
+            deviceName,
+            deviceTags,
+            downloadDate ? downloadDate.toISOString() : ''
+        );
 
         // Escape fields that contain commas or quotes
         const escapedRow = row.map(field => {
@@ -163,9 +103,17 @@ export function exportToCSV(logs, deviceMetadataMap = {}) {
     });
 
     const csvContent = rows.join('\n');
-
-    // Create download
     downloadFile(csvContent, EXPORT_FILENAMES.CSV, MIME_TYPES.CSV);
+}
+
+/**
+ * Fallback device type detection for legacy logs without logType field.
+ * Sniffs fields to determine the closest device type.
+ */
+function sniffDeviceType(log) {
+    if (log.hasOwnProperty('co2')) return DEVICE_TYPES.CO2;
+    if (log.hasOwnProperty('lux')) return DEVICE_TYPES.TSL2591;
+    return DEVICE_TYPES.GPS;
 }
 
 /**
@@ -178,14 +126,8 @@ export function exportToJSON(logs, deviceMetadataMap = {}) {
         throw new Error(ERRORS.NO_LOGS_TO_EXPORT);
     }
 
-    // Detect format from first log
-    const isCO2 = logs[0].hasOwnProperty('co2');
-    const isTSL = logs[0].hasOwnProperty('lux') && !isCO2;
-
-    // Determine format name
-    let formatName = 'GPS';
-    if (isCO2) formatName = 'CO2';
-    else if (isTSL) formatName = 'TSL2591';
+    // Resolve device type from registry; fall back to field-sniffing for legacy data
+    const deviceType = getDeviceTypeById(logs[0].logType) || sniffDeviceType(logs[0]);
 
     // Create structured JSON with metadata
     const exportData = {
@@ -194,25 +136,15 @@ export function exportToJSON(logs, deviceMetadataMap = {}) {
             totalRecords: logs.length,
             devices: [...new Set(logs.map(l => l.deviceSerial).filter(Boolean))],
             format: 'Octanis ICS Logs v1.0',
-            sensorFormat: formatName
+            sensorFormat: deviceType.name
         },
         logs: logs.map(log => {
-            // Look up device metadata for this log's serial
             const metadata = log.deviceSerial ? deviceMetadataMap[log.deviceSerial] : null;
 
             const baseLog = {
                 timestamp: log.timestamp,
                 dateTime: new Date(log.timestamp * 1000).toISOString(),
-                sensors: {
-                    temperature: {
-                        value: log.temperature,
-                        unit: '°C'
-                    },
-                    humidity: {
-                        value: log.humidity,
-                        unit: '%'
-                    }
-                },
+                sensors: {},
                 battery: {
                     voltage: log.batteryVoltage,
                     voltageUnit: 'mV',
@@ -226,54 +158,27 @@ export function exportToJSON(logs, deviceMetadataMap = {}) {
                 downloadedAt: log.downloadedAt ? new Date(log.downloadedAt * 1000).toISOString() : null
             };
 
-            // Add format-specific fields
-            if (isCO2) {
-                baseLog.sensors.co2 = {
-                    value: log.co2,
-                    unit: 'ppm'
+            // Add all metric values from device type
+            for (const m of deviceType.metrics) {
+                baseLog.sensors[m.key] = {
+                    value: log[m.key],
+                    unit: m.unit
                 };
-                baseLog.sensors.pressure = {
-                    value: log.pressure,
-                    unit: 'hPa'
-                };
-                baseLog.sensors.gasResistance = {
-                    value: log.gasResistance,
-                    unit: 'Ohm'
-                };
-                baseLog.sensors.lux = {
-                    value: log.lux,
-                    unit: 'lux'
-                };
-            } else if (isTSL) {
-                baseLog.sensors.pm25 = {
-                    value: log.pm25,
-                    unit: 'μg/m³'
-                };
-                baseLog.sensors.pm10 = {
-                    value: log.pm10,
-                    unit: 'μg/m³'
-                };
-                baseLog.sensors.lux = {
-                    value: log.lux,
-                    unit: 'lux'
-                };
-                baseLog.sensors.tslCH0 = log.tslCH0;
-                baseLog.sensors.tslCH1 = log.tslCH1;
-                baseLog.sensors.overflow = log.overflow;
-            } else {
-                baseLog.sensors.pm25 = {
-                    value: log.pm25,
-                    unit: 'μg/m³'
-                };
-                baseLog.sensors.pm10 = {
-                    value: log.pm10,
-                    unit: 'μg/m³'
-                };
-                baseLog.gps = {
-                    latitude: log.lat,
-                    longitude: log.lon,
-                    fix: formatGPSFix(log.fix)
-                };
+            }
+
+            // Add extra fields — GPS gets special nested structure, others go under sensors
+            for (const f of deviceType.extraFields) {
+                if (f.key === 'lat' || f.key === 'lon' || f.key === 'fix') {
+                    if (!baseLog.gps) {
+                        baseLog.gps = {
+                            latitude: log.lat,
+                            longitude: log.lon,
+                            fix: formatGPSFix(log.fix)
+                        };
+                    }
+                } else {
+                    baseLog.sensors[f.key] = log[f.key];
+                }
             }
 
             return baseLog;
@@ -281,8 +186,6 @@ export function exportToJSON(logs, deviceMetadataMap = {}) {
     };
 
     const jsonContent = JSON.stringify(exportData, null, 2);
-
-    // Create download
     downloadFile(jsonContent, EXPORT_FILENAMES.JSON, MIME_TYPES.JSON);
 }
 

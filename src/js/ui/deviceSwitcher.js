@@ -17,10 +17,9 @@ import {
     getPairedDevices
 } from '../webusb.js';
 import { LOG_TYPE } from '../constants.js';
+import { listenKeys } from 'nanostores';
+import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';
-import { updateLogTable } from './logTable.js';
-import { updateHeatmap } from './heatmapUI.js';
-import { updateEventsTimeline } from './eventsUI.js';
 import { openEditDeviceModalForSerial } from './modals.js';
 
 /**
@@ -50,12 +49,10 @@ export async function populateDeviceDropdown() {
     // Build set of available (plugged in) device serials
     const availableSerials = new Set(pairedDevices.map(d => d.serialNumber));
 
-    // Combine known devices from storage and connected device
+    // Combine known devices from storage and all paired (plugged-in) devices
     const connectedDeviceSerial = state.get('connectedDeviceSerial');
     const allDevices = new Set(stats.devices);
-    if (connectedDeviceSerial) {
-        allDevices.add(connectedDeviceSerial);
-    }
+    pairedDevices.forEach(d => allDevices.add(d.serialNumber));
 
     const deviceList = document.getElementById('device-list');
     deviceList.innerHTML = '';
@@ -75,15 +72,18 @@ export async function populateDeviceDropdown() {
         const isConnected = serial === connectedDeviceSerial;
         const isAvailable = availableSerials.has(serial);
         const isSelected = serial === selectedDeviceSerial;
-        const displayName = metadata?.name || currentDeviceModel || serial;
+        const model = (isConnected ? currentDeviceModel : null) || metadata?.model;
+        const displayName = metadata?.name || (model ? `${model} (${serial})` : serial);
         const tags = metadata?.tags || [];
 
-        // Get device type from logs or current connection
+        // Get device type from metadata, connection, or logs (in priority order)
         let deviceType = null;
         if (isConnected && currentLogType !== null) {
             deviceType = currentLogType;
+        } else if (metadata?.deviceType != null) {
+            deviceType = metadata.deviceType;
         } else {
-            // Check stored logs for this device
+            // Fallback: check stored logs for this device
             const deviceLogs = await getLogsByDevice(serial);
             if (deviceLogs.length > 0 && deviceLogs[0].logType !== undefined) {
                 deviceType = deviceLogs[0].logType;
@@ -172,34 +172,19 @@ export async function populateDeviceDropdown() {
  * @param {string} serial - Device serial number to select
  */
 export async function selectDevice(serial) {
-    state.set('selectedDeviceSerial', serial);
-
     const connectedDeviceSerial = state.get('connectedDeviceSerial');
 
     // If selecting a different device than currently connected, try to switch connection
     if (serial && serial !== connectedDeviceSerial) {
-        // Try to connect to the selected device (if it's paired and available)
         const connected = await connectToDeviceBySerial(serial);
         if (connected) {
             // Connection successful - handleDeviceConnected will be called via callback
-            // which will update the UI appropriately
             return;
         }
-        // If connection failed, continue showing offline view for this device
     }
 
-    await updateSwitcherDisplay();
-    await updateDeviceDetailsBar();
-    // Update device filter to match selected device
-    state.set('currentDeviceFilter', serial);
-    await updateLogTable(serial);
-    await updateHeatmap(serial);
-    await updateEventsTimeline(serial);
-    // Update the device filter dropdown to match
-    const deviceFilterEl = document.getElementById('device-filter');
-    if (deviceFilterEl) {
-        deviceFilterEl.value = serial || '';
-    }
+    // Setting selectedDeviceSerial triggers widget subscriptions automatically
+    state.set('selectedDeviceSerial', serial);
 }
 
 /**
@@ -223,8 +208,10 @@ export async function updateSwitcherDisplay() {
     }
 
     // Get device metadata for display name
+    // Priority: user name → model (serial) → serial
     const metadata = await getDeviceMetadata(selectedDeviceSerial);
-    const displayName = metadata?.name || currentDeviceModel || selectedDeviceSerial;
+    const model = currentDeviceModel || metadata?.model;
+    const displayName = metadata?.name || (model ? `${model} (${selectedDeviceSerial})` : selectedDeviceSerial);
     nameEl.textContent = displayName;
 
     // Check if device is available (plugged in)
@@ -237,12 +224,12 @@ export async function updateSwitcherDisplay() {
     dotEl.classList.remove('bg-green-500', 'bg-gray-400');
     dotEl.classList.add(isOnline ? 'bg-green-500' : 'bg-gray-400');
 
-    // Update product icon - show when connected
-    if (isConnected && currentDeviceModel) {
-        iconEl.src = `img/${currentDeviceModel}.jpg`;
+    // Update product icon — show when model is known (live or persisted)
+    const deviceModel = currentDeviceModel || metadata?.model;
+    if (deviceModel) {
+        iconEl.src = `img/${deviceModel}.jpg`;
         iconEl.style.display = '';
     } else {
-        // Hide icon for offline/available devices
         iconEl.style.display = 'none';
     }
 }
@@ -346,17 +333,33 @@ export async function updateDeviceFilter() {
 
         // Preserve current selection
         const currentValue = select.value;
+        const selectedDevice = state.get('selectedDeviceSerial');
 
-        // Clear existing options and add "All Devices"
-        select.innerHTML = `<option value="">${i18n.t('history_allDevices')}</option>`;
+        // Clear existing options
+        select.innerHTML = '';
+
+        // Include paired (plugged-in) devices so they appear even without logs
+        const pairedDevices = await getPairedDevices();
+        const allDevices = new Set(stats.devices);
+        pairedDevices.forEach(d => allDevices.add(d.serialNumber));
+
+        if (allDevices.size === 0) {
+            // No devices yet — show placeholder
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = i18n.t('device_noDevicesFound');
+            placeholder.disabled = true;
+            select.appendChild(placeholder);
+            return;
+        }
 
         // Add each unique device, marking connected one and showing custom name
-        for (const serial of stats.devices) {
+        for (const serial of allDevices) {
             const option = document.createElement('option');
             option.value = serial;
 
             const metadata = metadataMap[serial];
-            let displayName = metadata?.name || serial;
+            let displayName = metadata?.name || (metadata?.model ? `${metadata.model} (${serial})` : serial);
 
             if (serial === connectedSerial) {
                 option.textContent = `${displayName} (${i18n.t('device_connected')})`;
@@ -365,18 +368,46 @@ export async function updateDeviceFilter() {
             }
 
             // Add title attribute with serial for reference
-            if (metadata?.name) {
+            if (metadata?.name || metadata?.model) {
                 option.title = serial;
             }
 
             select.appendChild(option);
         }
 
-        // Restore selection if still valid
-        if (currentValue && stats.devices.includes(currentValue)) {
+        // Restore selection if still valid, otherwise pick selected device or first device
+        const deviceArray = [...allDevices];
+        if (currentValue && allDevices.has(currentValue)) {
             select.value = currentValue;
+        } else if (selectedDevice && allDevices.has(selectedDevice)) {
+            select.value = selectedDevice;
+        } else {
+            select.value = deviceArray[0];
         }
     } catch (error) {
         console.error('Failed to update device filter:', error);
     }
 }
+
+// ── Reactive subscriptions ────────────────────────────────────────────
+
+listenKeys($state, ['selectedDeviceSerial', 'currentDeviceModel'], () => {
+    updateSwitcherDisplay();
+    updateDeviceDetailsBar();
+    // Sync the device filter dropdown to match
+    const serial = $state.get().selectedDeviceSerial;
+    const deviceFilterEl = document.getElementById('device-filter');
+    if (deviceFilterEl && serial) {
+        deviceFilterEl.value = serial;
+    }
+});
+
+listenKeys($state, ['connectedDeviceSerial'], () => {
+    updateSwitcherVisibility();
+    updateSwitcherDisplay();
+    updateDeviceDetailsBar();
+});
+
+$dataVersion.listen(() => {
+    updateDeviceFilter();
+});

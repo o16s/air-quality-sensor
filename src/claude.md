@@ -6,8 +6,8 @@ This is a browser-based WebUSB interface for Octanis environmental sensors (STM3
 
 ### Technology Stack
 
-- **Vanilla JavaScript** (ES6 modules) - No build step required
-- **Tailwind CSS** (via CDN) - Modern, responsive styling
+- **Vanilla JavaScript** (ES6 modules) - Vite build
+- **Tailwind CSS** (v4) - Modern, responsive styling
 - **WebUSB API** - Direct USB communication
 - **IndexedDB** - Browser-based log storage
 - **Vitest** - Unit testing framework
@@ -75,41 +75,70 @@ Disconnected → Connected: Click "Connect Device" and select device
 ### File Structure
 
 ```
-docs/
+src/
 ├── index.html              # Main UI
-├── package.json            # Test dependencies only
+├── package.json            # Dependencies + scripts
+├── vite.config.js          # Vite build configuration
 ├── vitest.config.js        # Test configuration
 ├── css/
 │   └── style.css          # Custom styles
 ├── js/
-│   ├── constants.js       # All configuration constants
+│   ├── constants.js       # Buffer layouts, thresholds, error messages, USB config
+│   ├── deviceTypes.js     # Device type registry (single source of truth)
 │   ├── i18n.js            # Internationalization (EN/DE translations)
 │   ├── utils.js           # Shared utility functions
 │   ├── protocol.js        # Firmware protocol & USB communication
 │   ├── webusb.js          # USB device connection management
 │   ├── storage.js         # IndexedDB wrapper
-│   ├── ui.js              # UI updates and rendering
-│   └── export.js          # CSV/JSON/GeoJSON export
+│   ├── export.js          # CSV/JSON/GeoJSON export
+│   ├── events.js          # Air quality event detection (MAD + thresholds)
+│   ├── heatmap.js         # Heatmap data generation
+│   ├── report.js          # Report computation
+│   └── ui/
+│       ├── state.js       # Centralized UI state
+│       ├── init.js        # App initialization, widget configuration
+│       ├── connection.js  # USB connect/disconnect handlers
+│       ├── liveData.js    # Live sensor value display
+│       ├── logTable.js    # Measurement history table
+│       ├── historyChart.js    # ECharts renderer
+│       ├── historyChartUI.js  # Chart data fetching/aggregation
+│       ├── sparklines.js  # Sparkline canvas rendering
+│       ├── heatmapUI.js   # Heatmap visualization
+│       ├── eventsUI.js    # Events timeline display
+│       ├── deviceSwitcher.js  # Device selection dropdown
+│       ├── modals.js      # Settings & edit device modals
+│       ├── export.js      # Export button handlers
+│       ├── reportUI.js    # Report page UI
+│       ├── sync.js        # Auto-refresh, download logs, time sync
+│       └── utils.js       # UI-specific helpers
+├── img/                   # Device images
 └── __tests__/
     ├── setup.js           # Test mocks (WebUSB, IndexedDB, DOM)
+    ├── deviceTypes.test.js # Device type registry tests
+    ├── utils.test.js      # Utils tests (includes duplicate detection)
     ├── webusb.test.js     # WebUSB tests
-    ├── storage.test.js    # Storage tests (includes duplicate detection)
+    ├── storage.test.js    # Storage tests
     ├── export.test.js     # Export tests
-    └── utils.test.js      # Utils tests
+    ├── events.test.js     # Event detection tests
+    ├── report.test.js     # Report tests
+    └── heatmap.test.js    # Heatmap tests
 ```
 
 ### Module Responsibilities
 
 | Module | Purpose | Key Functions |
 |--------|---------|---------------|
-| **constants.js** | Single source of truth for all configuration | USB constants, buffer layouts, error messages, device capacity |
+| **constants.js** | Buffer layouts, thresholds, USB config, error messages | `LOG_TYPE`, `AIR_QUALITY_THRESHOLDS`, `SPARKLINE_THRESHOLDS` |
+| **deviceTypes.js** | Device type registry — single source of truth for what each sensor type produces | `DEVICE_TYPES`, `getDeviceTypeById()`, `getAllKnownMetrics()`, `getMetricColorsMap()` |
 | **i18n.js** | Internationalization (EN/DE) | `i18n.t()`, `setLanguage()`, `translatePage()` |
 | **utils.js** | Shared utilities used across modules | Device validation, buffer helpers, download helper, **duplicate detection** |
 | **protocol.js** | Firmware protocol implementation | USB vendor requests, data parsing, erase logs |
 | **webusb.js** | USB device lifecycle management | Connect, disconnect, auto-reconnect, callbacks |
-| **storage.js** | IndexedDB persistence layer | Store/retrieve logs, queries, statistics, **duplicate prevention** |
-| **ui.js** | User interface logic | Event handlers, data display, **widget configuration**, **capacity tracking** |
-| **export.js** | Data export functionality | CSV, JSON, GeoJSON, statistics export |
+| **storage.js** | IndexedDB persistence layer | Store/retrieve logs, queries, statistics, **duplicate prevention**, device metadata |
+| **export.js** | Data export functionality | CSV, JSON, GeoJSON, statistics export (registry-driven) |
+| **events.js** | Air quality event detection | MAD-based anomaly detection, threshold violations |
+| **ui/state.js** | Centralized UI state | `connectedDeviceSerial`, `selectedDeviceSerial`, `currentLogType` |
+| **ui/init.js** | App initialization, widget configuration | `configureWidgetsForLogType()` (registry-driven) |
 
 ### Data Flow
 
@@ -118,14 +147,62 @@ Hardware Device (USB)
     ↓
 webusb.js (connection)
     ↓
-protocol.js (vendor requests)
+protocol.js (parse binary → flat JS object)
     ↓
-Parsed Data
+Flat log record: {timestamp, deviceSerial, logType, temperature, humidity, pm25, ...}
     ↓
-├─→ ui.js (display)
-├─→ storage.js (persist)
-└─→ export.js (download)
+├─→ storage.js (persist to IndexedDB as-is)
+├─→ ui/ modules (display — driven by deviceTypes.js registry)
+└─→ export.js (download — columns from deviceTypes.js registry)
 ```
+
+## Data Model
+
+### Device Type Registry (`deviceTypes.js`)
+
+The single source of truth for "what does each sensor type produce." Three device types, each identified by a `LOG_TYPE` integer set at firmware compile time:
+
+| Type | ID | Metrics | Extra Fields |
+|------|----|---------|--------------|
+| **GPS** | 0 | temperature, humidity, pm25, pm10 | lat, lon, fix |
+| **TSL2591** | 1 | temperature, humidity, pm25, pm10, lux | tslCH0, tslCH1, overflow |
+| **CO2** | 2 | temperature, humidity, co2, pressure, gasResistance, lux | *(none)* |
+
+**Metrics** are plottable sensor values that appear in charts, sparklines, tables, and exports. Each metric definition carries: `key`, `label`, `unit`, `color`, `precision`, `i18nKey`, `csvHeader`, `csvPrecision`, `valueId`, `sparklineId`, `cardId`.
+
+**Extra fields** are non-metric data included in exports but not charted (GPS coordinates, TSL raw channels).
+
+Every downstream module asks the registry what to do with a log record instead of hardcoding field names:
+- **Widget visibility** — shows cards for metrics on the device type, hides the rest
+- **Live data** — updates only values the device type declares
+- **Sparklines** — renders sparklines for each metric with a `SPARKLINE_THRESHOLDS` entry
+- **Charts** — aggregates all metrics found in data; registry provides colors, units, labels
+- **Tables** — columns built from `deviceType.metrics`
+- **CSV/JSON export** — headers and row values from `deviceType.metrics` + `deviceType.extraFields`
+- **Events/Heatmap** — operates on "detectable" metrics (`getDetectableMetrics()`) — those with `AIR_QUALITY_THRESHOLDS`
+- **Duplicate detection** — exact match on `timestamp` + `deviceSerial`
+
+### IndexedDB Schema
+
+Three object stores, currently at DB version 3. **No version bump is needed when adding new device types** — the stores are schemaless for record content.
+
+| Store | keyPath | Indexes | Purpose |
+|-------|---------|---------|---------|
+| `logs` | `id` (auto-increment) | `timestamp`, `deviceSerial`, `['deviceSerial', 'timestamp']` | Measurement records |
+| `deviceMetadata` | `serial` | *(none)* | One record per physical device |
+| `reportLocations` | `id` | *(none)* | Report building/room data |
+
+**Log records** are flat JavaScript objects stored as-is. The parser in `protocol.js` returns `{timestamp, temperature, humidity, pm25, ...}` for GPS or `{timestamp, temperature, humidity, co2, pressure, ...}` for CO2 — whatever fields the parser produced. IndexedDB stores all properties without validation. The indexes are on fields common to all log types (`timestamp`, `deviceSerial`), so queries work regardless of which sensor-specific fields are present.
+
+**Device metadata** records: `{serial, name, tags, model, deviceType, updatedAt}`. The `deviceType` field (LOG_TYPE integer) is persisted when a device connects, so the UI can identify offline devices without scanning their logs.
+
+### UI State (`ui/state.js`)
+
+Two device serial concepts:
+- `connectedDeviceSerial` — the device physically on USB right now (null if none)
+- `selectedDeviceSerial` — the device the UI is showing (can be an offline device with stored data)
+
+Other state: `currentDeviceModel`, `currentLogType`, `currentEventsTimeFilter`, `autoRefreshInterval`, `isDownloading`, report stats.
 
 ## Code Guidelines
 
@@ -351,7 +428,7 @@ Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
 - Linear interpolation between 3300-4150mV
 - Formula: `percentage = (voltage_mv - 3300) * 100 / (4150 - 3300)`
 
-**Implementation**: See `decodeBatteryByte()` in `utils.js` and `updateBattery()` in `ui.js`
+**Implementation**: See `decodeBatteryByte()` in `utils.js` and `updateBattery()` in `ui/liveData.js`
 
 ## Features
 
@@ -359,25 +436,17 @@ Each layout specifies: offset, type (Int16/Uint16/etc), scale factor
 
 **Problem**: Users could re-download the same logs multiple times, filling up browser storage with duplicates.
 
-**Solution**: Intelligent duplicate detection that works even when device timestamps are incorrect.
+**Solution**: Exact-match duplicate detection using timestamp + deviceSerial. Device timestamps are reliable (synced on connect via SET_TIME), so fuzzy matching is unnecessary and risks false positives on consecutive readings with similar values.
 
 **`utils.js` - `isDuplicateLog()` function:**
-- **Exact match**: timestamp + deviceSerial (instant detection)
-- **Fuzzy match**: ±2 second timestamp tolerance + sensor value comparison
-  - Compares: temperature (±0.1°C), humidity (±0.5%), PM2.5 (±0.5), PM10 (±0.5)
-  - Handles clock drift and timestamp errors
-- Returns `true` if logs are duplicates
+- Compares `deviceSerial` and `timestamp` — both must match exactly
+- Returns `true` if records are duplicates
 
-**`storage.js` - Enhanced `storeLogs()` function:**
+**`storage.js` - `storeLogs()` function:**
 ```javascript
 // Before storing, checks all existing logs for duplicates
 const result = await storeLogs(logs, deviceSerial);
 // Returns: { success, skipped, errors, total }
-```
-
-**`ui.js` - User feedback:**
-```
-"Downloaded 50 logs: 30 new, 20 duplicates skipped"
 ```
 
 ### Device Capacity Tracking & Erase
@@ -411,39 +480,16 @@ Added "Serial" column to log table for tracking logs from multiple devices.
 
 ### Widget Configuration System
 
-**Problem**: Different device types (GPS, TSL2591, CO2) need different sensor cards displayed. The previous approach of hiding/showing cards in multiple places was fragile.
+**Problem**: Different device types (GPS, TSL2591, CO2) need different sensor cards displayed.
 
-**Solution**: Centralized widget configuration in `ui.js`:
+**Solution**: `configureWidgetsForLogType(logType)` in `ui/init.js` is driven by the device type registry. It iterates `getAllKnownMetrics()` and shows cards for metrics present on the device type, hides the rest.
 
-```javascript
-const WIDGET_CONFIG = {
-    [LOG_TYPE.GPS]: {
-        pm25: { visible: true, label: 'PM2.5', ... },
-        pm10: { visible: true, label: 'PM10', ... },
-        co2:  { visible: false },
-        lux:  { visible: false }
-    },
-    [LOG_TYPE.TSL2591]: {
-        pm25: { visible: true, ... },
-        pm10: { visible: true, ... },
-        co2:  { visible: false },
-        lux:  { visible: true, label: 'Light', ... }
-    },
-    [LOG_TYPE.CO2]: {
-        pm25: { visible: false },
-        pm10: { visible: false },
-        co2:  { visible: true, label: 'CO2', ... },
-        lux:  { visible: true, label: 'Light', ... }
-    }
-};
-```
-
-**`configureWidgetsForLogType(logType)`** - Single function that:
-- Shows/hides appropriate sensor cards
-- Sets correct labels
-- Clears stale sparkline canvases
-- Called on device connect (after log type detection)
-- Called on device disconnect (resets to GPS default)
+- No separate `WIDGET_CONFIG` object — visibility is derived from `deviceType.metrics`
+- Each metric in the registry has a `cardId` (e.g. `'co2-card'`) for toggling visibility
+- `pm25`/`pm10` cards use the `closest('.sensor-card')` pattern instead of a fixed card ID
+- Temperature and humidity cards are always visible (no `cardId`, never toggled)
+- All sparkline canvases are cleared on device type change to prevent stale data
+- Called on device connect (after log type detection) and disconnect (resets to GPS default)
 
 **Key principle**: Widget visibility is set ONCE when device connects, not on every data update.
 
@@ -495,7 +541,9 @@ i18n.t('measurements', { count: 5 })   // "5 measurements"
 
 ## Adding New Features
 
-### Example: Adding a New Sensor Type
+### Adding a New Sensor Type
+
+Only 3 files need changes. Everything else (charts, tables, exports, sparklines, heatmap, events, widgets, duplicate detection) picks it up automatically from the device type registry.
 
 1. **Add constants** to `constants.js`:
 ```javascript
@@ -503,10 +551,10 @@ export const LOG_TYPE = {
     GPS: 0,
     TSL2591: 1,
     CO2: 2,
-    NEW_TYPE: 3  // NEW
+    RADAR: 3  // NEW
 };
 
-export const LOG_LAYOUT_NEW = {
+export const LOG_LAYOUT_RADAR = {
     TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },
     // ... other fields
 };
@@ -514,44 +562,39 @@ export const LOG_LAYOUT_NEW = {
 
 2. **Add parsing function** to `protocol.js`:
 ```javascript
-function parseLogItemNew(data) {
+function parseLogItemRadar(data) {
     const view = new DataView(data.buffer);
     return {
-        temperature: getBufferValue(view, LOG_LAYOUT_NEW.TEMPERATURE),
+        temperature: getBufferValue(view, LOG_LAYOUT_RADAR.TEMPERATURE),
         // ... other fields
     };
 }
 ```
+Update `readLogRecord()` and `getDeviceStatus()` to dispatch on the new type.
 
-3. **Update `readLogRecord()`** to handle new type:
+3. **Add device type entry** to `deviceTypes.js`:
 ```javascript
-if (logType === LOG_TYPE.NEW_TYPE) {
-    return parseLogItemNew(data);
+// Add metric definitions for any new metrics (e.g., radarDistance)
+// Then add to DEVICE_TYPES:
+RADAR: {
+    id: LOG_TYPE.RADAR,
+    name: 'Radar',
+    metrics: [
+        METRIC_DEFS.temperature,
+        METRIC_DEFS.humidity,
+        METRIC_DEFS.radarDistance,  // new metric
+    ],
+    extraFields: [],
 }
 ```
 
-4. **Add widget configuration** in `ui.js`:
-```javascript
-const WIDGET_CONFIG = {
-    // ... existing configs ...
-    [LOG_TYPE.NEW_TYPE]: {
-        pm25: { visible: false },
-        pm10: { visible: false },
-        co2:  { visible: false },
-        lux:  { visible: true },
-        // Add new widget entries as needed
-    }
-};
-```
+4. **Add HTML cards** in `index.html` for any new metric types (with matching `cardId`, `valueId`, `sparklineId` from the metric definition).
 
-5. **Update `updateLiveData()`** in `ui.js` to handle new sensor values
+5. **Run tests**: `npm test`
 
-6. **Update export** in `export.js` for CSV/JSON headers
+**Zero changes needed to**: charts, tables, exports, sparklines, heatmap, events, widgets, state, duplicate detection.
 
-7. **Run tests**:
-```bash
-npm test
-```
+**No IndexedDB schema change needed** — log records are flat JS objects stored as-is. New fields are just extra properties on the object.
 
 ## Deployment
 
@@ -564,12 +607,11 @@ npm test
 ### Local Development
 
 ```bash
-# Serve locally
-python3 -m http.server 8000
-# or
-npx http-server
-
-# Visit http://localhost:8000
+cd src
+npm install
+npm run dev    # Vite dev server with HMR
+npm run build  # Production build to ../docs/
+npm test       # Run all tests
 ```
 
 ## Troubleshooting
@@ -604,6 +646,7 @@ If UI shows "N/A" for sensor values:
 
 **DO**:
 - Put all constants in `constants.js`
+- Define new metrics/device types in `deviceTypes.js` — never hardcode metric lists in UI modules
 - Use utility functions from `utils.js`
 - Write tests for new features
 - Use buffer layout constants
@@ -614,7 +657,8 @@ If UI shows "N/A" for sensor values:
 
 **DON'T**:
 - Use magic numbers anywhere
-- Duplicate logic across files
+- Duplicate metric lists across files — use registry helpers (`getAllKnownMetrics()`, `getDetectableMetrics()`, etc.)
+- Hardcode `if (logType === CO2)` branches — use `getDeviceTypeById()` and loop over `deviceType.metrics`
 - Hardcode error messages
 - Skip writing tests
 - Modify buffer layouts without updating tests
@@ -624,6 +668,6 @@ If UI shows "N/A" for sensor values:
 
 ---
 
-**Last Updated**: 2026-01-26
-**Total Tests**: 165 passing
+**Last Updated**: 2026-02-12
+**Total Tests**: 178 passing
 **Supported Log Formats**: GPS, TSL2591, CO2

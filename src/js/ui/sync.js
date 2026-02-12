@@ -13,13 +13,11 @@ import {
 } from '../protocol.js';
 import { storeLogs } from '../storage.js';
 import { LOG_TYPE, DEVICE_CAPACITY } from '../constants.js';
+import { bumpDataVersion } from './state.js';
 import * as state from './state.js';
 import { showError, showSuccess } from './utils.js';
 import { updateLiveData } from './liveData.js';
-import { updateBrowserLogCount, updateLogTable } from './logTable.js';
-import { updateDeviceFilter } from './deviceSwitcher.js';
 import { loadSparklinesFromStorage } from './sparklines.js';
-import { refreshHistoryChart } from './historyChartUI.js';
 
 /**
  * Synchronize device time with system time
@@ -41,7 +39,10 @@ export async function syncDeviceTime(device, updateAfter = false) {
  */
 export function startAutoRefresh() {
     stopAutoRefresh();
-    const interval = setInterval(updateLiveData, 10000); // Every 10 seconds
+    const interval = setInterval(() => {
+        updateLiveData();
+        loadSparklinesFromStorage();
+    }, 10000); // Every 10 seconds
     state.set('autoRefreshInterval', interval);
 }
 
@@ -259,12 +260,8 @@ export async function handleDownloadLogs() {
             showSuccess(i18n.t('sync_noNewLogs'));
         }
 
-        // Update counts, table, and sparklines
-        await updateBrowserLogCount();
-        await updateDeviceFilter();
-        await updateLogTable();
-        await loadSparklinesFromStorage();
-        await refreshHistoryChart();
+        // Notify all data-dependent widgets (table, heatmap, sparklines, chart, events, counts)
+        bumpDataVersion();
         updateLastSyncTime();
 
     } catch (error) {
