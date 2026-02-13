@@ -3,16 +3,17 @@
  * Handles settings and device edit modals
  */
 
-import { getDeviceMetadata, setDeviceMetadata } from '../storage.js';
+import { getDeviceMetadata, setDeviceMetadata, deleteDeviceMetadata, clearDeviceLogs } from '../storage.js';
 import { getSettings, setSettings, setRecording } from '../protocol.js';
 import { MEASUREMENT_INTERVALS } from '../constants.js';
 import { i18n } from '../i18n.js';
 import { isDeviceConnected, getDevice } from '../webusb.js';
 import { listenKeys } from 'nanostores';
-import { $state } from './state.js';
+import { $state, bumpDataVersion } from './state.js';
 import * as state from './state.js';
 import { showError, showSuccess } from './utils.js';
 import { updateDeviceFilter, updateSwitcherDisplay } from './deviceSwitcher.js';
+import { updateOverviewVisibility } from './fleetView.js';
 
 /**
  * Open settings modal
@@ -237,6 +238,36 @@ export async function handleSaveSettings() {
         showError('Failed to save settings: ' + error.message);
         saveBtn.disabled = false;
         saveBtn.textContent = originalText;
+    }
+}
+
+/**
+ * Handle forget device button click in edit device modal.
+ * Removes device metadata and all its logs from browser storage.
+ */
+export async function handleForgetDevice() {
+    const modal = document.getElementById('edit-device-modal');
+    const serial = modal.dataset.editingSerial;
+    if (!serial) return;
+
+    if (!confirm(i18n.t('editDevice_forgetConfirm'))) return;
+
+    try {
+        await deleteDeviceMetadata(serial);
+        await clearDeviceLogs(serial);
+
+        // If the forgotten device was selected, deselect it
+        if (state.get('selectedDeviceSerial') === serial) {
+            state.set('selectedDeviceSerial', null);
+        }
+
+        closeEditDeviceModal();
+        bumpDataVersion();
+        await updateDeviceFilter();
+        await updateOverviewVisibility();
+    } catch (error) {
+        console.error('Failed to forget device:', error);
+        showError('Failed to forget device: ' + error.message);
     }
 }
 

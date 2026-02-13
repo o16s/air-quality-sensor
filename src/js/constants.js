@@ -51,7 +51,9 @@ export const MEASUREMENT_INTERVALS = [
 export const LOG_TYPE = {
     GPS: 0,         // GPS format: lat/lon/fix
     TSL2591: 1,     // TSL2591 light sensor format: lux/ch0/ch1
-    CO2: 2          // CO2 sensor format: co2/pressure/gasResistance
+    CO2: 2,         // CO2 sensor format: co2/pressure/gasResistance
+    RADAR: 3,       // Radar format: traffic/engage counts, distance metrics
+    SPECTRAL: 4     // Spectral AS7341 format: 12 raw spectral channels
 };
 
 // Device Capacity
@@ -66,11 +68,13 @@ export const DEVICE_CAPACITY = {
 // Updated Nov 6, 2025 - STATUS increased from 16 to 20 bytes (added MEASURED_AT field)
 // Updated Nov 6, 2025 - Added LOG_TYPE response size
 export const BUFFER_SIZES = {
-    STATUS: 24,             // Device status response (24 bytes for both GPS and TSL)
+    STATUS: 24,             // Device status response (24 bytes for GPS, TSL, CO2, Radar)
+    STATUS_SPECTRAL: 48,    // Spectral status response (24 common + 24 spectral channels)
     LOG_COUNT: 2,           // Log count response
     LOG_TYPE_RESPONSE: 1,   // Log type response (0=GPS, 1=TSL2591)
     URL: 64,                // WebUSB URL descriptor (variable, max 64)
-    LOG_RECORD: 24,         // Single log record (includes 2-byte padding)
+    LOG_RECORD: 24,         // Single log record GPS/TSL/CO2 (includes 2-byte padding)
+    LOG_RECORD_SPECTRAL: 28, // Spectral log record (12 × uint16 channels + uint32 timestamp)
     VERSION: 32,            // Firmware version string
     TEST_RESULTS: 64,       // Unity test framework results
     PRINT_BUFFER: 64        // Debug print buffer
@@ -184,6 +188,62 @@ export const STATUS_LAYOUT_CO2 = {
     RESERVED3: { offset: 14, type: 'Uint16', scale: 1 },        // Reserved (2 bytes)
     CURRENT_TIME: { offset: 16, type: 'Uint32', scale: 1 },     // Current device time
     MEASURED_AT: { offset: 20, type: 'Uint32', scale: 1 }       // When sensor data was captured
+};
+
+// Status Buffer Layout - Radar Format (24 bytes)
+// Added Feb 2026 - For LD2410C radar builds
+export const STATUS_LAYOUT_RADAR = {
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },       // °C × 100
+    HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },         // % × 100
+    TRAFFIC_COUNT: { offset: 4, type: 'Uint16', scale: 1 },      // events since boot
+    ENGAGE_COUNT: { offset: 6, type: 'Uint16', scale: 1 },       // events since boot
+    BATTERY: { offset: 8, type: 'Uint8', scale: 1 },             // [bit7:charging][bits6-0:voltage]
+    RESERVED: { offset: 9, type: 'Uint8', scale: 1 },            // Reserved
+    DISTANCE: { offset: 10, type: 'Uint8', scale: 1 },           // cm (255=no target)
+    ENERGY: { offset: 11, type: 'Uint8', scale: 1 },             // 0-100 signal strength
+    TRAFFIC_ACTIVE: { offset: 12, type: 'Uint8', scale: 1 },     // 0=idle, 1=person in traffic zone
+    ENGAGE_ACTIVE: { offset: 13, type: 'Uint8', scale: 1 },      // 0=idle, 1=person engaged
+    VARIANCE: { offset: 14, type: 'Uint16', scale: 10 },         // EMA variance ×10
+    CURRENT_TIME: { offset: 16, type: 'Uint32', scale: 1 },      // Current device time
+    MEASURED_AT: { offset: 20, type: 'Uint32', scale: 1 }        // When data was captured
+};
+
+// Log Record Buffer Layout - Radar Format (24 bytes)
+// Added Feb 2026 - For LD2410C radar builds
+export const LOG_LAYOUT_RADAR = {
+    TEMPERATURE: { offset: 0, type: 'Int16', scale: 100 },       // °C × 100
+    HUMIDITY: { offset: 2, type: 'Uint16', scale: 100 },         // % × 100
+    TRAFFIC_COUNT: { offset: 4, type: 'Uint16', scale: 1 },      // pass-by events this period
+    ENGAGE_COUNT: { offset: 6, type: 'Uint16', scale: 1 },       // engagement events this period
+    TRAFFIC_TIME_10S: { offset: 8, type: 'Uint8', scale: 1 },    // cumulative traffic time (×10s)
+    ENGAGE_TIME_10S: { offset: 9, type: 'Uint8', scale: 1 },     // cumulative dwell time (×10s)
+    ENGAGE_MAX_10S: { offset: 10, type: 'Uint8', scale: 1 },     // longest engagement (×10s)
+    PRESENCE_PCT: { offset: 11, type: 'Uint8', scale: 1 },       // % of samples with target (0-100)
+    VARIANCE_AVG: { offset: 12, type: 'Uint16', scale: 10 },     // avg EMA variance ×10
+    VARIANCE_PEAK: { offset: 14, type: 'Uint16', scale: 10 },    // peak EMA variance ×10
+    DISTANCE_MIN_CM: { offset: 16, type: 'Uint8', scale: 1 },    // closest approach (255=none)
+    DISTANCE_AVG_CM: { offset: 17, type: 'Uint8', scale: 1 },    // avg distance when present
+    ENERGY_AVG: { offset: 18, type: 'Uint8', scale: 1 },         // avg signal strength (0-100)
+    ENGAGE_FOCUSED_COUNT: { offset: 19, type: 'Uint8', scale: 1 }, // low-variance engagements
+    TIMESTAMP: { offset: 20, type: 'Uint32', scale: 1 }          // Unix epoch
+};
+
+// Log Record Buffer Layout - Spectral AS7341 Format (28 bytes)
+// Added Feb 2026 - 12 raw spectral channels, no temp/humidity/PM/battery
+export const LOG_LAYOUT_SPECTRAL = {
+    F1_415NM:  { offset: 0, type: 'Uint16', scale: 1 },    // Violet 415nm raw count
+    F2_445NM:  { offset: 2, type: 'Uint16', scale: 1 },    // Blue 445nm raw count
+    F3_480NM:  { offset: 4, type: 'Uint16', scale: 1 },    // Cyan 480nm raw count
+    F4_515NM:  { offset: 6, type: 'Uint16', scale: 1 },    // Green 515nm raw count
+    CLEAR1:    { offset: 8, type: 'Uint16', scale: 1 },     // Clear channel 1
+    NIR1:      { offset: 10, type: 'Uint16', scale: 1 },    // Near-IR channel 1
+    F5_555NM:  { offset: 12, type: 'Uint16', scale: 1 },    // Yellow-Green 555nm raw count
+    F6_590NM:  { offset: 14, type: 'Uint16', scale: 1 },    // Orange 590nm raw count
+    F7_630NM:  { offset: 16, type: 'Uint16', scale: 1 },    // Red 630nm raw count
+    F8_680NM:  { offset: 18, type: 'Uint16', scale: 1 },    // Deep Red 680nm raw count
+    CLEAR2:    { offset: 20, type: 'Uint16', scale: 1 },    // Clear channel 2
+    NIR2:      { offset: 22, type: 'Uint16', scale: 1 },    // Near-IR channel 2
+    TIMESTAMP: { offset: 24, type: 'Uint32', scale: 1 }     // Unix epoch
 };
 
 // UI Configuration

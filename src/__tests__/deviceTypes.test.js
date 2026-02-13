@@ -163,12 +163,13 @@ describe('Device Types Registry', () => {
             expect(keys).toContain('gasResistance');
             expect(keys).toContain('trafficCount');
             expect(keys).toContain('engageCount');
-            expect(keys).toContain('presencePct');
+            expect(keys).toContain('distance');
+            expect(keys).toContain('variance');
             expect(keys).toContain('f1_415nm');
             expect(keys).toContain('f8_680nm');
             expect(keys).toContain('clear1');
             expect(keys).toContain('nir2');
-            expect(all.length).toBe(23);
+            expect(all.length).toBe(24);
         });
 
         it('should not have duplicates', () => {

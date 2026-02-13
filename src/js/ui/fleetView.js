@@ -4,13 +4,14 @@
  */
 
 import { i18n } from '../i18n.js';
-import { getLogCount } from '../storage.js';
+import { getLogCount, getDeviceDisplayName } from '../storage.js';
 import { LOG_TYPE } from '../constants.js';
 import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';
 import { openEditDeviceModalForSerial } from './modals.js';
-import { getAllKnownDevices } from './deviceSwitcher.js';
+import { getAllKnownDevices, selectDevice } from './deviceSwitcher.js';
+import { latestOnly } from './utils.js';
 
 /**
  * Format a Unix timestamp as a relative time string + absolute tooltip.
@@ -41,14 +42,16 @@ function formatRelativeTime(timestamp) {
 }
 
 /**
- * Populate the fleet table with all known devices
+ * Populate the fleet table with all known devices.
+ * Wrapped with latestOnly to prevent duplicate rows when concurrent
+ * subscriptions (state change + dataVersion bump) fire simultaneously.
  */
-export async function populateFleetTable() {
+export const populateFleetTable = latestOnly(async (stale) => {
     const { allSerials: allDevices, metadataMap, pairedSerials: availableSerials } = await getAllKnownDevices();
+    if (stale()) return;
 
     const connectedDeviceSerial = state.get('connectedDeviceSerial');
     const currentDeviceModel = state.get('currentDeviceModel');
-    const currentLogType = state.get('currentLogType');
 
     const tbody = document.getElementById('fleet-device-tbody');
     const emptyState = document.getElementById('fleet-empty');
@@ -56,9 +59,8 @@ export async function populateFleetTable() {
 
     if (!tbody) return;
 
-    tbody.innerHTML = '';
-
     if (allDevices.size === 0) {
+        tbody.innerHTML = '';
         table.classList.add('hidden');
         emptyState.classList.remove('hidden');
         return;
@@ -67,20 +69,20 @@ export async function populateFleetTable() {
     table.classList.remove('hidden');
     emptyState.classList.add('hidden');
 
+    // ── Async data-collection phase ──────────────────────────────────
+    const rows = [];
     for (const serial of allDevices) {
         const metadata = metadataMap[serial];
         const isConnected = serial === connectedDeviceSerial;
         const isAvailable = availableSerials.has(serial);
         const isOnline = isConnected || isAvailable;
-        const model = (isConnected ? currentDeviceModel : null) || metadata?.model;
-        const displayName = metadata?.name || (model ? `${model} (${serial})` : serial);
+        const displayName = getDeviceDisplayName(metadata, serial, isConnected ? currentDeviceModel : null);
         const tags = metadata?.tags || [];
 
-        // Device type
+        // Device type from persisted metadata.
+        // Don't use currentLogType — it reflects the *selected* device, not this device.
         let deviceType = null;
-        if (isConnected && currentLogType !== null) {
-            deviceType = currentLogType;
-        } else if (metadata?.deviceType != null) {
+        if (metadata?.deviceType != null) {
             deviceType = metadata.deviceType;
         }
 
@@ -88,6 +90,7 @@ export async function populateFleetTable() {
         let logCountText = '--';
         try {
             const count = await getLogCount(serial);
+            if (stale()) return;
             logCountText = count.toLocaleString();
         } catch (e) { /* ignore */ }
 
@@ -105,7 +108,7 @@ export async function populateFleetTable() {
         tr.dataset.serial = serial;
 
         // Device column: image + name + serial
-        const deviceModel = metadata?.model || (isConnected ? currentDeviceModel : null);
+        const deviceModel = (isConnected ? currentDeviceModel : null) || metadata?.model;
         let imgHtml = '';
         if (deviceModel) {
             imgHtml = `<img src="img/${deviceModel}.jpg" class="w-8 h-8 rounded-lg object-cover flex-shrink-0" alt="" onerror="this.style.display='none'">`;
@@ -119,7 +122,11 @@ export async function populateFleetTable() {
 
         // Type pill
         let typePillHtml = '';
-        if (deviceType === LOG_TYPE.CO2) {
+        if (deviceType === LOG_TYPE.SPECTRAL) {
+            typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded font-medium">Spectral</span>`;
+        } else if (deviceType === LOG_TYPE.RADAR) {
+            typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded font-medium">Radar</span>`;
+        } else if (deviceType === LOG_TYPE.CO2) {
             typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded font-medium">CO2</span>`;
         } else if (deviceType === LOG_TYPE.TSL2591 || deviceType === LOG_TYPE.GPS) {
             typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded font-medium">PM</span>`;
@@ -152,7 +159,10 @@ export async function populateFleetTable() {
                     <span class="text-sm ${statusTextColor}">${statusText}</span>
                 </div>
             </td>
-            <td class="py-3 pr-4 text-sm text-gray-600">${logCountText}</td>
+            <td class="py-3 pr-4 text-sm text-gray-600">
+                <button class="fleet-history-btn text-blue-600 hover:text-blue-800 hover:underline" data-serial="${serial}">${logCountText}</button>
+            </td>
+            <td class="py-3 pr-4 text-sm text-gray-500 font-mono">${metadata?.firmware || '--'}</td>
             <td class="py-3 pr-4 text-sm text-gray-500" ${lastSeenTooltip ? `title="${lastSeenTooltip}"` : ''}>${lastSeenText}</td>
             <td class="py-3 pr-4">
                 <div class="flex flex-wrap gap-1">${tagPills}</div>
@@ -167,11 +177,19 @@ export async function populateFleetTable() {
             </td>
         `;
 
-        // Row click → select device
+        // Row click → select device (skip if clicking action buttons)
         tr.addEventListener('click', (e) => {
-            if (!e.target.closest('.fleet-edit-btn')) {
-                state.set('selectedDeviceSerial', serial);
+            if (!e.target.closest('.fleet-edit-btn') && !e.target.closest('.fleet-history-btn')) {
+                selectDevice(serial);
             }
+        });
+
+        // History button → select device + switch to History page
+        const historyBtn = tr.querySelector('.fleet-history-btn');
+        historyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectDevice(serial);
+            document.querySelector('.nav-item[data-page="history"]')?.click();
         });
 
         // Edit button
@@ -181,9 +199,16 @@ export async function populateFleetTable() {
             openEditDeviceModalForSerial(serial);
         });
 
+        rows.push(tr);
+    }
+
+    // ── Sync DOM-write phase (atomic, no interleaving) ───────────────
+    if (stale()) return;
+    tbody.innerHTML = '';
+    for (const tr of rows) {
         tbody.appendChild(tr);
     }
-}
+});
 
 /**
  * Central visibility orchestrator for the Overview page.

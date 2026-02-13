@@ -17,8 +17,10 @@ import {
 } from '../protocol.js';
 import { getDeviceMetadata, setDeviceMetadata } from '../storage.js';
 import { LOG_TYPE } from '../constants.js';
+import { getDeviceTypeById } from '../deviceTypes.js';
 import * as state from './state.js';
 import { showError } from './utils.js';
+import { getAllKnownDevices } from './deviceSwitcher.js';
 import { updateLiveData } from './liveData.js';
 import { updateDeviceLogCount, startAutoRefresh, stopAutoRefresh, syncDeviceTime } from './sync.js';
 
@@ -63,7 +65,13 @@ export async function handleDeviceConnected(device) {
     // Get device info
     const info = getDeviceInfo();
     state.set('connectedDeviceSerial', info.serialNumber);
-    state.set('selectedDeviceSerial', info.serialNumber);
+
+    // Auto-select only when this is the sole known device (first-time experience).
+    // Otherwise stay on whatever view the user is on (e.g. fleet table).
+    const { allSerials } = await getAllKnownDevices();
+    if (allSerials.size <= 1) {
+        state.set('selectedDeviceSerial', info.serialNumber);
+    }
 
     // Update hidden fields for existing code compatibility
     document.getElementById('device-serial').textContent = info.serialNumber;
@@ -86,13 +94,14 @@ export async function handleDeviceConnected(device) {
         document.getElementById('device-firmware').textContent = firmware;
         document.getElementById('device-model').textContent = currentDeviceModel;
 
-        // Save model to device metadata for future reference (preserves existing name/tags)
+        // Save model + firmware to metadata for future reference (preserves existing name/tags)
         const existingMetadata = await getDeviceMetadata(info.serialNumber);
         await setDeviceMetadata(info.serialNumber, {
             name: existingMetadata?.name || '',
             tags: existingMetadata?.tags || [],
             model: currentDeviceModel,
             deviceType: existingMetadata?.deviceType,
+            firmware,
         });
     } catch (error) {
         state.set('currentDeviceModel', 'N/A');
@@ -103,12 +112,8 @@ export async function handleDeviceConnected(device) {
     let currentLogType = LOG_TYPE.GPS;
     try {
         currentLogType = await getLogType(device);
-        let formatText = 'GPS';
-        if (currentLogType === LOG_TYPE.CO2) {
-            formatText = 'CO2';
-        } else if (currentLogType === LOG_TYPE.TSL2591) {
-            formatText = 'PM';
-        }
+        const deviceType = getDeviceTypeById(currentLogType);
+        const formatText = deviceType?.name || 'Unknown';
         console.log(`Log format: ${formatText}`);
         const logFormatEl = document.getElementById('log-format');
         if (logFormatEl) {
@@ -130,6 +135,7 @@ export async function handleDeviceConnected(device) {
             tags: existingMeta?.tags || [],
             model: existingMeta?.model || state.get('currentDeviceModel') || '',
             deviceType: currentLogType,
+            firmware: existingMeta?.firmware,
         });
     } catch (e) {
         console.log('Failed to persist device type:', e.message);

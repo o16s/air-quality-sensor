@@ -7,10 +7,9 @@ import { i18n } from '../i18n.js';
 import { isDeviceConnected, getDevice } from '../webusb.js';
 import { getDeviceStatus, formatGPSFix, createMapsURL } from '../protocol.js';
 import { LOG_TYPE, CO2_THRESHOLDS, TIME_SYNC } from '../constants.js';
-import { getDeviceTypeById } from '../deviceTypes.js';
+import { getDeviceTypeById, DEVICE_TYPES } from '../deviceTypes.js';
 import * as state from './state.js';
-import { showError } from './utils.js';
-import { track } from './init.js';
+import { showError, track } from './utils.js';
 
 /**
  * Update live sensor data from connected device
@@ -25,13 +24,13 @@ export async function updateLiveData() {
         const currentLogType = state.get('currentLogType');
         const status = await getDeviceStatus(device, currentLogType);
 
-        // Update temperature (°C only)
-        document.getElementById('temp-value').textContent =
-            `${status.temperature.toFixed(1)}°C`;
-
-        // Update humidity
-        document.getElementById('humidity-value').textContent =
-            `${status.humidity.toFixed(1)}%`;
+        // Update temperature and humidity (skipped for spectral — cards are hidden)
+        if (currentLogType !== LOG_TYPE.SPECTRAL) {
+            document.getElementById('temp-value').textContent =
+                `${status.temperature.toFixed(1)}°C`;
+            document.getElementById('humidity-value').textContent =
+                `${status.humidity.toFixed(1)}%`;
+        }
 
         // Update format-specific values (widget visibility handled by configureWidgetsForLogType)
         const deviceType = getDeviceTypeById(currentLogType);
@@ -46,9 +45,19 @@ export async function updateLiveData() {
                     updatePMValue(metric.valueId, val);
                 } else if (metric.key === 'lux') {
                     updateLux(val);
+                } else if (metric.valueId) {
+                    const el = document.getElementById(metric.valueId);
+                    if (el) {
+                        const formatted = metric.precision != null ? val.toFixed(metric.precision) : val;
+                        el.textContent = metric.unit ? `${formatted}${metric.unit}` : `${formatted}`;
+                    }
                 }
-                // pressure/gasResistance: populated from sparklines sync, not live status
             }
+        }
+
+        // Update spectral bar chart if this is a spectral device
+        if (currentLogType === LOG_TYPE.SPECTRAL) {
+            updateSpectralChart(status);
         }
 
         // Update battery (now uses voltage instead of percentage)
@@ -291,6 +300,123 @@ export function updateLux(lux) {
         document.getElementById('lux-value').textContent = `${lux.toFixed(1)} lux`;
     } else {
         document.getElementById('lux-value').textContent = '-- lux';
+    }
+}
+
+/**
+ * Spectral display order: wavelength-sorted (violet→red), then broadband channels.
+ * The registry stores channels in SMUX read order (F1-F4, Clear1, NIR1, F5-F8, Clear2, NIR2),
+ * but a spectrometer display should read like a spectrum left-to-right.
+ */
+const SPECTRAL_DISPLAY_ORDER = (() => {
+    const keys = [
+        'f1_415nm', 'f2_445nm', 'f3_480nm', 'f4_515nm',
+        'f5_555nm', 'f6_590nm', 'f7_630nm', 'f8_680nm',
+        'clear1', 'nir1', 'clear2', 'nir2',
+    ];
+    const metricsByKey = Object.fromEntries(
+        DEVICE_TYPES.SPECTRAL.metrics.map(m => [m.key, m])
+    );
+    return keys.map(key => metricsByKey[key]).filter(Boolean);
+})();
+
+/** Cache the last status so we can redraw on page switch without waiting for the next poll. */
+let _lastSpectralStatus = null;
+
+/**
+ * Draw spectral bar chart on canvas showing 12 AS7341 channel intensities.
+ * Channels are displayed in wavelength order (like a spectrometer), not SMUX order.
+ * Skips drawing when the canvas is not visible (returns 0-size rect when page is hidden).
+ * @param {Object} status - Status object with spectral channel keys
+ */
+function updateSpectralChart(status) {
+    _lastSpectralStatus = status;
+
+    // Show loading overlay when all spectral channels are zero (no acquisition yet)
+    const channels = SPECTRAL_DISPLAY_ORDER;
+    const values = channels.map(m => status[m.key] ?? 0);
+    const hasData = values.some(v => v > 0);
+
+    if (!hasData) {
+        setSpectralLoading(true, i18n.t('sync_acquiring'));
+        return;
+    }
+
+    setSpectralLoading(false);
+
+    const canvas = document.getElementById('spectral-chart');
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    // Skip drawing when canvas is not laid out (page hidden via display:none)
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const W = rect.width;
+    const H = rect.height;
+    const n = channels.length;
+    const padding = 12;
+    const barGap = 4;
+    const labelHeight = 16;
+    const valueHeight = 14;
+    const chartTop = valueHeight + 2;
+    const chartBottom = H - labelHeight;
+    const chartH = chartBottom - chartTop;
+    const barWidth = Math.max((W - 2 * padding - (n - 1) * barGap) / n, 4);
+
+    const maxVal = Math.max(...values, 1);
+
+    for (let i = 0; i < n; i++) {
+        const x = padding + i * (barWidth + barGap);
+        const val = values[i];
+        const barH = (val / maxVal) * chartH;
+
+        // Bar
+        ctx.fillStyle = channels[i].color;
+        ctx.fillRect(x, chartBottom - barH, barWidth, barH);
+
+        // Value above bar
+        ctx.fillStyle = '#374151';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(val, x + barWidth / 2, chartBottom - barH - 3);
+
+        // Label below bar
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '9px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(channels[i].label, x + barWidth / 2, H - 2);
+    }
+}
+
+/**
+ * Show or hide the spectral chart loading overlay
+ * @param {boolean} show - Whether to show the overlay
+ * @param {string} [text] - Optional text to display in the overlay
+ */
+export function setSpectralLoading(show, text) {
+    const overlay = document.getElementById('spectral-loading');
+    if (!overlay) return;
+    overlay.classList.toggle('hidden', !show);
+    if (text) {
+        document.getElementById('spectral-loading-text').textContent = text;
+    }
+}
+
+/**
+ * Redraw the spectral chart using cached data.
+ * Called when switching back to the Overview page so the chart isn't blank
+ * until the next auto-refresh tick.
+ */
+export function redrawSpectralChart() {
+    if (_lastSpectralStatus) {
+        updateSpectralChart(_lastSpectralStatus);
     }
 }
 

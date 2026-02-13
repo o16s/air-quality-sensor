@@ -448,35 +448,72 @@ export async function getDeviceMetadata(serial) {
  * @param {number} [metadata.deviceType] - LOG_TYPE integer (0=GPS, 1=TSL2591, 2=CO2)
  * @returns {Promise<void>}
  */
-export async function setDeviceMetadata(serial, { name, tags, model, deviceType }) {
+export async function setDeviceMetadata(serial, { name, tags, model, deviceType, firmware }) {
     const db = await ensureDB();
 
     return new Promise((resolve, reject) => {
         const transaction = db.transaction([METADATA_STORE], 'readwrite');
         const store = transaction.objectStore(METADATA_STORE);
 
-        const record = {
-            serial,
-            name: name || '',
-            tags: tags || [],
-            model: model || '',
-            updatedAt: Math.floor(Date.now() / 1000)
+        // Read-then-merge so callers that only pass { name, tags } don't wipe
+        // previously stored fields like model, deviceType, firmware.
+        const getReq = store.get(serial);
+
+        getReq.onsuccess = () => {
+            const existing = getReq.result || {};
+
+            const record = {
+                name: '',
+                tags: [],
+                model: '',
+                ...existing,
+                serial,
+                updatedAt: Math.floor(Date.now() / 1000)
+            };
+
+            // Only overwrite fields that were explicitly provided (null = not provided)
+            if (name != null)       record.name = name;
+            if (tags != null)       record.tags = tags;
+            if (model != null)      record.model = model;
+            if (deviceType != null) record.deviceType = deviceType;
+            if (firmware != null)   record.firmware = firmware;
+
+            const putReq = store.put(record);
+            putReq.onsuccess = () => {
+                console.log(`Device metadata saved for ${serial}`);
+                resolve();
+            };
+            putReq.onerror = () => {
+                reject(new Error('Failed to save device metadata'));
+            };
         };
 
-        // Persist device type if provided (schemaless store, no version bump needed)
-        if (deviceType != null) {
-            record.deviceType = deviceType;
-        }
+        getReq.onerror = () => {
+            reject(new Error('Failed to read existing device metadata'));
+        };
+    });
+}
 
-        const request = store.put(record);
+/**
+ * Delete device metadata by serial number
+ * @param {string} serial - Device serial number
+ * @returns {Promise<void>}
+ */
+export async function deleteDeviceMetadata(serial) {
+    const db = await ensureDB();
+
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([METADATA_STORE], 'readwrite');
+        const store = transaction.objectStore(METADATA_STORE);
+        const request = store.delete(serial);
 
         request.onsuccess = () => {
-            console.log(`Device metadata saved for ${serial}`);
+            console.log(`Device metadata deleted for ${serial}`);
             resolve();
         };
 
         request.onerror = () => {
-            reject(new Error('Failed to save device metadata'));
+            reject(new Error('Failed to delete device metadata'));
         };
     });
 }
@@ -667,6 +704,21 @@ export async function deleteRoomFromLocation(locationId, roomId) {
 
     location.rooms = location.rooms?.filter(r => r.id !== roomId) || [];
     await saveReportLocation(location);
+}
+
+/**
+ * Format a device display name from metadata.
+ * Single source of truth for "how to show a device name in the UI."
+ * @param {Object|null} metadata - From getDeviceMetadata()
+ * @param {string} serial - Device serial (always available)
+ * @param {string} [liveModel] - Model from live USB connection (overrides persisted)
+ * @returns {string}
+ */
+export function getDeviceDisplayName(metadata, serial, liveModel) {
+    if (metadata?.name) return metadata.name;
+    const model = liveModel || metadata?.model;
+    if (model) return `${model} (${serial})`;
+    return serial;
 }
 
 // Initialize database on module load

@@ -67,6 +67,24 @@ const translations = {
         sensor_light: "Light",
         sensor_pressure: "Pressure",
         sensor_gasResistance: "Gas Resistance",
+        sensor_trafficCount: "Traffic",
+        sensor_engageCount: "Engagements",
+        sensor_presencePct: "Presence",
+        sensor_distance: "Distance",
+        sensor_variance: "Variance",
+        sensor_f1_415nm: "F1 415nm",
+        sensor_f2_445nm: "F2 445nm",
+        sensor_f3_480nm: "F3 480nm",
+        sensor_f4_515nm: "F4 515nm",
+        sensor_clear1: "Clear 1",
+        sensor_nir1: "NIR 1",
+        sensor_f5_555nm: "F5 555nm",
+        sensor_f6_590nm: "F6 590nm",
+        sensor_f7_630nm: "F7 630nm",
+        sensor_f8_680nm: "F8 680nm",
+        sensor_clear2: "Clear 2",
+        sensor_nir2: "NIR 2",
+        sensor_spectral: "Spectral",
         sensor_fromLastSync: "(from last sync)",
         sensor_battery: "Battery",
 
@@ -85,6 +103,7 @@ const translations = {
         sync_acquiring: "Acquiring...",
         sync_acquiringCountdown: "Acquiring... {{seconds}}s",
         sync_reading: "Reading...",
+        sync_measuring: "Measuring...",
         sync_refreshed: "Refreshed!",
 
         // Events section
@@ -149,6 +168,7 @@ const translations = {
         logType_gps: "GPS",
         logType_tsl: "TSL",
         logType_co2: "CO2",
+        logType_spectral: "Spectral",
 
         // Connect section
         connect_hint_electron: "Plug in your Octanis sensor via USB to connect automatically.",
@@ -200,6 +220,8 @@ const translations = {
         editDevice_tags: "Tags",
         editDevice_tagsPlaceholder: "e.g., kitchen, indoor",
         editDevice_tagsHint: "Separate tags with commas",
+        editDevice_forget: "Forget Device",
+        editDevice_forgetConfirm: "Remove this device and all its logs from browser storage? This cannot be undone.",
 
         // Location & Building
         location_building_title: "Building Information",
@@ -452,7 +474,9 @@ const translations = {
 
         // Clear logs
         clear_confirm: "Are you sure you want to clear all logs from browser storage? This cannot be undone.",
+        clear_confirmDevice: "Clear all logs for this device? This cannot be undone.",
         clear_success: "All logs cleared from browser storage",
+        clear_successDevice: "Logs cleared for this device",
         clear_failed: "Failed to clear logs: {{message}}",
 
         // Erase device
@@ -506,6 +530,9 @@ const translations = {
         help_analysisServerHint: "Webhook URL for AI-powered report analysis. Leave empty to disable.",
         help_experimentalFeatures: "Experimental Features",
         help_experimentalHint: "Enable access to features still in development",
+        help_deviceTypes: "Supported Device Types",
+        help_deviceTypes_metrics: "Metrics",
+        help_deviceTypes_extraFields: "Additional Fields",
 
         // History chart
         chart_title: "Time Series",
@@ -513,6 +540,8 @@ const translations = {
         chart_range_7d: "Last 7 days",
         chart_range_30d: "Last 30 days",
         chart_range_all: "All time",
+        chart_range_all_short: "All",
+        chart_range_custom: "Custom",
         chart_noData: "Select metrics above to visualize trends",
         chart_noDataAvailable: "No data for selected time range",
 
@@ -524,6 +553,7 @@ const translations = {
         fleet_col_type: "Type",
         fleet_col_status: "Status",
         fleet_col_measurements: "Measurements",
+        fleet_col_firmware: "Firmware",
         fleet_col_tags: "Tags",
         fleet_col_lastSeen: "Last Seen",
         fleet_noDevices: "No devices found",
@@ -597,6 +627,24 @@ const translations = {
         sensor_light: "Licht",
         sensor_pressure: "Druck",
         sensor_gasResistance: "Gaswiderstand",
+        sensor_trafficCount: "Verkehr",
+        sensor_engageCount: "Interaktionen",
+        sensor_presencePct: "Anwesenheit",
+        sensor_distance: "Distanz",
+        sensor_variance: "Varianz",
+        sensor_f1_415nm: "F1 415nm",
+        sensor_f2_445nm: "F2 445nm",
+        sensor_f3_480nm: "F3 480nm",
+        sensor_f4_515nm: "F4 515nm",
+        sensor_clear1: "Clear 1",
+        sensor_nir1: "NIR 1",
+        sensor_f5_555nm: "F5 555nm",
+        sensor_f6_590nm: "F6 590nm",
+        sensor_f7_630nm: "F7 630nm",
+        sensor_f8_680nm: "F8 680nm",
+        sensor_clear2: "Clear 2",
+        sensor_nir2: "NIR 2",
+        sensor_spectral: "Spektral",
         sensor_fromLastSync: "(letzte Synchronisierung)",
         sensor_battery: "Batterie",
 
@@ -615,6 +663,7 @@ const translations = {
         sync_acquiring: "Erfasse...",
         sync_acquiringCountdown: "Erfasse... {{seconds}}s",
         sync_reading: "Lese...",
+        sync_measuring: "Messe...",
         sync_refreshed: "Aktualisiert!",
 
         // Events section
@@ -679,6 +728,7 @@ const translations = {
         logType_gps: "GPS",
         logType_tsl: "TSL",
         logType_co2: "CO2",
+        logType_spectral: "Spektral",
 
         // Connect section
         connect_hint_electron: "Schliessen Sie Ihren Octanis-Sensor via USB an, um automatisch zu verbinden.",
@@ -730,6 +780,8 @@ const translations = {
         editDevice_tags: "Tags",
         editDevice_tagsPlaceholder: "z.B. küche, innenraum",
         editDevice_tagsHint: "Tags mit Kommas trennen",
+        editDevice_forget: "Gerät vergessen",
+        editDevice_forgetConfirm: "Dieses Gerät und alle Messdaten aus dem Browser entfernen? Dies kann nicht rückgängig gemacht werden.",
 
         // Location & Building
         location_building_title: "Gebäudeinformationen",
@@ -982,7 +1034,9 @@ const translations = {
 
         // Clear logs
         clear_confirm: "Möchten Sie wirklich alle Daten aus dem Browserspeicher löschen? Dies kann nicht rückgängig gemacht werden.",
+        clear_confirmDevice: "Alle Messdaten dieses Geräts löschen? Dies kann nicht rückgängig gemacht werden.",
         clear_success: "Alle Daten aus dem Browserspeicher gelöscht",
+        clear_successDevice: "Messdaten dieses Geräts gelöscht",
         clear_failed: "Löschen fehlgeschlagen: {{message}}",
 
         // Erase device
@@ -1036,6 +1090,9 @@ const translations = {
         help_analysisServerHint: "Webhook-URL für die KI-gestützte Berichtsanalyse. Leer lassen zum Deaktivieren.",
         help_experimentalFeatures: "Experimentelle Funktionen",
         help_experimentalHint: "Zugriff auf Funktionen in Entwicklung aktivieren",
+        help_deviceTypes: "Unterstützte Gerätetypen",
+        help_deviceTypes_metrics: "Messwerte",
+        help_deviceTypes_extraFields: "Zusätzliche Felder",
 
         // History chart
         chart_title: "Zeitreihen",
@@ -1043,6 +1100,8 @@ const translations = {
         chart_range_7d: "Letzte 7 Tage",
         chart_range_30d: "Letzte 30 Tage",
         chart_range_all: "Gesamter Zeitraum",
+        chart_range_all_short: "Alle",
+        chart_range_custom: "Benutzerdefiniert",
         chart_noData: "Metriken oben auswählen, um Trends anzuzeigen",
         chart_noDataAvailable: "Keine Daten für den Zeitraum verfügbar",
 
@@ -1054,6 +1113,7 @@ const translations = {
         fleet_col_type: "Typ",
         fleet_col_status: "Status",
         fleet_col_measurements: "Messungen",
+        fleet_col_firmware: "Firmware",
         fleet_col_tags: "Tags",
         fleet_col_lastSeen: "Zuletzt gesehen",
         fleet_noDevices: "Keine Geräte gefunden",

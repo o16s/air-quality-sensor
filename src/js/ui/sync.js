@@ -16,7 +16,7 @@ import { LOG_TYPE, DEVICE_CAPACITY } from '../constants.js';
 import { bumpDataVersion } from './state.js';
 import * as state from './state.js';
 import { showError, showSuccess } from './utils.js';
-import { updateLiveData } from './liveData.js';
+import { updateLiveData, setSpectralLoading } from './liveData.js';
 import { loadSparklinesFromStorage } from './sparklines.js';
 
 /**
@@ -68,15 +68,26 @@ export async function handleRefresh() {
     const btn = document.getElementById('refresh-btn');
     btn.disabled = true;
 
+    const currentLogType = state.get('currentLogType');
+    const isSpectral = currentLogType === LOG_TYPE.SPECTRAL;
+
     try {
         // Trigger sensor acquisition
         const device = getDevice();
         btn.textContent = i18n.t('sync_acquiring');
+
+        if (isSpectral) {
+            setSpectralLoading(true, i18n.t('sync_acquiring'));
+        }
+
         await triggerAcquisition(device);
 
         // 20-second countdown
         for (let i = 20; i > 0; i--) {
             btn.textContent = i18n.t('sync_acquiringCountdown', { seconds: i });
+            if (isSpectral) {
+                setSpectralLoading(true, i18n.t('sync_measuring'));
+            }
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
@@ -95,6 +106,9 @@ export async function handleRefresh() {
         console.error('Failed to refresh:', error);
         showError(i18n.t('sync_refreshFailed', { message: error.message }));
     } finally {
+        if (isSpectral) {
+            setSpectralLoading(false);
+        }
         btn.disabled = false;
         btn.textContent = i18n.t('action_measureNow');
     }

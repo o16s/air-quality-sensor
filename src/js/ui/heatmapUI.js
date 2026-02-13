@@ -4,7 +4,7 @@
  */
 
 import { i18n } from '../i18n.js';
-import { getAllLogs, getLogsByDevice, getDeviceMetadata } from '../storage.js';
+import { getAllLogs, getLogsByDevice, getDeviceMetadata, getDeviceDisplayName } from '../storage.js';
 import { AIR_QUALITY_THRESHOLDS } from '../constants.js';
 import { getDetectableMetrics } from '../deviceTypes.js';
 import { generateHeatmapData, formatHeatmapTooltip } from '../heatmap.js';
@@ -35,7 +35,7 @@ export async function updateHeatmap(deviceSerial = null) {
         let deviceName = i18n.t('history_allDevices');
         if (deviceSerial) {
             const metadata = await getDeviceMetadata(deviceSerial);
-            deviceName = metadata?.name || (metadata?.model ? `${metadata.model} (${deviceSerial})` : deviceSerial);
+            deviceName = getDeviceDisplayName(metadata, deviceSerial);
         }
 
         // Generate data for all metrics, keep only those with data
@@ -147,44 +147,6 @@ function renderHeatmapLegendHTML(metric) {
     `;
 }
 
-/**
- * Render threshold table in Settings modal from AIR_QUALITY_THRESHOLDS
- */
-export function renderThresholdTable() {
-    const container = document.getElementById('threshold-table');
-    if (!container) return;
-
-    const metrics = ['pm25', 'pm10', 'co2'];
-
-    const html = `
-        <table class="w-full text-xs">
-            <thead>
-                <tr class="text-left text-gray-500">
-                    <th class="pb-2">Metric</th>
-                    <th class="pb-2 text-yellow-600">Yellow</th>
-                    <th class="pb-2 text-orange-600">Orange</th>
-                    <th class="pb-2 text-red-600">Red</th>
-                </tr>
-            </thead>
-            <tbody class="text-gray-700">
-                ${metrics.map(metric => {
-                    const config = AIR_QUALITY_THRESHOLDS[metric];
-                    const levels = config.levels;
-                    return `
-                        <tr>
-                            <td class="py-1">${config.label}</td>
-                            <td class="py-1 text-yellow-600">&ge;${levels.good.max} ${config.unit}</td>
-                            <td class="py-1 text-orange-600">&ge;${levels.yellow.max}</td>
-                            <td class="py-1 text-red-600">&ge;${levels.orange.max}</td>
-                        </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
-    `;
-
-    container.innerHTML = html;
-}
 
 // ── Reactive subscriptions ────────────────────────────────────────────
 

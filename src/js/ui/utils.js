@@ -1,7 +1,18 @@
 /**
  * UI Utilities
- * Error handling and formatters (no dependencies on other UI modules to avoid circular imports)
+ * Error handling, formatters, analytics (no dependencies on other UI modules to avoid circular imports)
  */
+
+/** Track event safely - fails silently if offline or umami unavailable */
+export function track(event, data) {
+    try {
+        if (typeof umami !== 'undefined') {
+            umami.track(event, data);
+        }
+    } catch (e) {
+        // Fail silently - analytics should never break the app
+    }
+}
 
 /**
  * Format Unix timestamp to readable string
@@ -44,4 +55,22 @@ export function showError(message) {
 export function showSuccess(message) {
     console.log('✅', message);
     // Sync/export success is already obvious from UI updates
+}
+
+/**
+ * Wrap an async render function so only the latest invocation can write to the DOM.
+ * The wrapped function receives a `stale()` checker as its first argument.
+ * When a newer call starts, all prior calls' `stale()` returns true so they bail out.
+ *
+ * @param {Function} fn - async function(stale, ...args)
+ * @returns {Function} wrapped async function(...args)
+ */
+export function latestOnly(fn) {
+    let gen = 0;
+    const wrapper = async function (...args) {
+        const myGen = ++gen;
+        return fn(() => myGen !== gen, ...args);
+    };
+    Object.defineProperty(wrapper, 'name', { value: fn.name });
+    return wrapper;
 }

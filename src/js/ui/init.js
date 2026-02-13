@@ -5,8 +5,8 @@
 
 import { i18n } from '../i18n.js';
 
-import { autoReconnect, isDeviceConnected, onConnect, onDisconnect, onDeviceListChange, getDevice } from '../webusb.js';
-import { clearAllLogs, getDeviceMetadata } from '../storage.js';
+import { autoReconnect, isDeviceConnected, disconnectDevice, onConnect, onDisconnect, onDeviceListChange, getDevice } from '../webusb.js';
+import { clearDeviceLogs, getDeviceMetadata } from '../storage.js';
 import { eraseLogs } from '../protocol.js';
 import { LOG_TYPE } from '../constants.js';
 import { getDeviceTypeById, getAllKnownMetrics, DEVICE_TYPES } from '../deviceTypes.js';
@@ -41,6 +41,7 @@ import {
     closeSettingsModal,
     closeEditDeviceModal,
     handleSaveDeviceMetadata,
+    handleForgetDevice,
     loadDeviceSettings,
     handleSaveSettings,
     handleRecordingToggle
@@ -48,19 +49,23 @@ import {
 import { handleExportCSV, handleExportJSON } from './export.js';
 import { initReportPage, setupReportEventHandlers } from './reportUI.js';
 import { initHistoryChart, refreshHistoryChart } from './historyChartUI.js';
+import { redrawSpectralChart, updateLiveData } from './liveData.js';
 
 /**
- * Handle clear logs button - clears all logs from browser storage
+ * Handle clear logs button - clears logs for the selected device
  */
 async function handleClearLogs() {
-    if (!confirm(i18n.t('clear_confirm'))) {
+    const serial = state.get('selectedDeviceSerial');
+    if (!serial) return;
+
+    if (!confirm(i18n.t('clear_confirmDevice'))) {
         return;
     }
 
     try {
-        await clearAllLogs();
+        await clearDeviceLogs(serial);
         bumpDataVersion();
-        showSuccess(i18n.t('clear_success'));
+        showSuccess(i18n.t('clear_successDevice'));
     } catch (error) {
         console.error('Clear failed:', error);
         showError(i18n.t('clear_failed', { message: error.message }));
@@ -154,6 +159,18 @@ export function configureWidgetsForLogType(logType) {
         }
     }
 
+    // Show/hide spectral card
+    const spectralCard = document.getElementById('spectral-card');
+    if (spectralCard) {
+        spectralCard.classList.toggle('hidden', deviceType.id !== LOG_TYPE.SPECTRAL);
+    }
+
+    // Hide temp/humidity cards if the device type doesn't declare them
+    const tempCard = document.getElementById('temp-value')?.closest('.sensor-card');
+    const humidityCard = document.getElementById('humidity-value')?.closest('.sensor-card');
+    if (tempCard) tempCard.classList.toggle('hidden', !activeMetricKeys.has('temperature'));
+    if (humidityCard) humidityCard.classList.toggle('hidden', !activeMetricKeys.has('humidity'));
+
     // Clear all sparkline canvases to avoid stale data
     for (const metric of getAllKnownMetrics()) {
         if (metric.sparklineId) {
@@ -187,6 +204,14 @@ listenKeys($state, ['selectedDeviceSerial'], async () => {
     const metadata = await getDeviceMetadata(serial);
     if (metadata?.deviceType != null) {
         state.set('currentLogType', metadata.deviceType);
+    }
+
+    // Refresh live data and on-device log count when viewing the connected device.
+    // handleDeviceConnected() may have run before selectedDeviceSerial was set
+    // (multi-device setups), so battery/measurements/spectral chart need a refresh.
+    if (serial === state.get('connectedDeviceSerial')) {
+        updateLiveData();
+        updateDeviceLogCount();
     }
 });
 
@@ -228,6 +253,14 @@ export function switchPage(pageId) {
     });
     const activePage = document.getElementById(`page-${pageId}`);
     if (activePage) activePage.classList.add('active');
+
+    // Overview page: fetch fresh live data and redraw spectral chart
+    if (pageId === 'overview') {
+        if (isDeviceConnected()) {
+            updateLiveData();
+        }
+        redrawSpectralChart();
+    }
 
     // History page: ensure a device is selected (the dropdown always has one)
     if (pageId === 'history') {
@@ -318,6 +351,9 @@ function setupEventHandlers() {
     document.getElementById('save-device-metadata-btn').addEventListener('click', handleSaveDeviceMetadata);
     document.getElementById('cancel-device-metadata-btn').addEventListener('click', closeEditDeviceModal);
 
+    // Forget device button (in edit device modal)
+    document.getElementById('forget-device-btn').addEventListener('click', handleForgetDevice);
+
     // Close edit device modal when clicking outside
     document.getElementById('edit-device-modal').addEventListener('click', (e) => {
         if (e.target.id === 'edit-device-modal') {
@@ -347,9 +383,13 @@ function setupEventHandlers() {
     // Device Switcher events
     document.getElementById('device-switcher-btn').addEventListener('click', toggleDeviceDropdown);
 
-    // Connect new device button in dropdown
-    document.getElementById('connect-new-device-btn').addEventListener('click', () => {
+    // Connect new device button in dropdown — always opens picker,
+    // disconnecting the current device first if needed
+    document.getElementById('connect-new-device-btn').addEventListener('click', async () => {
         closeDeviceDropdown();
+        if (isDeviceConnected()) {
+            await disconnectDevice();
+        }
         handleConnect();
     });
 

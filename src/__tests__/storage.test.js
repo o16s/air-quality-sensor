@@ -20,7 +20,9 @@ import {
   getDatabaseStats,
   getDeviceMetadata,
   setDeviceMetadata,
-  getAllDeviceMetadata
+  getAllDeviceMetadata,
+  deleteDeviceMetadata,
+  getDeviceDisplayName
 } from '../js/storage.js';
 
 // Sample log data
@@ -524,6 +526,23 @@ describe('Storage - Device Metadata', () => {
     expect(metadata.tags).toEqual(['new', 'updated']);
   });
 
+  it('should preserve model when only name/tags are updated', async () => {
+    // Simulate connection handler persisting model
+    await setDeviceMetadata('TEST-SERIAL-MERGE', {
+      name: '', tags: [], model: 'OAQ-1-2', deviceType: 2, firmware: '1.0'
+    });
+
+    // Simulate edit modal saving only name/tags
+    await setDeviceMetadata('TEST-SERIAL-MERGE', { name: 'Kitchen', tags: ['indoor'] });
+
+    const metadata = await getDeviceMetadata('TEST-SERIAL-MERGE');
+    expect(metadata.name).toBe('Kitchen');
+    expect(metadata.tags).toEqual(['indoor']);
+    expect(metadata.model).toBe('OAQ-1-2');
+    expect(metadata.deviceType).toBe(2);
+    expect(metadata.firmware).toBe('1.0');
+  });
+
   it('should handle empty name and tags', async () => {
     await setDeviceMetadata('TEST-SERIAL-003', {
       name: '',
@@ -576,5 +595,86 @@ describe('Storage - Device Metadata', () => {
 
     expect(metadata.name).toBe('');
     expect(metadata.tags).toEqual([]);
+  });
+
+  it('should delete device metadata', async () => {
+    await setDeviceMetadata('DELETE-TEST', { name: 'To Delete', tags: [] });
+
+    // Verify it exists
+    const before = await getDeviceMetadata('DELETE-TEST');
+    expect(before).toBeDefined();
+    expect(before.name).toBe('To Delete');
+
+    // Delete it
+    await deleteDeviceMetadata('DELETE-TEST');
+
+    // Verify it's gone
+    const after = await getDeviceMetadata('DELETE-TEST');
+    expect(after).toBeNull();
+  });
+
+  it('should not error when deleting non-existent metadata', async () => {
+    // Should resolve without error
+    await deleteDeviceMetadata('NONEXISTENT-SERIAL');
+    const result = await getDeviceMetadata('NONEXISTENT-SERIAL');
+    expect(result).toBeNull();
+  });
+});
+
+describe('Storage - clearDeviceLogs isolation', () => {
+  beforeEach(async () => {
+    await clearAllLogs();
+  });
+
+  it('should only remove logs for the target device', async () => {
+    // Store logs for two devices
+    await storeLogs([
+      createMockLog({ timestamp: 1000 }),
+      createMockLog({ timestamp: 2000 }),
+    ], 'DEVICE-A');
+
+    await storeLogs([
+      createMockLog({ timestamp: 3000 }),
+      createMockLog({ timestamp: 4000 }),
+      createMockLog({ timestamp: 5000 }),
+    ], 'DEVICE-B');
+
+    // Clear only DEVICE-A
+    const deletedCount = await clearDeviceLogs('DEVICE-A');
+    expect(deletedCount).toBe(2);
+
+    // DEVICE-A logs are gone
+    const aLogs = await getLogsByDevice('DEVICE-A');
+    expect(aLogs).toHaveLength(0);
+
+    // DEVICE-B logs are untouched
+    const bLogs = await getLogsByDevice('DEVICE-B');
+    expect(bLogs).toHaveLength(3);
+
+    // Total count is only DEVICE-B's logs
+    const total = await getLogCount();
+    expect(total).toBe(3);
+  });
+});
+
+describe('getDeviceDisplayName', () => {
+  it('should prefer user-set name', () => {
+    expect(getDeviceDisplayName({ name: 'Kitchen' }, 'SN-001', 'OAQ-1')).toBe('Kitchen');
+  });
+
+  it('should fall back to liveModel + serial', () => {
+    expect(getDeviceDisplayName({}, 'SN-001', 'OAQ-1')).toBe('OAQ-1 (SN-001)');
+  });
+
+  it('should fall back to metadata.model + serial', () => {
+    expect(getDeviceDisplayName({ model: 'OAQ-2' }, 'SN-001')).toBe('OAQ-2 (SN-001)');
+  });
+
+  it('should prefer liveModel over metadata.model', () => {
+    expect(getDeviceDisplayName({ model: 'OAQ-2' }, 'SN-001', 'OAQ-3')).toBe('OAQ-3 (SN-001)');
+  });
+
+  it('should fall back to serial only', () => {
+    expect(getDeviceDisplayName(null, 'SN-001')).toBe('SN-001');
   });
 });

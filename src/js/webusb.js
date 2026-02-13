@@ -14,8 +14,10 @@ const DEVICE_FILTERS = [{
 // Connection state
 let device = null;
 let isConnected = false;
+let isAutoConnecting = false;
 const connectionCallbacks = [];
 const disconnectionCallbacks = [];
+const deviceListChangeCallbacks = [];
 
 /**
  * Check if WebUSB is supported in the current browser
@@ -50,6 +52,14 @@ export function onConnect(callback) {
  */
 export function onDisconnect(callback) {
     disconnectionCallbacks.push(callback);
+}
+
+/**
+ * Register callback for when the USB device list changes
+ * (any matching device plugged in or unplugged, not just the active one)
+ */
+export function onDeviceListChange(callback) {
+    deviceListChangeCallbacks.push(callback);
 }
 
 /**
@@ -106,14 +116,14 @@ async function openDevice() {
 
         isConnected = true;
 
-        // Notify connection callbacks
-        connectionCallbacks.forEach(callback => {
+        // Notify connection callbacks (await async handlers like handleDeviceConnected)
+        for (const callback of connectionCallbacks) {
             try {
-                callback(device);
+                await callback(device);
             } catch (err) {
                 console.error('Error in connection callback:', err);
             }
-        });
+        }
 
         console.log('Device connected successfully:', device.productName);
 
@@ -283,6 +293,14 @@ export function monitorUSBEvents() {
         return;
     }
 
+    function notifyDeviceListChange() {
+        deviceListChangeCallbacks.forEach(cb => {
+            try { cb(); } catch (err) {
+                console.error('Error in device list change callback:', err);
+            }
+        });
+    }
+
     // Listen for device connections
     navigator.usb.addEventListener('connect', async (event) => {
         console.log('USB device connected:', event.device);
@@ -291,13 +309,19 @@ export function monitorUSBEvents() {
         if (event.device.vendorId === DEVICE_FILTERS[0].vendorId &&
             event.device.productId === DEVICE_FILTERS[0].productId) {
 
+            // Notify that the device list changed (new device available)
+            notifyDeviceListChange();
+
             // Auto-connect if no device is currently connected
-            if (!isConnected) {
+            if (!isConnected && !isAutoConnecting) {
+                isAutoConnecting = true;
                 try {
                     device = event.device;
                     await openDevice();
                 } catch (error) {
                     console.error('Failed to auto-connect:', error);
+                } finally {
+                    isAutoConnecting = false;
                 }
             }
         }
@@ -306,6 +330,12 @@ export function monitorUSBEvents() {
     // Listen for device disconnections
     navigator.usb.addEventListener('disconnect', (event) => {
         console.log('USB device disconnected:', event.device);
+
+        // Notify that the device list changed (device removed)
+        if (event.device.vendorId === DEVICE_FILTERS[0].vendorId &&
+            event.device.productId === DEVICE_FILTERS[0].productId) {
+            notifyDeviceListChange();
+        }
 
         // Check if it's our current device
         if (device && event.device === device) {

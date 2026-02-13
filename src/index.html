@@ -191,6 +191,7 @@
                             <th class="pb-2 font-medium" data-i18n="fleet_col_type">Type</th>
                             <th class="pb-2 font-medium" data-i18n="fleet_col_status">Status</th>
                             <th class="pb-2 font-medium" data-i18n="fleet_col_measurements">Measurements</th>
+                            <th class="pb-2 font-medium" data-i18n="fleet_col_firmware">Firmware</th>
                             <th class="pb-2 font-medium" data-i18n="fleet_col_lastSeen">Last Seen</th>
                             <th class="pb-2 font-medium" data-i18n="fleet_col_tags">Tags</th>
                             <th class="pb-2 font-medium"></th>
@@ -297,6 +298,52 @@
                                 <div class="text-gray-400 text-[10px] mt-0.5" data-i18n="sensor_fromLastSync">(from last sync)</div>
                             </div>
                         </div>
+                        <!-- Traffic Count Card - shown for Radar format -->
+                        <div id="trafficCount-card" class="sensor-card relative overflow-hidden hidden">
+                            <canvas id="trafficCount-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                            <div class="relative z-10">
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_trafficCount">Traffic</div>
+                                <div id="trafficCount-value" class="text-2xl font-bold text-gray-800">--</div>
+                            </div>
+                        </div>
+                        <!-- Engage Count Card - shown for Radar format -->
+                        <div id="engageCount-card" class="sensor-card relative overflow-hidden hidden">
+                            <canvas id="engageCount-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                            <div class="relative z-10">
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_engageCount">Engagements</div>
+                                <div id="engageCount-value" class="text-2xl font-bold text-gray-800">--</div>
+                            </div>
+                        </div>
+                        <!-- Distance Card - shown for Radar format -->
+                        <div id="distance-card" class="sensor-card relative overflow-hidden hidden">
+                            <canvas id="distance-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                            <div class="relative z-10">
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_distance">Distance</div>
+                                <div id="distance-value" class="text-2xl font-bold text-gray-800">--</div>
+                            </div>
+                        </div>
+                        <!-- Variance Card - shown for Radar format -->
+                        <div id="variance-card" class="sensor-card relative overflow-hidden hidden">
+                            <canvas id="variance-sparkline" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                            <div class="relative z-10">
+                                <div class="text-gray-600 text-sm mb-1" data-i18n="sensor_variance">Variance</div>
+                                <div id="variance-value" class="text-2xl font-bold text-gray-800">--</div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Spectral Bar Chart (full-width, shown only for AS7341 devices) -->
+                    <div id="spectral-card" class="mt-4 bg-gray-50 rounded-lg border border-gray-200 p-4 hidden relative">
+                        <div class="text-gray-600 text-sm mb-2" data-i18n="sensor_spectral">Spectral</div>
+                        <canvas id="spectral-chart" class="w-full" height="140"></canvas>
+                        <div id="spectral-loading" class="hidden absolute inset-0 bg-gray-50/80 flex items-center justify-center rounded-lg">
+                            <div class="flex flex-col items-center gap-2">
+                                <svg class="animate-spin h-6 w-6 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <span id="spectral-loading-text" class="text-sm text-gray-500" data-i18n="sync_acquiring">Acquiring...</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="mt-4 text-xs text-gray-500">
                         <div><span data-i18n="live_sensorData">Sensor data</span>: <span id="measured-age">--</span></div>
@@ -376,12 +423,18 @@
                     <div class="flex items-center gap-3">
                         <select id="device-filter" class="text-sm border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </select>
-                        <div id="chart-time-range-group" class="inline-flex bg-gray-100 rounded-lg p-0.5">
+                        <div id="chart-time-range-group" class="inline-flex items-center bg-gray-100 rounded-lg p-0.5">
                             <button class="time-range-btn" data-range="24h">24h</button>
                             <button class="time-range-btn active" data-range="7d">7d</button>
                             <button class="time-range-btn" data-range="30d">30d</button>
-                            <button class="time-range-btn" data-range="all">All</button>
+                            <button class="time-range-btn" data-range="all" data-i18n="chart_range_all_short">All</button>
+                            <button class="time-range-btn flex items-center justify-center" data-range="custom" id="chart-custom-range-btn">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                                </svg>
+                            </button>
                         </div>
+                        <input type="text" id="chart-date-range-input" class="absolute opacity-0 w-0 h-0 pointer-events-none" />
                         <div class="inline-flex gap-1">
                             <button id="chart-zoom-btn" class="p-1.5 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" title="Drag to zoom">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -621,6 +674,17 @@
                     </div>
                 </div>
 
+                <!-- App Version -->
+                <p class="text-xs text-gray-400 mb-4" id="app-version"></p>
+
+                <!-- Supported Device Types -->
+                <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-6 mb-6">
+                    <h2 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="help_deviceTypes">Supported Device Types</h2>
+                    <div id="device-types-list">
+                        <!-- Populated dynamically from deviceTypes.js registry -->
+                    </div>
+                </div>
+
                 <!-- Sensor Datasheets -->
                 <div class="bg-white rounded-lg shadow-sm border border-gray-100 p-6 mb-6">
                     <h2 class="text-lg font-semibold text-gray-900 mb-4" data-i18n="settings_datasheets">Sensor Datasheets</h2>
@@ -772,6 +836,9 @@
             <div class="flex gap-2 mt-6">
                 <button id="save-device-metadata-btn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded transition duration-200" data-i18n="action_save">Save</button>
                 <button id="cancel-device-metadata-btn" class="flex-1 border border-gray-300 hover:bg-gray-50 py-2 rounded transition duration-200" data-i18n="action_cancel">Cancel</button>
+            </div>
+            <div class="border-t border-gray-200 mt-6 pt-4">
+                <button id="forget-device-btn" class="w-full text-red-600 hover:text-red-800 hover:underline text-sm font-medium" data-i18n="editDevice_forget">Forget Device</button>
             </div>
         </div>
     </div>

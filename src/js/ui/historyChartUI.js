@@ -10,6 +10,10 @@ import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';
 import { initEChart, updateChart, resizeChart, getChartInstance, toggleZoomMode, resetZoom } from './historyChart.js';
+import AirDatepicker from 'air-datepicker';
+import localeEn from 'air-datepicker/locale/en';
+import localeDe from 'air-datepicker/locale/de';
+import 'air-datepicker/air-datepicker.css';
 
 // All possible metrics (generated from device type registry)
 const ALL_METRICS = getAllKnownMetrics();
@@ -22,6 +26,8 @@ const METRIC_LABEL_MAP = getMetricLabelsMap();
 // Module state
 let activeMetrics = new Set(ALL_METRICS.map(m => m.key));
 let currentTimeRange = '7d';
+let customDateRange = null; // [startDate, endDate] when currentTimeRange === 'custom'
+let datePicker = null;
 let cachedTraces = null;  // Map<metric, {timestamps[], values[]}>
 let cacheKey = null;
 let resizeRAF = null;
@@ -54,14 +60,58 @@ function wireEvents() {
             const btn = e.target.closest('.time-range-btn');
             if (!btn) return;
             const range = btn.dataset.range;
+
+            if (range === 'custom') {
+                // Open the date picker — selection handled in onClose callback
+                if (datePicker) datePicker.show();
+                return;
+            }
+
             if (range === currentTimeRange) return;
 
             btnGroup.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
             currentTimeRange = range;
+            customDateRange = null;
             invalidateCache();
             await fetchAndRender();
+        });
+    }
+
+    // Air Datepicker range picker (attached to hidden input, positioned near custom button)
+    const dateInput = document.getElementById('chart-date-range-input');
+    const customBtn = document.getElementById('chart-custom-range-btn');
+    if (dateInput && customBtn) {
+        const locale = i18n.getLanguage() === 'de' ? localeDe : localeEn;
+        datePicker = new AirDatepicker(dateInput, {
+            range: true,
+            maxDate: new Date(),
+            locale,
+            autoClose: true,
+            buttons: ['clear'],
+            dateFormat: 'dd MMM yyyy',
+            multipleDatesSeparator: ' - ',
+            position({ $datepicker }) {
+                const rect = customBtn.getBoundingClientRect();
+                $datepicker.style.left = `${rect.right - $datepicker.offsetWidth}px`;
+                $datepicker.style.top = `${rect.bottom + 4}px`;
+            },
+            onSelect: async ({ date }) => {
+                if (Array.isArray(date) && date.length === 2) {
+                    customDateRange = date;
+                    currentTimeRange = 'custom';
+
+                    if (btnGroup) {
+                        btnGroup.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
+                        const customBtn = document.getElementById('chart-custom-range-btn');
+                        if (customBtn) customBtn.classList.add('active');
+                    }
+
+                    invalidateCache();
+                    await fetchAndRender();
+                }
+            }
         });
     }
 
@@ -131,7 +181,10 @@ async function fetchAndRender() {
         return;
     }
 
-    const newCacheKey = `${deviceFilter}|${currentTimeRange}`;
+    const customSuffix = currentTimeRange === 'custom' && customDateRange
+        ? `|${customDateRange[0].getTime()}|${customDateRange[1].getTime()}`
+        : '';
+    const newCacheKey = `${deviceFilter}|${currentTimeRange}${customSuffix}`;
 
     if (cacheKey === newCacheKey && cachedTraces) {
         renderFromCache();
@@ -197,8 +250,15 @@ function renderFromCache() {
 async function fetchLogs(deviceFilter, timeRange) {
     const now = Math.floor(Date.now() / 1000);
     let startTimestamp;
+    let endTimestamp = now;
 
-    if (timeRange === '24h') {
+    if (timeRange === 'custom' && customDateRange && customDateRange.length === 2) {
+        startTimestamp = Math.floor(customDateRange[0].getTime() / 1000);
+        // End of the selected end day (23:59:59)
+        const endDate = new Date(customDateRange[1]);
+        endDate.setHours(23, 59, 59, 999);
+        endTimestamp = Math.floor(endDate.getTime() / 1000);
+    } else if (timeRange === '24h') {
         startTimestamp = now - 24 * 3600;
     } else if (timeRange === '7d') {
         startTimestamp = now - 7 * 24 * 3600;
@@ -208,7 +268,7 @@ async function fetchLogs(deviceFilter, timeRange) {
         startTimestamp = 0;
     }
 
-    return getLogsByDateRange(startTimestamp, now, deviceFilter);
+    return getLogsByDateRange(startTimestamp, endTimestamp, deviceFilter);
 }
 
 /**

@@ -8,7 +8,8 @@ import {
     getDatabaseStats,
     getDeviceMetadata,
     getAllDeviceMetadata,
-    getLogsByDevice
+    getLogsByDevice,
+    getDeviceDisplayName
 } from '../storage.js';
 import {
     isDeviceConnected,
@@ -21,6 +22,7 @@ import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';
 import { openEditDeviceModalForSerial } from './modals.js';
+import { latestOnly } from './utils.js';
 
 /**
  * Get all known devices from all sources.
@@ -55,15 +57,17 @@ export async function updateSwitcherVisibility() {
 }
 
 /**
- * Populate dropdown with all known devices
+ * Populate dropdown with all known devices.
+ * Wrapped with latestOnly to prevent interleaved DOM writes
+ * if called concurrently.
  */
-export async function populateDeviceDropdown() {
+export const populateDeviceDropdown = latestOnly(async (stale) => {
     const { allSerials: allDevices, metadataMap, pairedSerials: availableSerials } = await getAllKnownDevices();
+    if (stale()) return;
 
     const connectedDeviceSerial = state.get('connectedDeviceSerial');
 
     const deviceList = document.getElementById('device-list');
-    deviceList.innerHTML = '';
 
     if (allDevices.size === 0) {
         deviceList.innerHTML = `<p class="px-3 py-2 text-sm text-gray-500">${i18n.t('device_noDevicesFound')}</p>`;
@@ -71,28 +75,27 @@ export async function populateDeviceDropdown() {
     }
 
     const selectedDeviceSerial = state.get('selectedDeviceSerial');
-    const currentLogType = state.get('currentLogType');
     const currentDeviceModel = state.get('currentDeviceModel');
 
-    // Build device list items
+    // ── Async data-collection phase ──────────────────────────────────
+    const items = [];
     for (const serial of allDevices) {
         const metadata = metadataMap[serial];
         const isConnected = serial === connectedDeviceSerial;
         const isAvailable = availableSerials.has(serial);
         const isSelected = serial === selectedDeviceSerial;
-        const model = (isConnected ? currentDeviceModel : null) || metadata?.model;
-        const displayName = metadata?.name || (model ? `${model} (${serial})` : serial);
+        const displayName = getDeviceDisplayName(metadata, serial, isConnected ? currentDeviceModel : null);
         const tags = metadata?.tags || [];
 
-        // Get device type from metadata, connection, or logs (in priority order)
+        // Get device type from persisted metadata or logs.
+        // Don't use currentLogType — it reflects the *selected* device, not this device.
         let deviceType = null;
-        if (isConnected && currentLogType !== null) {
-            deviceType = currentLogType;
-        } else if (metadata?.deviceType != null) {
+        if (metadata?.deviceType != null) {
             deviceType = metadata.deviceType;
         } else {
             // Fallback: check stored logs for this device
             const deviceLogs = await getLogsByDevice(serial);
+            if (stale()) return;
             if (deviceLogs.length > 0 && deviceLogs[0].logType !== undefined) {
                 deviceType = deviceLogs[0].logType;
             }
@@ -102,8 +105,8 @@ export async function populateDeviceDropdown() {
         item.className = `flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-blue-50' : ''}`;
         item.dataset.serial = serial;
 
-        // Get product image - use model from metadata or current connection
-        const deviceModel = metadata?.model || (isConnected ? currentDeviceModel : null);
+        // Get product image - live model wins for connected device, else persisted
+        const deviceModel = (isConnected ? currentDeviceModel : null) || metadata?.model;
         let imgHtml = '';
         if (deviceModel) {
             imgHtml = `<img src="img/${deviceModel}.jpg" class="w-6 h-6 rounded object-cover flex-shrink-0" alt="" onerror="this.style.display='none'">`;
@@ -116,7 +119,11 @@ export async function populateDeviceDropdown() {
 
         // Build device type pill (first, colored)
         let typePillHtml = '';
-        if (deviceType === LOG_TYPE.CO2) {
+        if (deviceType === LOG_TYPE.SPECTRAL) {
+            typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded font-medium">Spectral</span>`;
+        } else if (deviceType === LOG_TYPE.RADAR) {
+            typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-orange-100 text-orange-700 rounded font-medium">Radar</span>`;
+        } else if (deviceType === LOG_TYPE.CO2) {
             typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded font-medium">CO2</span>`;
         } else if (deviceType === LOG_TYPE.TSL2591 || deviceType === LOG_TYPE.GPS) {
             typePillHtml = `<span class="inline-block px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded font-medium">PM</span>`;
@@ -171,9 +178,16 @@ export async function populateDeviceDropdown() {
             closeDeviceDropdown();
         });
 
+        items.push(item);
+    }
+
+    // ── Sync DOM-write phase (atomic, no interleaving) ───────────────
+    if (stale()) return;
+    deviceList.innerHTML = '';
+    for (const item of items) {
         deviceList.appendChild(item);
     }
-}
+});
 
 /**
  * Handle device selection from dropdown
@@ -186,7 +200,10 @@ export async function selectDevice(serial) {
     if (serial && serial !== connectedDeviceSerial) {
         const connected = await connectToDeviceBySerial(serial);
         if (connected) {
-            // Connection successful - handleDeviceConnected will be called via callback
+            // handleDeviceConnected already ran (openDevice awaits callbacks),
+            // but it only sets selectedDeviceSerial for single-device setups.
+            // Always set it here so the UI updates for multi-device too.
+            state.set('selectedDeviceSerial', serial);
             return;
         }
     }
@@ -218,9 +235,7 @@ export async function updateSwitcherDisplay() {
     // Get device metadata for display name
     // Priority: user name → model (serial) → serial
     const metadata = await getDeviceMetadata(selectedDeviceSerial);
-    const model = currentDeviceModel || metadata?.model;
-    const displayName = metadata?.name || (model ? `${model} (${selectedDeviceSerial})` : selectedDeviceSerial);
-    nameEl.textContent = displayName;
+    nameEl.textContent = getDeviceDisplayName(metadata, selectedDeviceSerial, currentDeviceModel);
 
     // Check if device is available (plugged in)
     const pairedDevices = await getPairedDevices();
@@ -356,7 +371,7 @@ export async function updateDeviceFilter() {
             option.value = serial;
 
             const metadata = metadataMap[serial];
-            let displayName = metadata?.name || (metadata?.model ? `${metadata.model} (${serial})` : serial);
+            let displayName = getDeviceDisplayName(metadata, serial);
 
             if (serial === connectedSerial) {
                 option.textContent = `${displayName} (${i18n.t('device_connected')})`;

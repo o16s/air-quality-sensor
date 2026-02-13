@@ -7,6 +7,7 @@ import { i18n } from '../i18n.js';
 import {
     getDatabaseStats,
     getAllDeviceMetadata,
+    getDeviceDisplayName,
     saveReportLocation,
     getReportLocation,
     getAllReportLocations,
@@ -386,7 +387,7 @@ export async function getSelectedDeviceNames() {
 
     return selectedDevices.map(serial => {
         const metadata = metadataMap[serial];
-        return metadata?.name || (metadata?.model ? `${metadata.model} (${serial})` : serial);
+        return getDeviceDisplayName(metadata, serial);
     });
 }
 
