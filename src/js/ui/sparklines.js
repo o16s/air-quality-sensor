@@ -20,7 +20,7 @@ export async function loadSparklinesFromStorage() {
         // Get logs from last 12 hours, filtered by selected device
         const now = Math.floor(Date.now() / 1000);
         const twelveHoursAgo = now - (12 * 60 * 60); // 43,200 seconds
-        const deviceSerial = state.get('selectedDeviceSerial');
+        const deviceSerial = state.get('historyDeviceSerial');
 
         let recentLogs = await getLogsByDateRange(twelveHoursAgo, now, deviceSerial);
 
@@ -229,7 +229,7 @@ export function updateSparkline(canvasId, dataPoints, config = {}, metric = null
 
 // ── Reactive subscriptions ────────────────────────────────────────────
 
-listenKeys($state, ['selectedDeviceSerial'], () => {
+listenKeys($state, ['historyDeviceSerial'], () => {
     loadSparklinesFromStorage();
 });
 

@@ -150,10 +150,10 @@ function renderHeatmapLegendHTML(metric) {
 
 // ── Reactive subscriptions ────────────────────────────────────────────
 
-listenKeys($state, ['selectedDeviceSerial'], (value) => {
-    updateHeatmap(value.selectedDeviceSerial);
+listenKeys($state, ['historyDeviceSerial'], (value) => {
+    updateHeatmap(value.historyDeviceSerial);
 });
 
 $dataVersion.listen(() => {
-    updateHeatmap($state.get().selectedDeviceSerial);
+    updateHeatmap($state.get().historyDeviceSerial);
 });

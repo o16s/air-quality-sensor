@@ -7,6 +7,7 @@ import html2pdf from 'html2pdf.js';
 import { detectEvents, formatEventDuration } from './events.js';
 import { getLogsByDevice, getLogsByDateRange, getAllDeviceMetadata, getDatabaseStats } from './storage.js';
 import { AIR_QUALITY_THRESHOLDS } from './constants.js';
+import { getAllKnownMetrics, getDetectableMetrics } from './deviceTypes.js';
 import { i18n } from './i18n.js';
 
 /**
@@ -25,24 +26,24 @@ export function computeStatistics(logs) {
             start: Math.min(...logs.map(l => l.timestamp)),
             end: Math.max(...logs.map(l => l.timestamp))
         },
-        co2: { avg: null, min: null, max: null },
-        pm25: { avg: null, min: null, max: null },
-        pm10: { avg: null, min: null, max: null },
-        temperature: { avg: null, min: null, max: null },
-        humidity: { avg: null, min: null, max: null },
-        lux: { avg: null, min: null, max: null }
+        byMetric: {}
     };
 
-    // Compute for each metric
-    for (const metric of ['co2', 'pm25', 'pm10', 'temperature', 'humidity', 'lux']) {
-        const values = logs.map(l => l[metric]).filter(v => v != null && !isNaN(v));
+    // Compute for every known metric found in the data
+    for (const metric of getAllKnownMetrics()) {
+        const values = logs.map(l => l[metric.key]).filter(v => v != null && !isNaN(v));
         if (values.length > 0) {
-            stats[metric] = {
+            stats.byMetric[metric.key] = {
                 avg: values.reduce((a, b) => a + b, 0) / values.length,
                 min: Math.min(...values),
                 max: Math.max(...values)
             };
         }
+    }
+
+    // Backwards-compatible top-level accessors (report UI reads stats.co2, stats.temperature, etc.)
+    for (const [key, val] of Object.entries(stats.byMetric)) {
+        stats[key] = val;
     }
 
     return stats;
@@ -56,15 +57,17 @@ export function computeStatistics(logs) {
 export function computeEventStats(logs) {
     const events = detectEvents(logs);
 
+    // Build byMetric buckets from all detectable metrics (those with thresholds)
+    const byMetric = {};
+    for (const key of getDetectableMetrics()) {
+        byMetric[key] = { count: 0, totalMinutes: 0, peaks: [], durations: [] };
+    }
+
     const stats = {
         yellow: { count: 0, totalMinutes: 0 },
         orange: { count: 0, totalMinutes: 0 },
         red: { count: 0, totalMinutes: 0 },
-        byMetric: {
-            pm25: { count: 0, totalMinutes: 0, peaks: [], durations: [] },
-            pm10: { count: 0, totalMinutes: 0, peaks: [], durations: [] },
-            co2: { count: 0, totalMinutes: 0, peaks: [], durations: [] }
-        }
+        byMetric
     };
 
     for (const event of events) {
@@ -88,8 +91,7 @@ export function computeEventStats(logs) {
     }
 
     // Compute summary stats per metric
-    for (const metric of ['pm25', 'pm10', 'co2']) {
-        const m = stats.byMetric[metric];
+    for (const m of Object.values(stats.byMetric)) {
         if (m.peaks.length > 0) {
             m.peakMin = Math.min(...m.peaks);
             m.peakMax = Math.max(...m.peaks);

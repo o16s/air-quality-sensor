@@ -21,12 +21,12 @@ export function initHelpPage() {
 }
 
 /**
- * Display app version from package.json (injected by Vite at build time)
+ * Display app version from git (injected by Vite at build time)
  */
 function renderAppVersion() {
     const el = document.getElementById('app-version');
     if (el && typeof __APP_VERSION__ !== 'undefined') {
-        el.textContent = `v${__APP_VERSION__}`;
+        el.textContent = __APP_VERSION__;
     }
 }
 

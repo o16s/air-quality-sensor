@@ -9,6 +9,7 @@ import { map, atom } from 'nanostores';
 const DEFAULTS = {
     connectedDeviceSerial: null,  // Currently connected device via USB (null if none)
     selectedDeviceSerial: null,   // Currently selected device in UI (may not be connected)
+    historyDeviceSerial: null,    // Device filter for History page (decoupled from Overview)
     currentDeviceModel: null,     // Model name of currently connected device (e.g., "OAQ-1-2")
     currentLogType: null,         // LOG_TYPE.GPS, LOG_TYPE.TSL2591, or LOG_TYPE.CO2
     currentEventsTimeFilter: '7d', // Events time filter: '24h', '7d', '30d', 'all'

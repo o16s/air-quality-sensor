@@ -288,6 +288,7 @@ export async function updateDeviceDetailsBar() {
     const syncBtn = document.getElementById('sync-data-btn-header');
     const settingsBtn = document.getElementById('settings-btn');
     const disconnectBtn = document.getElementById('disconnect-btn-header');
+    const reconnectBtn = document.getElementById('reconnect-btn-header');
     const batteryStatus = document.getElementById('battery-status-inline');
     const storageStatus = document.getElementById('storage-status-inline');
     const liveDataSection = document.getElementById('live-data-section');
@@ -301,6 +302,7 @@ export async function updateDeviceDetailsBar() {
         syncBtn.classList.remove('hidden');
         settingsBtn.classList.remove('hidden');
         disconnectBtn.classList.remove('hidden');
+        reconnectBtn.classList.add('hidden');
         batteryStatus.classList.remove('hidden');
         storageStatus.classList.remove('hidden');
         lastSyncEl.classList.add('hidden');
@@ -311,6 +313,7 @@ export async function updateDeviceDetailsBar() {
         syncBtn.classList.add('hidden');
         settingsBtn.classList.add('hidden');
         disconnectBtn.classList.add('hidden');
+        reconnectBtn.classList.remove('hidden');
         batteryStatus.classList.add('hidden');
         storageStatus.classList.add('hidden');
         liveDataSection.classList.add('hidden');
@@ -348,9 +351,9 @@ export async function updateDeviceFilter() {
             connectedSerial = info?.serialNumber;
         }
 
-        // Preserve current selection
+        // Preserve current selection (prefer historyDeviceSerial since this dropdown is on History page)
         const currentValue = select.value;
-        const selectedDevice = state.get('selectedDeviceSerial');
+        const selectedDevice = state.get('historyDeviceSerial') || state.get('selectedDeviceSerial');
 
         // Clear existing options
         select.innerHTML = '';
@@ -406,8 +409,11 @@ export async function updateDeviceFilter() {
 listenKeys($state, ['selectedDeviceSerial', 'currentDeviceModel'], () => {
     updateSwitcherDisplay();
     updateDeviceDetailsBar();
-    // Sync the device filter dropdown to match
-    const serial = $state.get().selectedDeviceSerial;
+});
+
+// Sync the History page device-filter dropdown from historyDeviceSerial
+listenKeys($state, ['historyDeviceSerial'], () => {
+    const serial = $state.get().historyDeviceSerial;
     const deviceFilterEl = document.getElementById('device-filter');
     if (deviceFilterEl && serial) {
         deviceFilterEl.value = serial;

@@ -154,10 +154,10 @@ export function getMetricLabel(metric) {
 
 // ── Reactive subscriptions ────────────────────────────────────────────
 
-listenKeys($state, ['selectedDeviceSerial', 'currentEventsTimeFilter'], (value) => {
-    updateEventsTimeline(value.selectedDeviceSerial);
+listenKeys($state, ['historyDeviceSerial', 'currentEventsTimeFilter'], (value) => {
+    updateEventsTimeline(value.historyDeviceSerial);
 });
 
 $dataVersion.listen(() => {
-    updateEventsTimeline($state.get().selectedDeviceSerial);
+    updateEventsTimeline($state.get().historyDeviceSerial);
 });

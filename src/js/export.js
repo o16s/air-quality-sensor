@@ -111,6 +111,8 @@ export function exportToCSV(logs, deviceMetadataMap = {}) {
  * Sniffs fields to determine the closest device type.
  */
 function sniffDeviceType(log) {
+    if (log.hasOwnProperty('f1_415nm')) return DEVICE_TYPES.SPECTRAL;
+    if (log.hasOwnProperty('trafficCount')) return DEVICE_TYPES.RADAR;
     if (log.hasOwnProperty('co2')) return DEVICE_TYPES.CO2;
     if (log.hasOwnProperty('lux')) return DEVICE_TYPES.TSL2591;
     return DEVICE_TYPES.GPS;

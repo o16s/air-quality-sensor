@@ -45,8 +45,8 @@ describe('Report Module', () => {
             const stats = computeStatistics(logs);
 
             expect(stats.temperature.avg).toBe(23);
-            expect(stats.co2.avg).toBeNull();
-            expect(stats.pm25.avg).toBeNull();
+            expect(stats.co2).toBeUndefined();
+            expect(stats.pm25).toBeUndefined();
         });
     });
 

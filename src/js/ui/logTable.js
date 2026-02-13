@@ -25,13 +25,8 @@ import { $state, $dataVersion } from './state.js';
  * @returns {string} Human-readable label
  */
 export function getLogTypeLabel(logType) {
-    switch (logType) {
-        case LOG_TYPE.GPS: return i18n.t('logType_gps');
-        case LOG_TYPE.TSL2591: return i18n.t('logType_tsl');
-        case LOG_TYPE.CO2: return i18n.t('logType_co2');
-        case LOG_TYPE.SPECTRAL: return i18n.t('logType_spectral');
-        default: return '—';
-    }
+    const deviceType = getDeviceTypeById(logType);
+    return deviceType ? deviceType.name : '—';
 }
 
 /**
@@ -262,11 +257,11 @@ export async function updateLogTable(deviceSerial = null) {
 
 // ── Reactive subscriptions ────────────────────────────────────────────
 
-listenKeys($state, ['selectedDeviceSerial'], (value) => {
-    updateLogTable(value.selectedDeviceSerial);
+listenKeys($state, ['historyDeviceSerial'], (value) => {
+    updateLogTable(value.historyDeviceSerial);
 });
 
 $dataVersion.listen(() => {
     updateBrowserLogCount();
-    updateLogTable($state.get().selectedDeviceSerial);
+    updateLogTable($state.get().historyDeviceSerial);
 });

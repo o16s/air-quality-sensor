@@ -283,14 +283,14 @@ export async function updateReportStats() {
     // Display computed statistics
     let statsHtml = `<p><strong>${reportStats.totalMeasurements.toLocaleString()}</strong> ${i18n.t('report_measurements', { count: reportStats.totalMeasurements }).split(' ').slice(1).join(' ')}</p>`;
 
-    if (reportStats.co2.avg !== null) {
+    if (reportStats.co2?.avg != null) {
         statsHtml += `<p>${i18n.t('report_co2Average')}: <strong>${Math.round(reportStats.co2.avg)} ppm</strong></p>`;
         statsHtml += `<p>${i18n.t('report_co2Peak')}: <strong>${Math.round(reportStats.co2.max)} ppm</strong></p>`;
     }
-    if (reportStats.pm25.avg !== null) {
+    if (reportStats.pm25?.avg != null) {
         statsHtml += `<p>${i18n.t('report_pm25Average')}: <strong>${reportStats.pm25.avg.toFixed(1)} ug/m3</strong></p>`;
     }
-    if (reportStats.temperature.avg !== null) {
+    if (reportStats.temperature?.avg != null) {
         statsHtml += `<p>${i18n.t('report_tempAverage')}: <strong>${reportStats.temperature.avg.toFixed(1)} C</strong></p>`;
     }
 

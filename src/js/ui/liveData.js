@@ -76,7 +76,7 @@ export async function updateLiveData() {
         }
 
         // Track sensor reading
-        const formatName = currentLogType === LOG_TYPE.CO2 ? 'co2' : currentLogType === LOG_TYPE.TSL2591 ? 'tsl2591' : 'gps';
+        const formatName = (getDeviceTypeById(currentLogType)?.name || 'GPS').toLowerCase();
         const trackData = {
             format: formatName,
             temp: Math.round(status.temperature * 10) / 10,
@@ -93,8 +93,10 @@ export async function updateLiveData() {
         track('sensor_reading', trackData);
 
     } catch (error) {
-        console.error('Failed to update live data:', error);
-        showError(i18n.t('sensor_readFailed', { message: error.message }));
+        // Transient USB errors during auto-refresh are expected (e.g. short reads
+        // when device is busy with another command). Log only, don't toast —
+        // the next poll will recover.
+        console.warn('Live data read failed (will retry):', error.message);
 
         // Set all sensor values to N/A when data is unavailable
         document.getElementById('temp-value').textContent = 'N/A';
@@ -342,14 +344,17 @@ function updateSpectralChart(status) {
         return;
     }
 
-    setSpectralLoading(false);
-
     const canvas = document.getElementById('spectral-chart');
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    // Skip drawing when canvas is not laid out (page hidden via display:none)
-    if (rect.width === 0 || rect.height === 0) return;
+    // Canvas not laid out (page hidden) — keep/show loader until we can actually draw
+    if (rect.width === 0 || rect.height === 0) {
+        setSpectralLoading(true, i18n.t('sync_acquiring'));
+        return;
+    }
+
+    setSpectralLoading(false);
 
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;

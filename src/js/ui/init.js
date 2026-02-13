@@ -35,6 +35,7 @@ import {
     updateDeviceFilter,
     toggleDeviceDropdown,
     closeDeviceDropdown,
+    selectDevice,
 } from './deviceSwitcher.js';
 import {
     openSettingsModal,
@@ -191,6 +192,12 @@ listenKeys($state, ['currentLogType'], (value) => {
     configureWidgetsForLogType(value.currentLogType ?? LOG_TYPE.GPS);
 });
 
+// Sync historyDeviceSerial from selectedDeviceSerial so navigating
+// from Overview → History shows the correct device
+listenKeys($state, ['selectedDeviceSerial'], (value) => {
+    state.set('historyDeviceSerial', value.selectedDeviceSerial);
+});
+
 // When selected device changes, persist choice and load device type from metadata
 listenKeys($state, ['selectedDeviceSerial'], async () => {
     const serial = state.get('selectedDeviceSerial');
@@ -262,12 +269,12 @@ export function switchPage(pageId) {
         redrawSpectralChart();
     }
 
-    // History page: ensure a device is selected (the dropdown always has one)
+    // History page: ensure a history device is selected (the dropdown always has one)
     if (pageId === 'history') {
-        if (!state.get('selectedDeviceSerial')) {
+        if (!state.get('historyDeviceSerial')) {
             const deviceFilter = document.getElementById('device-filter');
             if (deviceFilter?.value) {
-                state.set('selectedDeviceSerial', deviceFilter.value);
+                state.set('historyDeviceSerial', deviceFilter.value);
             }
         }
         refreshHistoryChart();
@@ -303,6 +310,17 @@ function setupEventHandlers() {
 
     // Disconnect button (in header)
     document.getElementById('disconnect-btn-header').addEventListener('click', handleDisconnect);
+
+    // Reconnect button (in header) — attempt WebUSB connection to selected device
+    document.getElementById('reconnect-btn-header').addEventListener('click', async () => {
+        const serial = state.get('selectedDeviceSerial');
+        if (serial) {
+            await selectDevice(serial);
+            if (state.get('connectedDeviceSerial') !== serial) {
+                showError(i18n.t('device_reconnectFailed'));
+            }
+        }
+    });
 
     // Settings button - load settings before opening modal
     document.getElementById('settings-btn').addEventListener('click', async () => {
@@ -367,12 +385,13 @@ function setupEventHandlers() {
     // Clear logs button
     document.getElementById('clear-logs-btn').addEventListener('click', handleClearLogs);
 
-    // Device filter dropdown (on History page)
+    // Device filter dropdown (on History page) — writes to historyDeviceSerial
+    // so it doesn't affect the Overview page's selected device
     document.getElementById('device-filter').addEventListener('change', (e) => {
         const newFilter = e.target.value;
         if (!newFilter) return; // Ignore empty selection
-        // Setting state triggers widget subscriptions automatically
-        state.set('selectedDeviceSerial', newFilter);
+        // Setting state triggers history widget subscriptions automatically
+        state.set('historyDeviceSerial', newFilter);
     });
 
     // Events time filter dropdown — subscription in eventsUI handles the refresh

@@ -13,6 +13,7 @@ import {
 } from '../protocol.js';
 import { storeLogs } from '../storage.js';
 import { LOG_TYPE, DEVICE_CAPACITY } from '../constants.js';
+import { getDeviceTypeById } from '../deviceTypes.js';
 import { bumpDataVersion } from './state.js';
 import * as state from './state.js';
 import { showError, showSuccess } from './utils.js';
@@ -253,9 +254,8 @@ export async function handleDownloadLogs() {
             }));
 
             const storeResult = await storeLogs(logsWithMetadata, info.serialNumber);
-            let formatName = 'GPS';
-            if (logType === LOG_TYPE.CO2) formatName = 'CO2';
-            else if (logType === LOG_TYPE.TSL2591) formatName = 'TSL2591';
+            const deviceType = getDeviceTypeById(logType);
+            const formatName = deviceType?.name || 'Unknown';
 
             // Sync device time AFTER downloading
             try {

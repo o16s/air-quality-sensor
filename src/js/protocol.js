@@ -52,6 +52,10 @@ async function sendControlTransfer(device, command, param, length) {
             throw new Error(`Transfer failed: ${result.status}`);
         }
 
+        if (result.data.byteLength < length) {
+            throw new Error(`Short read: expected ${length} bytes, got ${result.data.byteLength}`);
+        }
+
         return result.data;
 
     } catch (error) {

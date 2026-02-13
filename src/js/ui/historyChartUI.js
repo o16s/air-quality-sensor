@@ -171,7 +171,7 @@ function wireEvents() {
  * Always requires a device filter — never mixes data from different devices.
  */
 async function fetchAndRender() {
-    const deviceFilter = state.get('selectedDeviceSerial');
+    const deviceFilter = state.get('historyDeviceSerial');
 
     // Never render without a device selected
     if (!deviceFilter) {
@@ -335,7 +335,7 @@ function invalidateCache() {
 
 // ── Reactive subscriptions ────────────────────────────────────────────
 
-listenKeys($state, ['selectedDeviceSerial'], () => {
+listenKeys($state, ['historyDeviceSerial'], () => {
     // Reset toggled metrics when switching devices so stale selections don't persist
     activeMetrics = new Set(ALL_METRICS.map(m => m.key));
     refreshHistoryChart();

@@ -28,6 +28,8 @@ const translations = {
         device_edit: "Edit device",
         device_settings: "Device Settings",
         device_disconnect: "Disconnect Device",
+        device_reconnect: "Reconnect Device",
+        device_reconnectFailed: "Could not connect. Make sure the device is plugged in.",
 
         // Battery & storage
         battery_charging: "(charging)",
@@ -588,6 +590,8 @@ const translations = {
         device_edit: "Gerät bearbeiten",
         device_settings: "Geräteeinstellungen",
         device_disconnect: "Gerät trennen",
+        device_reconnect: "Gerät erneut verbinden",
+        device_reconnectFailed: "Verbindung fehlgeschlagen. Stellen Sie sicher, dass das Gerät angeschlossen ist.",
 
         // Battery & storage
         battery_charging: "(lädt)",
