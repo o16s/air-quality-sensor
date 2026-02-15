@@ -8,14 +8,14 @@ const path = require('path');
 // Store granted USB devices for reconnection
 const grantedDevices = new Map();
 
-// Get docs path - different in dev vs packaged app
-function getDocsPath() {
+// Get web dist path - different in dev vs packaged app
+function getWebDistPath() {
   if (app.isPackaged) {
-    // Production: docs is in extraResources
-    return path.join(process.resourcesPath, 'docs');
+    // Production: dist is in extraResources
+    return path.join(process.resourcesPath, 'dist');
   } else {
-    // Development: docs is sibling to desktop-app
-    return path.join(__dirname, '..', '..', 'docs');
+    // Development: web/dist is sibling to desktop-app
+    return path.join(__dirname, '..', '..', 'web', 'dist');
   }
 }
 
@@ -29,8 +29,8 @@ function createWindow() {
     }
   });
 
-  // Load the docs SPA
-  const indexPath = path.join(getDocsPath(), 'index.html');
+  // Load the web app SPA
+  const indexPath = path.join(getWebDistPath(), 'index.html');
   mainWindow.loadFile(indexPath);
 
   return mainWindow;

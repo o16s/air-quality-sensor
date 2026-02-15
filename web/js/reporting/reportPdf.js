@@ -1,219 +1,11 @@
 /**
- * PDF Report Generation Module
- * Generates professional air quality audit reports
+ * Report PDF Module
+ * HTML preview rendering and PDF generation for air quality reports.
+ * Statistics computation is in report.js.
  */
 
 import html2pdf from 'html2pdf.js';
-import { detectEvents, formatEventDuration } from '../events/events.js';
-import { getLogsByDevice, getLogsByDateRange, getAllDeviceMetadata, getDatabaseStats } from '../storage/storage.js';
-import { AIR_QUALITY_THRESHOLDS } from '../shared/constants.js';
-import { getAllKnownMetrics, getDetectableMetrics } from '../shared/deviceTypes.js';
 import { i18n } from '../shared/i18n.js';
-
-/**
- * Compute statistics from logs
- * @param {Array} logs - Array of log records
- * @returns {Object|null} Statistics object or null if no data
- */
-export function computeStatistics(logs) {
-    if (!logs || logs.length === 0) {
-        return null;
-    }
-
-    const stats = {
-        totalMeasurements: logs.length,
-        period: {
-            start: Math.min(...logs.map(l => l.timestamp)),
-            end: Math.max(...logs.map(l => l.timestamp))
-        },
-        byMetric: {}
-    };
-
-    // Compute for every known metric found in the data
-    for (const metric of getAllKnownMetrics()) {
-        const values = logs.map(l => l[metric.key]).filter(v => v != null && !isNaN(v));
-        if (values.length > 0) {
-            stats.byMetric[metric.key] = {
-                avg: values.reduce((a, b) => a + b, 0) / values.length,
-                min: Math.min(...values),
-                max: Math.max(...values)
-            };
-        }
-    }
-
-    // Backwards-compatible top-level accessors (report UI reads stats.co2, stats.temperature, etc.)
-    for (const [key, val] of Object.entries(stats.byMetric)) {
-        stats[key] = val;
-    }
-
-    return stats;
-}
-
-/**
- * Compute event statistics (time in each severity zone)
- * @param {Array} logs - Array of log records
- * @returns {Object} Event statistics by severity and metric
- */
-export function computeEventStats(logs) {
-    const events = detectEvents(logs);
-
-    // Build byMetric buckets from all detectable metrics (those with thresholds)
-    const byMetric = {};
-    for (const key of getDetectableMetrics()) {
-        byMetric[key] = { count: 0, totalMinutes: 0, peaks: [], durations: [] };
-    }
-
-    const stats = {
-        yellow: { count: 0, totalMinutes: 0 },
-        orange: { count: 0, totalMinutes: 0 },
-        red: { count: 0, totalMinutes: 0 },
-        byMetric
-    };
-
-    for (const event of events) {
-        const minutes = Math.round(event.duration / 60);
-
-        // By severity
-        if (event.severity && stats[event.severity]) {
-            stats[event.severity].count++;
-            stats[event.severity].totalMinutes += minutes;
-        }
-
-        // By metric - collect individual peak values and durations
-        if (event.metric && stats.byMetric[event.metric]) {
-            const m = stats.byMetric[event.metric];
-            m.count++;
-            m.totalMinutes += minutes;
-            if (event.peak != null) m.peaks.push(event.peak);
-            m.durations.push(minutes);
-            if (event.combustionLikely) m.combustionCount = (m.combustionCount || 0) + 1;
-        }
-    }
-
-    // Compute summary stats per metric
-    for (const m of Object.values(stats.byMetric)) {
-        if (m.peaks.length > 0) {
-            m.peakMin = Math.min(...m.peaks);
-            m.peakMax = Math.max(...m.peaks);
-            m.peakMean = m.peaks.reduce((a, b) => a + b, 0) / m.peaks.length;
-        }
-        if (m.durations.length > 0) {
-            m.longestEvent = Math.max(...m.durations);
-        }
-    }
-
-    return stats;
-}
-
-/**
- * Compute statistics for each room based on device logs
- * @param {Array} rooms - Array of room objects with deviceSerial
- * @param {Array} allLogs - All logs from all devices
- * @param {number} startTimestamp - Start timestamp (Unix seconds)
- * @param {number} endTimestamp - End timestamp (Unix seconds)
- * @returns {Array} Room stats array
- */
-export function computeRoomStats(rooms, allLogs, startTimestamp, endTimestamp) {
-    return rooms.map(room => {
-        // Filter logs for this room's device
-        const roomLogs = allLogs.filter(log =>
-            log.deviceSerial === room.deviceSerial &&
-            log.timestamp >= startTimestamp &&
-            log.timestamp <= endTimestamp
-        );
-
-        const stats = computeStatistics(roomLogs);
-        const compliance = computeRoomCompliance(stats);
-        const eventStats = computeEventStats(roomLogs);
-
-        return {
-            room,
-            stats,
-            compliance,
-            eventStats,
-            measurementCount: roomLogs.length,
-            duration: stats ? Math.ceil((stats.period.end - stats.period.start) / 86400) : 0
-        };
-    });
-}
-
-/**
- * Determine compliance status for a room based on reference values from FORMS.md
- * @param {Object} stats - Statistics object from computeStatistics
- * @returns {Object} Compliance status with per-parameter breakdown
- */
-function computeRoomCompliance(stats) {
-    if (!stats) {
-        return {
-            status: 'unknown',
-            reason: 'No data',
-            co2: null,
-            pm25: null,
-            pm10: null
-        };
-    }
-
-    // Check each parameter against reference values
-    // Returns: 'ok' (within limits), 'warning' (elevated), 'elevated' (action required), or null (no data)
-    const co2Status = stats.co2?.avg != null
-        ? (stats.co2.avg <= 1000 ? 'ok' : (stats.co2.avg <= 1500 ? 'warning' : 'elevated'))
-        : null;
-
-    const pm25Status = stats.pm25?.avg != null
-        ? (stats.pm25.avg <= 15 ? 'ok' : (stats.pm25.avg <= 35 ? 'warning' : 'elevated'))
-        : null;
-
-    const pm10Status = stats.pm10?.avg != null
-        ? (stats.pm10.avg <= 45 ? 'ok' : (stats.pm10.avg <= 100 ? 'warning' : 'elevated'))
-        : null;
-
-    // Overall status is the worst of all parameters
-    const statuses = [co2Status, pm25Status, pm10Status].filter(s => s !== null);
-    let overallStatus = 'unknown';
-    if (statuses.length > 0) {
-        if (statuses.includes('elevated')) {
-            overallStatus = 'elevated';
-        } else if (statuses.includes('warning')) {
-            overallStatus = 'warning';
-        } else {
-            overallStatus = 'ok';
-        }
-    }
-
-    return {
-        status: overallStatus,
-        co2: co2Status,
-        pm25: pm25Status,
-        pm10: pm10Status
-    };
-}
-
-/**
- * Compute GI 2.0 compliance status
- * @param {Object} stats - Statistics object from computeStatistics
- * @returns {Object} Compliance status {status: 'pass'|'warning'|'fail', reason: string}
- */
-export function computeGI2Compliance(stats) {
-    if (!stats || !stats.co2 || stats.co2.avg === null) {
-        return { status: 'unknown', reason: 'Insufficient CO2 data' };
-    }
-
-    const co2Avg = stats.co2.avg;
-    const co2Max = stats.co2.max;
-
-    // GI 2.0 criteria (Swiss building standard)
-    // Compliant: avg < 1000 ppm AND peak < 1500 ppm
-    // Warning: avg < 1500 ppm AND peak < 2000 ppm
-    // Not Compliant: otherwise
-
-    if (co2Avg < 1000 && co2Max < 1500) {
-        return { status: 'pass', reason: `CO2 avg ${Math.round(co2Avg)} ppm, peak ${Math.round(co2Max)} ppm` };
-    } else if (co2Avg < 1500 && co2Max < 2000) {
-        return { status: 'warning', reason: `CO2 avg ${Math.round(co2Avg)} ppm, peak ${Math.round(co2Max)} ppm` };
-    } else {
-        return { status: 'fail', reason: `CO2 avg ${Math.round(co2Avg)} ppm, peak ${Math.round(co2Max)} ppm` };
-    }
-}
 
 /**
  * Format duration in human-readable form
@@ -236,6 +28,21 @@ function formatDuration(minutes) {
 function formatDate(timestamp) {
     const date = new Date(timestamp * 1000);
     return date.toLocaleDateString('de-CH', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+/**
+ * Escape HTML entities
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 /**
@@ -415,7 +222,7 @@ export function renderReportPreview(config) {
                             <td class="py-1 pr-2">${escapeHtml(room.name) || '-'}</td>
                             <td class="py-1 pr-2">${escapeHtml(room.floor) || '-'}</td>
                             <td class="py-1 pr-2">${i18n.t('room_' + room.roomType)}</td>
-                            <td class="py-1 pr-2 text-right">${room.area ? room.area + ' m²' : '-'}</td>
+                            <td class="py-1 pr-2 text-right">${room.area ? room.area + ' m\u00B2' : '-'}</td>
                             <td class="py-1 pr-2 text-right">${room.ceilingHeight ? room.ceilingHeight + ' m' : '-'}</td>
                             <td class="py-1 pr-2 text-right">${room.sensorHeight ? room.sensorHeight + ' m' : '-'}</td>
                             <td class="py-1 text-right">${escapeHtml(room.deviceSerial) || '-'}</td>
@@ -439,11 +246,11 @@ export function renderReportPreview(config) {
                             <th class="text-left py-1 pr-2 text-gray-600 font-medium">${i18n.t('room_name')}</th>
                             <th class="text-left py-1 pr-2 text-gray-600 font-medium">${i18n.t('room_floor')}</th>
                             <th class="text-right py-1 pr-2 text-gray-600 font-medium">${i18n.t('report_n_measurements')}</th>
-                            <th class="text-right py-1 pr-2 text-gray-600 font-medium">CO2 Ø</th>
+                            <th class="text-right py-1 pr-2 text-gray-600 font-medium">CO2 \u00D8</th>
                             <th class="text-right py-1 pr-2 text-gray-600 font-medium">CO2 Max</th>
-                            <th class="text-right py-1 pr-2 text-gray-600 font-medium">PM2.5 Ø</th>
+                            <th class="text-right py-1 pr-2 text-gray-600 font-medium">PM2.5 \u00D8</th>
                             <th class="text-right py-1 pr-2 text-gray-600 font-medium">PM2.5 Max</th>
-                            <th class="text-right py-1 pr-2 text-gray-600 font-medium">PM10 Ø</th>
+                            <th class="text-right py-1 pr-2 text-gray-600 font-medium">PM10 \u00D8</th>
                             <th class="text-right py-1 text-gray-600 font-medium">PM10 Max</th>
                         </tr>
                     </thead>
@@ -517,30 +324,30 @@ export function renderReportPreview(config) {
                     <tbody>
                         <tr class="border-b border-gray-100">
                             <td class="py-1 pr-3">CO2</td>
-                            <td class="py-1 pr-3">≤ 1000 ppm</td>
+                            <td class="py-1 pr-3">\u2264 1000 ppm</td>
                             <td class="py-1 pr-3 text-yellow-600">1001-1500 ppm</td>
                             <td class="py-1 pr-3 text-red-600">&gt; 1500 ppm</td>
                             <td class="py-1 text-gray-500">SIA 382/1</td>
                         </tr>
                         <tr class="border-b border-gray-100">
                             <td class="py-1 pr-3">PM2.5</td>
-                            <td class="py-1 pr-3">≤ 15 µg/m³</td>
-                            <td class="py-1 pr-3 text-yellow-600">16-35 µg/m³</td>
-                            <td class="py-1 pr-3 text-red-600">&gt; 35 µg/m³</td>
+                            <td class="py-1 pr-3">\u2264 15 \u00B5g/m\u00B3</td>
+                            <td class="py-1 pr-3 text-yellow-600">16-35 \u00B5g/m\u00B3</td>
+                            <td class="py-1 pr-3 text-red-600">&gt; 35 \u00B5g/m\u00B3</td>
                             <td class="py-1 text-gray-500">WHO 2021</td>
                         </tr>
                         <tr class="border-b border-gray-100">
                             <td class="py-1 pr-3">PM10</td>
-                            <td class="py-1 pr-3">≤ 45 µg/m³</td>
-                            <td class="py-1 pr-3 text-yellow-600">46-100 µg/m³</td>
-                            <td class="py-1 pr-3 text-red-600">&gt; 100 µg/m³</td>
+                            <td class="py-1 pr-3">\u2264 45 \u00B5g/m\u00B3</td>
+                            <td class="py-1 pr-3 text-yellow-600">46-100 \u00B5g/m\u00B3</td>
+                            <td class="py-1 pr-3 text-red-600">&gt; 100 \u00B5g/m\u00B3</td>
                             <td class="py-1 text-gray-500">WHO 2021</td>
                         </tr>
                         <tr class="border-b border-gray-100">
                             <td class="py-1 pr-3">${i18n.t('sensor_temperature')}</td>
-                            <td class="py-1 pr-3">18-24 °C</td>
-                            <td class="py-1 pr-3 text-yellow-600">16-18 / 24-26 °C</td>
-                            <td class="py-1 pr-3 text-red-600">&lt; 16 / &gt; 26 °C</td>
+                            <td class="py-1 pr-3">18-24 \u00B0C</td>
+                            <td class="py-1 pr-3 text-yellow-600">16-18 / 24-26 \u00B0C</td>
+                            <td class="py-1 pr-3 text-red-600">&lt; 16 / &gt; 26 \u00B0C</td>
                             <td class="py-1 text-gray-500">SIA 180</td>
                         </tr>
                         <tr class="border-b border-gray-100">
@@ -595,7 +402,7 @@ export function renderReportPreview(config) {
                     <tbody>
                         ${roomStats.flatMap(rs => {
                             const rows = [];
-                            for (const [key, label, unit] of [['co2', 'CO2', 'ppm'], ['pm25', 'PM2.5', 'µg/m³'], ['pm10', 'PM10', 'µg/m³']]) {
+                            for (const [key, label, unit] of [['co2', 'CO2', 'ppm'], ['pm25', 'PM2.5', '\u00B5g/m\u00B3'], ['pm10', 'PM10', '\u00B5g/m\u00B3']]) {
                                 const m = rs.eventStats?.byMetric[key];
                                 if (m && m.count > 0) {
                                     const isCO2 = key === 'co2';
@@ -686,21 +493,6 @@ export function renderReportPreview(config) {
 }
 
 /**
- * Escape HTML entities
- * @param {string} str - String to escape
- * @returns {string} Escaped string
- */
-function escapeHtml(str) {
-    if (!str) return '';
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-/**
  * Generate PDF using html2pdf.js
  * @param {HTMLElement} element - Element to convert to PDF
  * @param {string} filename - Output filename
@@ -754,24 +546,4 @@ export async function generatePDF(element, filename = 'air-quality-report.pdf', 
             pdf.text(`${i} / ${totalPages}`, pageWidth - 10, pageHeight - 10, { align: 'right' });
         }
     }).save();
-}
-
-/**
- * Get logs for selected devices and date range
- * @param {string[]} deviceSerials - Array of device serial numbers
- * @param {number} startTimestamp - Start timestamp (Unix seconds)
- * @param {number} endTimestamp - End timestamp (Unix seconds)
- * @returns {Promise<Array>} Combined logs from all devices
- */
-export async function getLogsForReport(deviceSerials, startTimestamp, endTimestamp) {
-    let allLogs = [];
-
-    for (const serial of deviceSerials) {
-        const logs = await getLogsByDateRange(startTimestamp, endTimestamp, serial);
-        allLogs = allLogs.concat(logs);
-    }
-
-    // Sort by timestamp
-    allLogs.sort((a, b) => a.timestamp - b.timestamp);
-    return allLogs;
 }

@@ -7,7 +7,7 @@ import { i18n } from '../shared/i18n.js';
 import {
     renderReportPreview,
     generatePDF,
-} from '../reporting/report.js';
+} from '../reporting/reportPdf.js';
 import * as state from './state.js';
 import { showError } from './utils.js';
 import { getReportDateRange, getSelectedDeviceNames, getLogoDataUrl } from './reportForm.js';

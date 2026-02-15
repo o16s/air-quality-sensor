@@ -6,7 +6,7 @@ const hasSigningCredentials = process.env.APPLE_ID && process.env.APPLE_ID_PASSW
 const packagerConfig = {
   name: 'Octanis ICS',
   executableName: 'octanis-ics',
-  extraResource: ['../docs'],
+  extraResource: ['../web/dist'],
   asar: true,
   icon: './icons/icon'  // .icns for macOS, .ico for Windows, .png for Linux
 };

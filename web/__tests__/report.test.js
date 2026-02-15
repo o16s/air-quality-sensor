@@ -7,8 +7,8 @@ import {
     computeEventStats,
     computeGI2Compliance,
     computeRoomStats,
-    renderReportPreview
 } from '../js/reporting/report.js';
+import { renderReportPreview } from '../js/reporting/reportPdf.js';
 
 describe('Report Module', () => {
     describe('computeStatistics', () => {

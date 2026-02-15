@@ -309,7 +309,26 @@ npm run test:ui       # Interactive UI
 
 - Core modules (storage, webusb, export): **>80%**
 - Utility functions: **>80%**
-- UI logic: Not tested (requires integration tests)
+- UI logic: Covered by Electron integration tests (see below)
+
+### Electron Integration Tests (run after large changes)
+
+```bash
+# 1. Build the web app
+cd src && npm run build
+
+# 2. Kill stale Electron instances
+pkill -f "electron ." || true
+
+# 3. Launch with CDP debugging + run smoke test
+cd desktop-app && npx electron . --remote-debugging-port=9222 &
+sleep 3 && npm run test:integration
+
+# 4. Cleanup
+pkill -f "electron ." || true
+```
+
+Verifies: app loads without console errors, all nav elements exist, page navigation works. See `desktop-app/docs/integration_testing.md` for details.
 
 ### Writing Tests
 
