@@ -3,11 +3,11 @@
  * Handles live sensor value display updates
  */
 
-import { i18n } from '../i18n.js';
-import { isDeviceConnected, getDevice } from '../webusb.js';
-import { getDeviceStatus, formatGPSFix, createMapsURL } from '../protocol.js';
-import { LOG_TYPE, CO2_THRESHOLDS, TIME_SYNC } from '../constants.js';
-import { getDeviceTypeById, DEVICE_TYPES } from '../deviceTypes.js';
+import { i18n } from '../shared/i18n.js';
+import { isDeviceConnected, getDevice } from '../device/webusb.js';
+import { getDeviceStatus, formatGPSFix, createMapsURL } from '../device/protocol.js';
+import { LOG_TYPE, CO2_THRESHOLDS, TIME_SYNC } from '../shared/constants.js';
+import { getDeviceTypeById, DEVICE_TYPES } from '../shared/deviceTypes.js';
 import * as state from './state.js';
 import { showError, track } from './utils.js';
 

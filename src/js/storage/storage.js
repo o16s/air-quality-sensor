@@ -111,7 +111,7 @@ export async function storeLogs(logs, deviceSerial) {
 
     return new Promise(async (resolve, reject) => {
         // Import isDuplicateLog helper
-        const { isDuplicateLog } = await import('./utils.js');
+        const { isDuplicateLog } = await import('../shared/utils.js');
 
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);

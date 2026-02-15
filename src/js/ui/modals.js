@@ -3,11 +3,11 @@
  * Handles settings and device edit modals
  */
 
-import { getDeviceMetadata, setDeviceMetadata, deleteDeviceMetadata, clearDeviceLogs } from '../storage.js';
-import { getSettings, setSettings, setRecording } from '../protocol.js';
-import { MEASUREMENT_INTERVALS } from '../constants.js';
-import { i18n } from '../i18n.js';
-import { isDeviceConnected, getDevice } from '../webusb.js';
+import { getDeviceMetadata, setDeviceMetadata, deleteDeviceMetadata, clearDeviceLogs } from '../storage/storage.js';
+import { getSettings, setSettings, setRecording } from '../device/protocol.js';
+import { MEASUREMENT_INTERVALS } from '../shared/constants.js';
+import { i18n } from '../shared/i18n.js';
+import { isDeviceConnected, getDevice } from '../device/webusb.js';
 import { listenKeys } from 'nanostores';
 import { $state, bumpDataVersion } from './state.js';
 import * as state from './state.js';

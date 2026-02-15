@@ -3,7 +3,7 @@
  * Handles device connection, disconnection, and communication
  */
 
-import { USB, ERRORS } from './constants.js';
+import { USB, ERRORS } from '../shared/constants.js';
 
 // Device filter configuration
 const DEVICE_FILTERS = [{

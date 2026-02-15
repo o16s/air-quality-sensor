@@ -3,13 +3,13 @@
  * Handles initialization, widget configuration, and page switching
  */
 
-import { i18n } from '../i18n.js';
+import { i18n } from '../shared/i18n.js';
 
-import { autoReconnect, isDeviceConnected, disconnectDevice, onConnect, onDisconnect, onDeviceListChange, getDevice } from '../webusb.js';
-import { clearDeviceLogs, getDeviceMetadata } from '../storage.js';
-import { eraseLogs } from '../protocol.js';
-import { LOG_TYPE } from '../constants.js';
-import { getDeviceTypeById, getAllKnownMetrics, DEVICE_TYPES } from '../deviceTypes.js';
+import { autoReconnect, isDeviceConnected, disconnectDevice, onConnect, onDisconnect, onDeviceListChange, getDevice } from '../device/webusb.js';
+import { clearDeviceLogs, getDeviceMetadata } from '../storage/storage.js';
+import { eraseLogs } from '../device/protocol.js';
+import { LOG_TYPE } from '../shared/constants.js';
+import { getDeviceTypeById, getAllKnownMetrics, DEVICE_TYPES } from '../shared/deviceTypes.js';
 import { listenKeys } from 'nanostores';
 import { $state, bumpDataVersion } from './state.js';
 import * as state from './state.js';

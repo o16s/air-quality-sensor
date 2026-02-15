@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { isDuplicateLog } from '../js/utils.js';
+import { isDuplicateLog } from '../js/shared/utils.js';
 
 // Sample log data
 const createMockLog = (overrides = {}) => ({

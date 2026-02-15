@@ -1,4 +1,4 @@
-import { checkWebUSBSupport } from './webusb.js';
+import { checkWebUSBSupport } from './device/webusb.js';
 import { initUI } from './ui.js';
 
 // Check browser compatibility

@@ -3,8 +3,8 @@
  * Detects air quality anomalies using MAD-based z-scores and threshold violations
  */
 
-import { AIR_QUALITY_THRESHOLDS } from './constants.js';
-import { getDetectableMetrics, getMetricUnitsMap, getMetricLabelsMap } from './deviceTypes.js';
+import { AIR_QUALITY_THRESHOLDS } from '../shared/constants.js';
+import { getDetectableMetrics, getMetricUnitsMap, getMetricLabelsMap } from '../shared/deviceTypes.js';
 
 // Event detection configuration
 const EVENT_CONFIG = {

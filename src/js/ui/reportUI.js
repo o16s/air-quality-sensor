@@ -3,7 +3,7 @@
  * Handles report page functions
  */
 
-import { i18n } from '../i18n.js';
+import { i18n } from '../shared/i18n.js';
 import {
     getDatabaseStats,
     getAllDeviceMetadata,
@@ -15,7 +15,7 @@ import {
     addRoomToLocation,
     updateRoomInLocation,
     deleteRoomFromLocation
-} from '../storage.js';
+} from '../storage/storage.js';
 import {
     computeStatistics,
     computeEventStats,
@@ -24,8 +24,8 @@ import {
     renderReportPreview,
     generatePDF,
     getLogsForReport
-} from '../report.js';
-import { generateReportMarkdown, parseAnalysisResponse } from '../reportData.js';
+} from '../reporting/report.js';
+import { generateReportMarkdown, parseAnalysisResponse } from '../reporting/reportData.js';
 import * as state from './state.js';
 import { showError } from './utils.js';
 import { escapeHtmlAttr } from './utils.js';

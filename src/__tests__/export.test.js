@@ -10,7 +10,7 @@ import {
   exportToGeoJSON,
   generateStatistics,
   exportStatistics
-} from '../js/export.js';
+} from '../js/export/export.js';
 
 // Sample log data
 const createMockLogs = () => [

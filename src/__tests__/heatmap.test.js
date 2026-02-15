@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateHeatmapData, formatHeatmapTooltip } from '../js/heatmap.js';
+import { generateHeatmapData, formatHeatmapTooltip } from '../js/events/heatmap.js';
 
 describe('Heatmap - Data Generation', () => {
     // Helper to create mock logs

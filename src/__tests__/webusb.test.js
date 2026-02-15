@@ -15,7 +15,7 @@ import {
   autoReconnect,
   getDeviceInfo,
   handleUSBError
-} from '../js/webusb.js';
+} from '../js/device/webusb.js';
 
 // Mock USB device
 const createMockDevice = (overrides = {}) => ({

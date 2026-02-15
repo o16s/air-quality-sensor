@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectEvents, formatEventDuration, formatEventTimeRange } from '../js/events.js';
+import { detectEvents, formatEventDuration, formatEventTimeRange } from '../js/events/events.js';
 
 describe('Events - Detection', () => {
     // Helper to create mock logs

@@ -3,10 +3,10 @@
  * Handles events timeline display
  */
 
-import { i18n } from '../i18n.js';
-import { getAllLogs, getLogsByDevice } from '../storage.js';
-import { detectEvents, formatEventDuration, formatEventTimeRange } from '../events.js';
-import { getMetricLabelsMap } from '../deviceTypes.js';
+import { i18n } from '../shared/i18n.js';
+import { getAllLogs, getLogsByDevice } from '../storage/storage.js';
+import { detectEvents, formatEventDuration, formatEventTimeRange } from '../events/events.js';
+import { getMetricLabelsMap } from '../shared/deviceTypes.js';
 import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';

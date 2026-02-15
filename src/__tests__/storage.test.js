@@ -23,7 +23,7 @@ import {
   getAllDeviceMetadata,
   deleteDeviceMetadata,
   getDeviceDisplayName
-} from '../js/storage.js';
+} from '../js/storage/storage.js';
 
 // Sample log data
 const createMockLog = (overrides = {}) => ({

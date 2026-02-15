@@ -18,7 +18,7 @@ import {
     LOG_LAYOUT_SPECTRAL,
     LOG_TYPE,
     ERRORS
-} from './constants.js';
+} from '../shared/constants.js';
 
 import {
     validateDevice,
@@ -26,7 +26,7 @@ import {
     formatGPSFix,
     createMapsURL,
     decodeBatteryByte
-} from './utils.js';
+} from '../shared/utils.js';
 
 /**
  * Send a control transfer to the device

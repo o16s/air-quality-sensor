@@ -10,14 +10,14 @@ import {
     handleUSBError,
     getDevice,
     getDeviceInfo
-} from '../webusb.js';
+} from '../device/webusb.js';
 import {
     getFirmwareVersion,
     getLogType
-} from '../protocol.js';
-import { getDeviceMetadata, setDeviceMetadata } from '../storage.js';
-import { LOG_TYPE } from '../constants.js';
-import { getDeviceTypeById } from '../deviceTypes.js';
+} from '../device/protocol.js';
+import { getDeviceMetadata, setDeviceMetadata } from '../storage/storage.js';
+import { LOG_TYPE } from '../shared/constants.js';
+import { getDeviceTypeById } from '../shared/deviceTypes.js';
 import * as state from './state.js';
 import { showError } from './utils.js';
 import { getAllKnownDevices } from './deviceSwitcher.js';

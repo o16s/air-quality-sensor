@@ -3,7 +3,7 @@
  * Generates LLM-friendly markdown from report data
  */
 
-import { i18n } from './i18n.js';
+import { i18n } from '../shared/i18n.js';
 
 const MAX_RAW_ROWS = 2000; // unused after hourly aggregation, kept for reference
 

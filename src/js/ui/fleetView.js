@@ -3,9 +3,9 @@
  * Manages the two-state Overview page: fleet table vs device view
  */
 
-import { i18n } from '../i18n.js';
-import { getLogCount, getDeviceDisplayName } from '../storage.js';
-import { LOG_TYPE } from '../constants.js';
+import { i18n } from '../shared/i18n.js';
+import { getLogCount, getDeviceDisplayName } from '../storage/storage.js';
+import { LOG_TYPE } from '../shared/constants.js';
 import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';

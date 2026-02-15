@@ -3,9 +3,9 @@
  * Renders dynamic content on the Help / Settings page
  */
 
-import { i18n } from '../i18n.js';
-import { AIR_QUALITY_THRESHOLDS } from '../constants.js';
-import { DEVICE_TYPES } from '../deviceTypes.js';
+import { i18n } from '../shared/i18n.js';
+import { AIR_QUALITY_THRESHOLDS } from '../shared/constants.js';
+import { DEVICE_TYPES } from '../shared/deviceTypes.js';
 import { track } from './utils.js';
 
 /**

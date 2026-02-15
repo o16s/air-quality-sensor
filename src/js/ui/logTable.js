@@ -5,15 +5,15 @@
 
 import { Grid, html } from 'gridjs';
 import 'gridjs/dist/theme/mermaid.css';
-import { i18n } from '../i18n.js';
+import { i18n } from '../shared/i18n.js';
 import {
     getRecentLogs,
     getLogsByDevice,
     getLogCount as getStorageLogCount,
     getDeviceMetadata
-} from '../storage.js';
-import { LOG_TYPE } from '../constants.js';
-import { getDeviceTypeById } from '../deviceTypes.js';
+} from '../storage/storage.js';
+import { LOG_TYPE } from '../shared/constants.js';
+import { getDeviceTypeById } from '../shared/deviceTypes.js';
 import { formatTimestamp } from './utils.js';
 import { getCO2ColorClass } from './liveData.js';
 import { listenKeys } from 'nanostores';

@@ -3,9 +3,9 @@
  * Handles CSV and JSON export functions
  */
 
-import { i18n } from '../i18n.js';
-import { getAllLogs, getLogsByDevice, getAllDeviceMetadata } from '../storage.js';
-import { exportToCSV, exportToJSON } from '../export.js';
+import { i18n } from '../shared/i18n.js';
+import { getAllLogs, getLogsByDevice, getAllDeviceMetadata } from '../storage/storage.js';
+import { exportToCSV, exportToJSON } from '../export/export.js';
 import * as state from './state.js';
 import { showError, showSuccess } from './utils.js';
 

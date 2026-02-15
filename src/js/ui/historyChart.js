@@ -13,7 +13,7 @@ import {
     ToolboxComponent
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
-import { getMetricColorsMap, getMetricUnitsMap, getMetricLabelsMap } from '../deviceTypes.js';
+import { getMetricColorsMap, getMetricUnitsMap, getMetricLabelsMap } from '../shared/deviceTypes.js';
 
 echarts.use([LineChart, TooltipComponent, LegendComponent, GridComponent, DataZoomComponent, ToolboxComponent, CanvasRenderer]);
 

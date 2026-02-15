@@ -3,17 +3,17 @@
  * Handles auto-refresh, log downloads, and device time sync
  */
 
-import { i18n } from '../i18n.js';
-import { isDeviceConnected, getDevice, getDeviceInfo } from '../webusb.js';
+import { i18n } from '../shared/i18n.js';
+import { isDeviceConnected, getDevice, getDeviceInfo } from '../device/webusb.js';
 import {
     getLogCount,
     downloadAllLogs,
     setDeviceTime,
     triggerAcquisition
-} from '../protocol.js';
-import { storeLogs } from '../storage.js';
-import { LOG_TYPE, DEVICE_CAPACITY } from '../constants.js';
-import { getDeviceTypeById } from '../deviceTypes.js';
+} from '../device/protocol.js';
+import { storeLogs } from '../storage/storage.js';
+import { LOG_TYPE, DEVICE_CAPACITY } from '../shared/constants.js';
+import { getDeviceTypeById } from '../shared/deviceTypes.js';
 import { bumpDataVersion } from './state.js';
 import * as state from './state.js';
 import { showError, showSuccess } from './utils.js';

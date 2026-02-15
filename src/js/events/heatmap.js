@@ -3,7 +3,7 @@
  * GitHub-style heatmap for air quality visualization
  */
 
-import { AIR_QUALITY_THRESHOLDS, getColorForValue } from './constants.js';
+import { AIR_QUALITY_THRESHOLDS, getColorForValue } from '../shared/constants.js';
 
 /**
  * Format date as YYYY-MM-DD using local time (not UTC)

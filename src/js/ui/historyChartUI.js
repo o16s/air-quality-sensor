@@ -3,9 +3,9 @@
  * Fetches and aggregates data, wires events, calls ECharts renderer
  */
 
-import { i18n } from '../i18n.js';
-import { getLogsByDateRange } from '../storage.js';
-import { getAllKnownMetrics, getMetricLabelsMap } from '../deviceTypes.js';
+import { i18n } from '../shared/i18n.js';
+import { getLogsByDateRange } from '../storage/storage.js';
+import { getAllKnownMetrics, getMetricLabelsMap } from '../shared/deviceTypes.js';
 import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';

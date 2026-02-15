@@ -3,21 +3,21 @@
  * Handles device selection dropdown and device filter
  */
 
-import { i18n } from '../i18n.js';
+import { i18n } from '../shared/i18n.js';
 import {
     getDatabaseStats,
     getDeviceMetadata,
     getAllDeviceMetadata,
     getLogsByDevice,
     getDeviceDisplayName
-} from '../storage.js';
+} from '../storage/storage.js';
 import {
     isDeviceConnected,
     getDeviceInfo,
     connectToDeviceBySerial,
     getPairedDevices
-} from '../webusb.js';
-import { LOG_TYPE } from '../constants.js';
+} from '../device/webusb.js';
+import { LOG_TYPE } from '../shared/constants.js';
 import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';
 import * as state from './state.js';

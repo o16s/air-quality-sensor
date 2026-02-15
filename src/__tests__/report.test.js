@@ -8,7 +8,7 @@ import {
     computeGI2Compliance,
     computeRoomStats,
     renderReportPreview
-} from '../js/report.js';
+} from '../js/reporting/report.js';
 
 describe('Report Module', () => {
     describe('computeStatistics', () => {

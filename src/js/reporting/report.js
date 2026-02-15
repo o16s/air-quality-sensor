@@ -4,11 +4,11 @@
  */
 
 import html2pdf from 'html2pdf.js';
-import { detectEvents, formatEventDuration } from './events.js';
-import { getLogsByDevice, getLogsByDateRange, getAllDeviceMetadata, getDatabaseStats } from './storage.js';
-import { AIR_QUALITY_THRESHOLDS } from './constants.js';
-import { getAllKnownMetrics, getDetectableMetrics } from './deviceTypes.js';
-import { i18n } from './i18n.js';
+import { detectEvents, formatEventDuration } from '../events/events.js';
+import { getLogsByDevice, getLogsByDateRange, getAllDeviceMetadata, getDatabaseStats } from '../storage/storage.js';
+import { AIR_QUALITY_THRESHOLDS } from '../shared/constants.js';
+import { getAllKnownMetrics, getDetectableMetrics } from '../shared/deviceTypes.js';
+import { i18n } from '../shared/i18n.js';
 
 /**
  * Compute statistics from logs

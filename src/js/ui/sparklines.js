@@ -3,9 +3,9 @@
  * Handles sparkline chart rendering
  */
 
-import { getLogsByDateRange, getRecentLogs } from '../storage.js';
-import { SPARKLINE_THRESHOLDS } from '../constants.js';
-import { getDeviceTypeById, DEVICE_TYPES } from '../deviceTypes.js';
+import { getLogsByDateRange, getRecentLogs } from '../storage/storage.js';
+import { SPARKLINE_THRESHOLDS } from '../shared/constants.js';
+import { getDeviceTypeById, DEVICE_TYPES } from '../shared/deviceTypes.js';
 import { METRIC_COLORS } from './historyChart.js';
 import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';

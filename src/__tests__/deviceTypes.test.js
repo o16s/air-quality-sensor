@@ -13,8 +13,8 @@ import {
     getMetricUnitsMap,
     getMetricLabelsMap,
     getDetectableMetrics
-} from '../js/deviceTypes.js';
-import { LOG_TYPE } from '../js/constants.js';
+} from '../js/shared/deviceTypes.js';
+import { LOG_TYPE } from '../js/shared/constants.js';
 
 describe('Device Types Registry', () => {
     describe('DEVICE_TYPES structure', () => {

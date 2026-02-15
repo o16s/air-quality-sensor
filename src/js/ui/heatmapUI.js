@@ -3,11 +3,11 @@
  * Handles heatmap visualization rendering
  */
 
-import { i18n } from '../i18n.js';
-import { getAllLogs, getLogsByDevice, getDeviceMetadata, getDeviceDisplayName } from '../storage.js';
-import { AIR_QUALITY_THRESHOLDS } from '../constants.js';
-import { getDetectableMetrics } from '../deviceTypes.js';
-import { generateHeatmapData, formatHeatmapTooltip } from '../heatmap.js';
+import { i18n } from '../shared/i18n.js';
+import { getAllLogs, getLogsByDevice, getDeviceMetadata, getDeviceDisplayName } from '../storage/storage.js';
+import { AIR_QUALITY_THRESHOLDS } from '../shared/constants.js';
+import { getDetectableMetrics } from '../shared/deviceTypes.js';
+import { generateHeatmapData, formatHeatmapTooltip } from '../events/heatmap.js';
 import { listenKeys } from 'nanostores';
 import { $state, $dataVersion } from './state.js';
 
