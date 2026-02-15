@@ -8,6 +8,8 @@ import {
     getDatabaseStats,
     getAllDeviceMetadata,
     getDeviceDisplayName,
+} from '../storage/storage.js';
+import {
     saveReportLocation,
     getReportLocation,
     getAllReportLocations,
@@ -15,7 +17,7 @@ import {
     addRoomToLocation,
     updateRoomInLocation,
     deleteRoomFromLocation
-} from '../storage/storage.js';
+} from '../reporting/reportLocations.js';
 import {
     computeStatistics,
     computeEventStats,
