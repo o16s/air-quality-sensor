@@ -75,7 +75,7 @@ Disconnected → Connected: Click "Connect Device" and select device
 ### File Structure
 
 ```
-src/
+web/
 ├── index.html              # Main UI
 ├── package.json            # Dependencies + scripts
 ├── vite.config.js          # Vite build configuration
@@ -315,7 +315,7 @@ npm run test:ui       # Interactive UI
 
 ```bash
 # 1. Build the web app
-cd src && npm run build
+cd web && npm run build
 
 # 2. Kill stale Electron instances
 pkill -f "electron ." || true
@@ -328,7 +328,7 @@ sleep 3 && npm run test:integration
 pkill -f "electron ." || true
 ```
 
-Verifies: app loads without console errors, all nav elements exist, page navigation works. See `desktop-app/docs/integration_testing.md` for details.
+Verifies: app loads without console errors, all nav elements exist, page navigation works. See `desktop-app/guides/integration_testing.md` for details.
 
 ### Writing Tests
 
@@ -619,17 +619,19 @@ RADAR: {
 
 ### GitHub Pages Setup
 
-1. Enable Pages in repo settings
-2. Source: `master` branch, `/docs` folder
-3. Site will be at: `https://o16s.github.io/air-quality-sensor/`
+Deployed via GitHub Actions (`.github/workflows/deploy-pages.yml`). On push to `master`, the workflow builds `web/dist` and deploys to GitHub Pages.
+
+Site: `https://o16s.github.io/air-quality-sensor/`
+
+**Setup**: repo Settings > Pages > Source: "GitHub Actions"
 
 ### Local Development
 
 ```bash
-cd src
+cd web
 npm install
 npm run dev    # Vite dev server with HMR
-npm run build  # Production build to ../docs/
+npm run build  # Production build to dist/
 npm test       # Run all tests
 ```
 
